@@ -490,6 +490,13 @@ function cardTile(id,onTap,extra=''){
   return b;
 }
 function emptySlot(label){ const e=document.createElement('div'); e.className='cardtile empty'; e.innerHTML=`<span>${label}</span>`; return e; }
+// One tap: a fresh legal deck (6 characters incl. a Champion + 2 spells) from every unlocked card in this arena, or the whole game in Mix & Match.
+function randomizeDeck(){
+  const th=THEMES[arenaIdx], pool=(modeKey==='mix'?PLAYABLE:th.pool).filter(k=>unlocked(k)&&!CARDS[k].hidden), cur=curDeck().slice().sort().join();
+  let d=null; for(let i=0;i<20;i++){ d=randomDeck(pool); if(d&&d.slice().sort().join()!==cur) break; }
+  if(!d) return; swapPick=null; setDeck(d); d.forEach(requestPortrait); sfx('pop'); renderMenu();
+  $('#info').innerHTML=`<b>🎲 New deck!</b><br>${d.map(k=>CARDS[k].short||CARDS[k].name).join(' · ')}`;
+}
 function saveDeck(){ if(modeKey==='mix') store.set('mix',mixDeck); else store.set('deck_'+THEMES[arenaIdx].id,arenaDeck); }
 function curDeck(){ return modeKey==='mix'?mixDeck:arenaDeck; }
 function setDeck(d){ if(modeKey==='mix') mixDeck=d; else arenaDeck=d; saveDeck(); }
@@ -517,6 +524,7 @@ function renderRoad(){
     row.innerHTML=`<div class="roadStep"><span>🏆</span>${step}</div><div class="roadInfo">${trophies>=step?'✅ Unlocked':'🔒 '+(step-trophies)+' to go'}<br><span class="dim">${all.length} cards across all arenas</span></div>`;
     const g=document.createElement('div'); g.className='roadCards'; here.forEach(id=>{ requestPortrait(id); g.appendChild(cardTile(id,null,'road')); }); row.appendChild(g); list.appendChild(row); }
 }
+$('#randBtn').onclick=$('#randBtn2').onclick=()=>{ initAudio(); randomizeDeck(); };
 $('#roadBtn').onclick=()=>{ $('#menu').hidden=true; $('#road').hidden=false; renderRoad(); };
 $('#roadBack').onclick=()=>{ $('#road').hidden=true; $('#menu').hidden=false; renderMenu(); };
 function renderMenu(){
@@ -537,6 +545,7 @@ function renderMenu(){
   else { const ids=pool.filter(k=>!deck.includes(k)); const open=pool.filter(unlocked).length;
     ids.forEach(id=>{ requestPortrait(id); col.appendChild(cardTile(id,collTap,'coll')); });
     $('#collHead').textContent=`${th.emoji} ${th.name.toUpperCase()} CARDS · ${open}/${pool.length} unlocked`; }
+  $('#deckPeek').textContent='Deck: '+chars.concat(spells).map(k=>CARDS[k].short||CARDS[k].name).join(' · ');
   const nx=UNLOCK_STEPS.find(v=>v>trophies); $('#nextUnlock').textContent=nx?`Next unlock at 🏆 ${nx} (${nx-trophies} to go)`:'Every card unlocked!';
   $('#trophies').textContent=`🏆 ${trophies}`+(streak>1?`  🔥${streak}`:'');
   const need=(DECK_CHARS-chars.length)+(DECK_SPELLS-spells.length);

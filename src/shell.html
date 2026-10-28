@@ -42,6 +42,10 @@ h2{margin:6px 0 -4px;font-size:18px;letter-spacing:1px;align-self:flex-start;tex
 .aname{font-size:17px;line-height:1.05;max-width:68%}
 .ajob{font-size:12px;opacity:.85;font-family:system-ui,sans-serif;font-weight:700}
 .astars{font-size:14px;color:var(--gold);letter-spacing:1px}
+.deckbar{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%}
+.deckbar h2{margin:6px 0 -4px}
+.btn.sm{font-size:20px;padding:4px 14px 7px}
+#deckPeek{min-height:0;margin-top:-6px;max-width:100%}
 .anew{position:absolute;top:6px;right:6px;z-index:2;font-size:10px;background:#e5302a;color:#fff;border:2px solid var(--ink);border-radius:8px;padding:1px 6px;font-family:system-ui,sans-serif;font-weight:800;max-width:60%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .aking{position:absolute;right:-6px;bottom:-4px;width:64px;height:80px;pointer-events:none;filter:drop-shadow(0 3px 3px rgba(0,0,0,.4))}
 .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:100%}
@@ -101,6 +105,8 @@ h2{margin:6px 0 -4px;font-size:18px;letter-spacing:1px;align-self:flex-start;tex
       <div class="tag">Every job is a weapon. Smash the king.</div>
       <div class="tag small" id="nextUnlock"></div>
       <button class="btn" id="playBtn">BATTLE</button>
+      <button class="btn blue" id="randBtn">🎲 RANDOM DECK</button>
+      <div class="tag small" id="deckPeek"></div>
       <h2>GAME MODE</h2>
       <div id="modes" class="modes"></div>
       <div class="tag small" id="modeDesc"></div>
@@ -121,7 +127,7 @@ h2{margin:6px 0 -4px;font-size:18px;letter-spacing:1px;align-self:flex-start;tex
       </div>
       <h2>CHOOSE YOUR ARENA</h2>
       <div id="arenas"></div>
-      <h2 id="deckHead">DECK</h2>
+      <div class="deckbar"><h2 id="deckHead">DECK</h2><button class="btn blue sm" id="randBtn2" aria-label="Random deck">🎲</button></div>
       <div id="deck" class="grid"></div>
       <div id="info"><b>Build your deck</b><br>6 characters + 2 spells, one Champion at most. Tap a deck card to remove it, tap a card below to add or swap it in. Locked cards open up on the Trophy Road.</div>
       <h2 id="collHead">CARDS</h2>
