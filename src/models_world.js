@@ -70,6 +70,9 @@ function waveBanner(mesh,t,ph,amp=0.08){
 function buildFall(key,tc){
   const g=G0(); const c=x=>mat(colr(x,tc),{s:60});
   switch(key){
+    case 'baseballBig': P(g,'sph',mat('#ffffff',{s:60}),0.75,0.75,0.75); for(const s of [-1,1]) P(g,'torThin',mat('#e5302a'),0.6,0.6,0.35,s*0.4,0,0,0,PI/2); break;
+    case 'tarp': P(g,'rbox2',mat('#6b86a8',{s:30}),3.4,0.08,3.4,0,0,0,0.12,0.2,0); for(let i=0;i<4;i++) P(g,'box',mat('#e8e8e8',{s:20}),0.12,0.1,3.4,-1.3+i*0.87,0.02,0,0.12,0.2,0); break;
+    case 'wavefans': for(let i=0;i<5;i++){ const x=-1.4+i*0.7; P(g,'cyl',mat(['#e5302a','#ffffff','#14264a'][i%3],{s:20}),0.22,0.7,0.22,x,0.35,0); P(g,'sph',mat('#e8b48a',{s:20}),0.2,0.2,0.2,x,0.85,0); for(const s of [-1,1]) P(g,'caps',mat('#e8b48a',{s:20}),0.05,0.35,0.05,x+s*0.2,1.05,0,0,0,-s*0.3); } break;
     case 'gavel': P(g,'cyl',c('#6b3d1f'),0.5,1.6,0.5,0,0.4,0,0,0,PI/2); P(g,'cyl',mat('#c8a64a',{s:120}),0.53,0.15,0.53,0.6,0.4,0,0,0,PI/2); P(g,'cyl',mat('#c8a64a',{s:120}),0.53,0.15,0.53,-0.6,0.4,0,0,0,PI/2); P(g,'cyl',c('#8a5a2b'),0.15,2.2,0.15,0,1.5,0); break;
     case 'paper': P(g,'box',mat('#ffffff'),0.6,0.04,0.8,0,0,0,0.3,0.4,0.2); P(g,'box',mat('#b3202a'),0.15,0.05,0.15,0.15,0.01,0.2); break;
     case 'arrowDown': P(g,'box',mat('#e5443f',{e:0.3}),0.6,2.2,0.3,0,1.5,0); P(g,'cone4',mat('#e5443f',{e:0.3}),1.0,1.0,0.3,0,0,0,PI,PI/4); break;
@@ -125,6 +128,8 @@ function buildProj(key,tc){
     case 'heart': P(g,'sph',m,sz*0.55,sz*0.55,sz*0.4,-sz*0.3,sz*0.1,0); P(g,'sph',m,sz*0.55,sz*0.55,sz*0.4,sz*0.3,sz*0.1,0); P(g,'cone',m,sz*0.78,sz*0.8,sz*0.38,0,-sz*0.42,0,PI); break;
     case 'banana': P(g,'torHalf',m,sz*0.8,sz*0.8,sz*1.6,0,0,0,0,0,0); break;
     case 'puff': P(g,'puff',m,sz,sz*0.9,sz); break;
+    case 'hotdog': P(g,'caps',mat('#e8b868',{s:30}),sz*0.35,sz*1.3,sz*0.35,0,0,0,PI/2); P(g,'caps',mat('#c8432a',{s:40}),sz*0.28,sz*1.5,sz*0.28,0,sz*0.25,0,PI/2); break;
+    case 'baseball': P(g,'sph',m,sz,sz,sz); for(const s of [-1,1]) P(g,'torThin',mat('#e5302a'),sz*0.7,sz*0.7,sz*0.5,s*sz*0.45,0,0,0,PI/2); break;
     case 'pizza': P(g,'cyl',mat('#f2b24a',{s:30}),sz,sz*0.12,sz); P(g,'cyl',mat('#e5443f',{s:60}),sz*0.88,sz*0.13,sz*0.88,0,0.005,0); for(let i=0;i<6;i++){ const a=i/6*TAU; P(g,'cylLo',mat('#a8202a'),sz*0.16,sz*0.14,sz*0.16,Math.cos(a)*sz*0.5,0.01,Math.sin(a)*sz*0.5); } break;
   }
   return g;
@@ -134,6 +139,9 @@ function buildProj(key,tc){
 function buildDeco(key,theme,rnd){
   const g=G0(); const c=x=>mat(x,{s:30});
   switch(key){
+    case 'scoreboard': P(g,'rbox2',c('#14264a'),3.0,1.5,0.25,0,2.2,0); P(g,'box',c('#0a0f1e'),2.7,1.2,0.05,0,2.2,0.14); for(let i=0;i<6;i++) P(g,'box',mat(i%2?'#ffd34d':'#39ff6a',{e:0.9}),0.3,0.4,0.04,-1.1+i*0.44,2.35,0.18); for(let i=0;i<3;i++) P(g,'sph',mat('#e5302a',{e:1}),0.07,0.07,0.04,-0.4+i*0.4,1.85,0.18); for(const s of [-1,1]) P(g,'cyl',c('#555'),0.08,1.6,0.08,s*1.1,0.8,0); break;
+    case 'bases': P(g,'rbox2',c('#e8e4d4'),0.9,0.06,0.9,0,0.04,0,0,PI/4); P(g,'cyl',c('#c98a4a'),1.2,0.03,1.2,0,0.02,0); break;
+    case 'dugout': P(g,'rbox2',c('#14264a'),2.4,0.12,1.1,0,1.4,0); for(const s of [-1,1]) P(g,'cyl',c('#555'),0.05,1.4,0.05,s*1.1,0.7,0.45); P(g,'rbox2',c('#8a5a2b'),2.0,0.1,0.35,0,0.45,-0.1); P(g,'rbox2',c('#8a5a2b'),2.0,0.45,0.08,0,0.8,-0.35); for(let i=0;i<4;i++) P(g,'rbox2',c('#e8c890'),0.05,0.8,0.05,-0.7+i*0.45,0.45,0.35,0.5,0,0.2); break;
     case 'column': P(g,'cyl',c('#f2efe8'),0.45,3.2,0.45,0,1.6,0); P(g,'rbox2',c('#e2ddd0'),1.2,0.3,1.2,0,0.15,0); P(g,'rbox2',c('#e2ddd0'),1.2,0.3,1.2,0,3.3,0); for(let i=0;i<8;i++){ const a=i/8*TAU; P(g,'box',c('#d8d2c4'),0.06,3.0,0.06,Math.cos(a)*0.44,1.6,Math.sin(a)*0.44); } break;
     case 'scales': P(g,'cyl',mat('#c8a64a',{s:120}),0.08,2.2,0.08,0,1.1,0); P(g,'box',mat('#c8a64a',{s:120}),2,0.08,0.08,0,2.2,0); for(const s of [-1,1]){ P(g,'cyl',mat('#c8a64a',{s:120}),0.4,0.06,0.4,s*0.9,1.6,0); P(g,'cylLo',mat('#888'),0.01,0.6,0.01,s*0.9,1.9,0);} P(g,'rbox2',c('#3b2a1e'),0.8,0.3,0.8,0,0.15,0); break;
     case 'books': for(let i=0;i<5;i++) P(g,'rbox2',c(['#7a1f1f','#1f3a7a','#2e5a2e','#5a3a1e','#7a5a1f'][i]),1.2-i*0.05,0.25,0.9,0,0.12+i*0.26,0,0,i*0.2); break;

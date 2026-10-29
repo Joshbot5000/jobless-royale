@@ -68,3 +68,4 @@ Soft, rounded sound effects (thuds, whooshes, chimes) replace the old square-wav
 ## News arenas
 A new topical arena is added every two days (see `UPDATING.md`).
 - 2026-10-27 · **Election Night** (Politicians) · midterm election week: The Candidate (Stump Speech), Campaign Bus, Filibuster Senator, Spin Doctor, Lobbyist, Fact Checker, and the Legendary Incumbent.
+- 2026-10-29 · **Ballpark** (Baseball Players) · World Series week: The Slugger (HOME RUN!), Groundskeeper's Mower, Umpire, The Closer, Hot Dog Vendor, Tarp Crew, T-Shirt Cannon, and the Legendary Hall of Famer.
