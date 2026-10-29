@@ -25,6 +25,7 @@
 | Hollywood Backlot | The Director | CUT!: nearby enemies are rewound 3.5 tiles and stunned |
 | Viral House | Mega Influencer | GO VIRAL!: five Followers appear instantly |
 | Wild Zoo | Head Zookeeper | Tranquilizer: the 3 strongest enemies in range fall asleep for 3s |
+| The Pub | Beer Belly Barry | Belly Bounce: the strongest enemy nearby is launched to the back of the arena |
 
 Every arena also has a second Champion that unlocks at 🏆 1300 (Lord Chancellor, The CEO, Flight Director, FBI Director, Subject Zero, Chief of Medicine, Nonna, Hotshot Captain, Site Foreman, Pop Diva, Golden Retriever, Head Coach, Pop Artist, Movie Star, Podcast Bro, Big Cat Trainer).
 
@@ -33,6 +34,12 @@ Every arena also has a second Champion that unlocks at 🏆 1300 (Lord Chancello
 - **Every arena has 20–23 characters and 4 spells.** The deck is 6 characters + 2 spells with at most one Champion. Each arena remembers its own deck, and Mix & Match builds a 6 + 2 deck from every unlocked card in the game.
 - **Trophy Road.** Every card from the first three rounds of design is available from the start (15–18 characters + 4 spells per arena). On top of that, each arena has 5 brand-new characters that unlock at 🏆 100 (rare), 300 (rare), 600 (epic), 1000 (epic) and 1600 (Legendary), 80 in total. A win is worth 25 + 5 per crown and a loss costs 15. The end screen announces new unlocks.
 - **AI decks.** Rookie plays the starter deck. Knight builds a random deck from cards up to 300 trophies ahead of you. Champion uses the whole pool.
+
+### The Pub (player request)
+Requested by the player: Beer Belly Barry (England shirt, Champion, Belly Bounce), The Drunk (spilled pints leave beer puddles that make ground troops slip over), the Karaoke Machine (a building that makes nearby enemies sing instead of fighting), Pub Quiz (a stun spell), the Rolling Keg (the arena's Log) and Buzz Ball Attack (neon cans lobbed from the King Tower that splash colour and make enemies drunk: they stagger, slow down and miss a third of their attacks). Also: Bouncer, Pub Landlord (last orders sends enemies home), Darts Champ (180s), Pool Shark, Barflies, Kebab Van, Glass Collector, Bar Brawler, Stag Do, Hen Party, Pub Dog, Fruit Machine, Happy Hour, and unlocks The Regular, Sunday Roast Chef, Folk Fiddler, Brewery Dray and the Legendary Pub Ghost.
+
+### Spells from the King Tower
+Spells that are thrown or fired (pans, tomatoes, fireballs, footballs, basketballs, paint, water bombs, banana peels, lawsuits, the drone and buzz balls) are launched from the caster's King Tower: the king winds up and throws, and the spell arcs across the arena. Spells that come from the sky (asteroids, lightning, giant gavels, cages) still drop from above. Mark a spell with `launch:true` to opt in.
 
 ### Mechanics added with the expansion
 Bouncing shots, red cards that send a troop back to its own king tower, swimmers that ignore the bridges, fear (runs home), shrink, stone and ice freezes, invisible-box traps, lassos and yanks, rewind, cloning, splitting slimes, mystery-box random spawns, elixir refunds on death, regeneration, lifesteal, taunting troops, cement trails, a child star that grows up mid-battle, and flaming kick-rolls.

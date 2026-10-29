@@ -150,6 +150,12 @@ function groundTex(th,z0,z1){
         for(let i=0;i<4000;i++){ const px=r()*w, py=r()*h; x.strokeStyle=r()<0.5?'rgba(60,120,30,0.35)':'rgba(200,240,140,0.3)'; x.lineWidth=1.2; x.beginPath(); x.moveTo(px,py); x.lineTo(px+r()*3-1.5,py-3-r()*4); x.stroke(); }
         for(let i=0;i<10;i++){ const px=r()*w, py=r()*h; x.fillStyle='rgba(150,110,60,0.35)'; x.beginPath(); x.ellipse(px,py,20+r()*30,10+r()*16,r()*3,0,TAU); x.fill(); }
         x.fillStyle='rgba(90,60,30,0.3)'; for(let i=0;i<30;i++){ const px=r()*w, py=r()*h; for(const [dx,dy] of [[0,0],[-5,-7],[0,-9],[5,-7]]){ x.beginPath(); x.arc(px+dx,py+dy,dx||dy?2:4,0,TAU); x.fill(); } } break;
+      case 'pub': x.fillStyle=ga; x.fillRect(0,0,w,h);
+        for(let ty=0;ty<z1-z0;ty++) for(let tx=0;tx<18;tx++){ const cx=tx*S+S/2, cy=ty*S+S/2;
+          x.strokeStyle='rgba(214,170,70,0.55)'; x.lineWidth=2.5; x.beginPath(); x.moveTo(cx,cy-S/2); x.lineTo(cx+S/2,cy); x.lineTo(cx,cy+S/2); x.lineTo(cx-S/2,cy); x.closePath(); x.stroke();
+          x.fillStyle=(tx+ty+z0)%2?'rgba(40,110,70,0.55)':'rgba(214,170,70,0.5)'; for(let k=0;k<4;k++){ const a=k*PI/2; x.beginPath(); x.ellipse(cx+Math.cos(a)*6,cy+Math.sin(a)*6,5,3,a,0,TAU); x.fill(); }
+          x.fillStyle='rgba(20,38,74,0.6)'; x.beginPath(); x.arc(cx,cy,3,0,TAU); x.fill(); }
+        x.fillStyle='rgba(0,0,0,0.12)'; for(let i=0;i<14;i++){ x.beginPath(); x.ellipse(r()*w,r()*h,8+r()*16,5+r()*10,r()*3,0,TAU); x.fill(); } break;
       default: tile((tx,ty,o)=>{ x.fillStyle=o?ga:gb; x.fillRect(tx*S,ty*S,S,S); x.fillStyle='rgba(255,255,255,0.12)'; x.fillRect(tx*S+2,ty*S+2,S-4,3); });
         x.strokeStyle='rgba(0,0,0,0.14)'; x.lineWidth=2; for(let i=0;i<=18;i++){ x.beginPath(); x.moveTo(i*S,0); x.lineTo(i*S,h); x.stroke(); } for(let j=0;j<=z1-z0;j++){ x.beginPath(); x.moveTo(0,j*S); x.lineTo(w,j*S); x.stroke(); }
     }

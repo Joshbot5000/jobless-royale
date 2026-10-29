@@ -4,15 +4,16 @@
   index.html                       home-screen web app served by GitHub Pages (Three.js inlined, works offline)
   dist/artifact.html               page published to the claude.ai artifact (Three.js from cdnjs)
   dist/jobless-royale-offline.html standalone offline file
-Every src/data_news_*.js file (one per topical arena) is picked up automatically, oldest first.
+Every src/data_arena_*.js (extra arenas) and src/data_news_*.js (one per topical arena, oldest first) is picked up automatically.
 """
 import hashlib
 from pathlib import Path
 
 root = Path(__file__).parent
 src = root / 'src'
+arenas = sorted(p.name for p in src.glob('data_arena_*.js'))
 news = sorted(p.name for p in src.glob('data_news_*.js'))
-files = ['data.js', 'data_more1.js', 'data_more2.js', 'data_more3.js'] + news + [
+files = ['data.js', 'data_more1.js', 'data_more2.js', 'data_more3.js'] + arenas + news + [
     'models_core.js', 'models_chars.js', 'models_more.js', 'models_world.js', 'engine.js', 'sim.js', 'ui.js']
 game = '\n'.join((src / f).read_text() for f in files)
 shell = (src / 'shell.html').read_text()

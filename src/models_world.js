@@ -70,6 +70,11 @@ function waveBanner(mesh,t,ph,amp=0.08){
 function buildFall(key,tc){
   const g=G0(); const c=x=>mat(colr(x,tc),{s:60});
   switch(key){
+    case 'keg': { const kw=mat('#9a6a3a',{s:40}), hoop=mat('#6a6e75',{s:140,m:0.6}); P(g,'cyl',kw,0.72,1.5,0.72,0,0,0,0,0,PI/2); P(g,'sph',kw,0.78,0.78,0.78,0,0,0); for(const x of [-0.55,-0.2,0.2,0.55]) P(g,'torThin',hoop,0.78-Math.abs(x)*0.15,0.78-Math.abs(x)*0.15,0.6,x,0,0,0,PI/2);
+      for(const s of [-1,1]) P(g,'cyl',mat('#7a4a22',{s:30}),0.6,0.04,0.6,s*0.75,0,0,0,0,PI/2); P(g,'cyl',mat('#c8a64a',{s:150,m:0.7}),0.08,0.12,0.08,0.78,0,0,0,0,PI/2); break; }
+    case 'quiz': P(g,'rbox2',mat('#ffffff',{map:labelTex('?','#2f5fd0','#ffd34d'),s:30}),1.7,1.7,0.18); P(g,'rbox2',mat('#ffd34d',{s:60}),1.8,0.1,0.2,0,0.9,0); P(g,'rbox2',mat('#ffd34d',{s:60}),1.8,0.1,0.2,0,-0.9,0); break;
+    case 'buzzball': { const cols=['#ff2bd6','#39ff14','#00e5ff','#ffea00','#ff6a00','#b04dff'], col=cols[(Math.random()*cols.length)|0];
+      P(g,'sph',mat(col,{e:0.75,s:160}),0.42,0.42,0.42); P(g,'torThin',metal('#d8dde4'),0.2,0.2,0.4,0,0.38,0,PI/2); P(g,'cyl',metal('#d8dde4'),0.18,0.03,0.18,0,0.4,0); P(g,'rbox2',mat('#ffffff',{s:60}),0.6,0.12,0.02,0,0,0.42); g.userData.col=col; break; }
     case 'baseballBig': P(g,'sph',mat('#ffffff',{s:60}),0.75,0.75,0.75); for(const s of [-1,1]) P(g,'torThin',mat('#e5302a'),0.6,0.6,0.35,s*0.4,0,0,0,PI/2); break;
     case 'tarp': P(g,'rbox2',mat('#6b86a8',{s:30}),3.4,0.08,3.4,0,0,0,0.12,0.2,0); for(let i=0;i<4;i++) P(g,'box',mat('#e8e8e8',{s:20}),0.12,0.1,3.4,-1.3+i*0.87,0.02,0,0.12,0.2,0); break;
     case 'wavefans': for(let i=0;i<5;i++){ const x=-1.4+i*0.7; P(g,'cyl',mat(['#e5302a','#ffffff','#14264a'][i%3],{s:20}),0.22,0.7,0.22,x,0.35,0); P(g,'sph',mat('#e8b48a',{s:20}),0.2,0.2,0.2,x,0.85,0); for(const s of [-1,1]) P(g,'caps',mat('#e8b48a',{s:20}),0.05,0.35,0.05,x+s*0.2,1.05,0,0,0,-s*0.3); } break;
@@ -105,6 +110,11 @@ function buildFall(key,tc){
 function buildProj(key,tc){
   const [shape,col,sz] = PROJ[key]||PROJ.cannon; const g=G0(); const glow=(PROJ[key]||[])[4]; const m=mat(colr(col,tc),{e:glow?0.9:0,s:80});
   switch(shape){
+    case 'pint': P(g,'cyl',mat('#e8a21c',{e:0.15,s:120}),sz*0.42,sz*1.1,sz*0.42); P(g,'cyl',mat('#fff8e6'),sz*0.46,sz*0.3,sz*0.46,0,sz*0.65,0); P(g,'cyl',mat('#e8f6ff',{op:0.35,s:160}),sz*0.5,sz*1.4,sz*0.5,0,sz*0.1,0).userData.noOutline=true; break;
+    case 'poolball': { const pc=['#e5302a','#ffd21f','#2f5fd0','#6a1f8a','#ff7a1a','#2e9a3a','#7a1f2a','#151515'][(Math.random()*8)|0]; P(g,'sph',mat(pc,{s:200}),sz,sz,sz); P(g,'sph',mat('#ffffff',{s:60}),sz*0.45,sz*0.45,sz*0.2,0,0,sz*0.85); break; }
+    case 'tray': P(g,'cyl',mat('#d8dee6',{s:150}),sz*0.9,sz*0.08,sz*0.9); for(let i=0;i<3;i++){ const a=i/3*TAU; P(g,'cyl',mat('#e8f6ff',{op:0.45,s:160}),sz*0.2,sz*0.6,sz*0.2,Math.cos(a)*sz*0.45,sz*0.3,Math.sin(a)*sz*0.45).userData.noOutline=true; } break;
+    case 'stool': P(g,'cyl',mat('#7a1f2a',{s:30}),sz*0.75,sz*0.2,sz*0.75,0,sz*0.6,0); for(let i=0;i<3;i++){ const a=i/3*TAU; P(g,'cyl',mat('#8a5a2b'),sz*0.07,sz*1.2,sz*0.07,Math.cos(a)*sz*0.4,0,Math.sin(a)*sz*0.4); } break;
+    case 'yorkshire': P(g,'tor',mat('#d89a48',{s:30}),sz*0.75,sz*0.75,sz*0.9,0,0,0,PI/2); P(g,'cyl',mat('#b8762a',{s:20}),sz*0.6,sz*0.2,sz*0.6,0,-sz*0.15,0); P(g,'cyl',mat('#6a3a14',{s:80}),sz*0.45,sz*0.1,sz*0.45,0,0,0); break;
     case 'sphere': P(g,'sph',m,sz,sz,sz); break;
     case 'box': P(g,'rbox2',m,sz*1.2,sz*0.8,sz*1.4); break;
     case 'cyl': P(g,'cyl',m,sz*0.4,sz*2,sz*0.4,0,0,0,0,0,PI/2); break;
@@ -139,6 +149,10 @@ function buildProj(key,tc){
 function buildDeco(key,theme,rnd){
   const g=G0(); const c=x=>mat(x,{s:30});
   switch(key){
+    case 'pubsign': P(g,'cyl',c('#2a1a10'),0.08,3.2,0.08,0,1.6,0); P(g,'rbox2',c('#2a1a10'),1.5,0.08,0.08,0.7,3.0,0); P(g,'rbox2',c('#c8a64a'),1.5,1.1,0.12,0.75,2.25,0); P(g,'box',mat('#ffffff',{map:labelTex('JOBLESS ARMS','#14264a','#ffd34d'),basic:1}),1.35,0.95,0.14,0.75,2.25,0); break;
+    case 'kegs': { const kw=c('#9a6a3a'), hoop=mat('#55585e',{s:120,m:0.5}); for(let i=0;i<3;i++){ const x=(i-1)*0.85; P(g,'cyl',kw,0.4,0.9,0.4,x,0.45,0); for(const y of [0.15,0.75]) P(g,'torThin',hoop,0.41,0.41,0.4,x,y,0,PI/2); } P(g,'cyl',kw,0.4,0.9,0.4,-0.42,0.42,0.75,PI/2); P(g,'cyl',kw,0.4,0.9,0.4,0.42,0.42,0.75,PI/2); break; }
+    case 'bench': { const wd=c('#8a5a2b'); P(g,'rbox2',wd,1.8,0.08,0.8,0,0.75,0); for(const s of [-1,1]){ P(g,'rbox2',wd,1.8,0.06,0.3,0,0.42,s*0.65); P(g,'rbox2',wd,0.08,0.8,1.6,s*0.7,0.38,0,0.4); } P(g,'cyl',c('#ddd'),0.03,1.6,0.03,0,1.5,0); P(g,'cone',mat(rnd()<0.5?'#e5302a':'#2e6a3a',{s:20}),1.3,0.45,1.3,0,2.3,0); P(g,'cyl',mat('#e8a21c',{e:0.15}),0.06,0.15,0.06,0.4,0.86,0.1); P(g,'cyl',mat('#fff8e6'),0.065,0.03,0.065,0.4,0.95,0.1); break; }
+    case 'dartboard': P(g,'cyl',c('#2a1a10'),0.06,1.8,0.06,0,0.9,-0.1); for(let i=0;i<4;i++) P(g,'cyl',mat(i%2?'#e8e0c8':'#151515',{s:20}),0.55-i*0.13,0.06+i*0.005,0.55-i*0.13,0,1.7,0,PI/2); P(g,'cyl',mat('#e5302a'),0.06,0.09,0.06,0,1.7,0,PI/2); for(let i=0;i<3;i++) P(g,'cyl',metal(),0.012,0.25,0.012,-0.1+i*0.1,1.75+i*0.04,0.12,PI/2.4); break;
     case 'scoreboard': P(g,'rbox2',c('#14264a'),3.0,1.5,0.25,0,2.2,0); P(g,'box',c('#0a0f1e'),2.7,1.2,0.05,0,2.2,0.14); for(let i=0;i<6;i++) P(g,'box',mat(i%2?'#ffd34d':'#39ff6a',{e:0.9}),0.3,0.4,0.04,-1.1+i*0.44,2.35,0.18); for(let i=0;i<3;i++) P(g,'sph',mat('#e5302a',{e:1}),0.07,0.07,0.04,-0.4+i*0.4,1.85,0.18); for(const s of [-1,1]) P(g,'cyl',c('#555'),0.08,1.6,0.08,s*1.1,0.8,0); break;
     case 'bases': P(g,'rbox2',c('#e8e4d4'),0.9,0.06,0.9,0,0.04,0,0,PI/4); P(g,'cyl',c('#c98a4a'),1.2,0.03,1.2,0,0.02,0); break;
     case 'dugout': P(g,'rbox2',c('#14264a'),2.4,0.12,1.1,0,1.4,0); for(const s of [-1,1]) P(g,'cyl',c('#555'),0.05,1.4,0.05,s*1.1,0.7,0.45); P(g,'rbox2',c('#8a5a2b'),2.0,0.1,0.35,0,0.45,-0.1); P(g,'rbox2',c('#8a5a2b'),2.0,0.45,0.08,0,0.8,-0.35); for(let i=0;i<4;i++) P(g,'rbox2',c('#e8c890'),0.05,0.8,0.05,-0.7+i*0.45,0.45,0.35,0.5,0,0.2); break;
