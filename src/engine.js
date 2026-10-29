@@ -150,6 +150,9 @@ function groundTex(th,z0,z1){
         for(let i=0;i<4000;i++){ const px=r()*w, py=r()*h; x.strokeStyle=r()<0.5?'rgba(60,120,30,0.35)':'rgba(200,240,140,0.3)'; x.lineWidth=1.2; x.beginPath(); x.moveTo(px,py); x.lineTo(px+r()*3-1.5,py-3-r()*4); x.stroke(); }
         for(let i=0;i<10;i++){ const px=r()*w, py=r()*h; x.fillStyle='rgba(150,110,60,0.35)'; x.beginPath(); x.ellipse(px,py,20+r()*30,10+r()*16,r()*3,0,TAU); x.fill(); }
         x.fillStyle='rgba(90,60,30,0.3)'; for(let i=0;i<30;i++){ const px=r()*w, py=r()*h; for(const [dx,dy] of [[0,0],[-5,-7],[0,-9],[5,-7]]){ x.beginPath(); x.arc(px+dx,py+dy,dx||dy?2:4,0,TAU); x.fill(); } } break;
+      case 'palace': for(let ty=0;ty<z1-z0;ty++) for(let tx=0;tx<18;tx++){ x.fillStyle=(tx+ty+z0)%2?ga:gb; x.fillRect(tx*S,ty*S,S,S); }
+        x.strokeStyle='rgba(120,100,70,0.18)'; x.lineWidth=1.2; for(let i=0;i<50;i++){ x.beginPath(); let px=r()*w, py=r()*h; x.moveTo(px,py); for(let k=0;k<5;k++){ px+=r()*30-15; py+=r()*30-15; x.lineTo(px,py);} x.stroke(); }
+        x.fillStyle='rgba(200,152,32,0.55)'; for(let ty=0;ty<=z1-z0;ty++) for(let tx=0;tx<=18;tx++){ x.beginPath(); x.moveTo(tx*S,ty*S-5); x.lineTo(tx*S+5,ty*S); x.lineTo(tx*S,ty*S+5); x.lineTo(tx*S-5,ty*S); x.fill(); } break;
       case 'pub': x.fillStyle=ga; x.fillRect(0,0,w,h);
         for(let ty=0;ty<z1-z0;ty++) for(let tx=0;tx<18;tx++){ const cx=tx*S+S/2, cy=ty*S+S/2;
           x.strokeStyle='rgba(214,170,70,0.55)'; x.lineWidth=2.5; x.beginPath(); x.moveTo(cx,cy-S/2); x.lineTo(cx+S/2,cy); x.lineTo(cx,cy+S/2); x.lineTo(cx-S/2,cy); x.closePath(); x.stroke();
@@ -166,7 +169,7 @@ function groundTex(th,z0,z1){
     for(const bx of [3.5,14.5]){ rr((bx-0.85)*S,(4.5-z0)*S,1.7*S,23*S,0.8*S); x.fill(); }
     rr(3.5*S,(2.6-z0)*S,11*S,1*S,0.5*S); x.fill(); rr(3.5*S,(28.4-z0)*S,11*S,1*S,0.5*S); x.fill();
     x.restore();
-    if(!['law','fbi','rock','sports','art','film','influencer'].includes(th.id)){ x.save(); for(const bx of [3.5,14.5]){ rr((bx-0.85)*S,(4.5-z0)*S,1.7*S,23*S,0.8*S); x.clip(); }
+    if(!['law','fbi','rock','sports','art','film','influencer','palace'].includes(th.id)){ x.save(); for(const bx of [3.5,14.5]){ rr((bx-0.85)*S,(4.5-z0)*S,1.7*S,23*S,0.8*S); x.clip(); }
       for(let i=0;i<900;i++){ const px=(r()<0.5?3.5:14.5)*S+(r()-0.5)*1.6*S, py=r()*h; x.fillStyle=r()<0.5?'rgba(0,0,0,0.12)':'rgba(255,255,255,0.14)'; x.beginPath(); x.ellipse(px,py,3+r()*4,2+r()*3,r()*3,0,TAU); x.fill(); } x.restore(); }
     x.strokeStyle='rgba(0,0,0,0.18)'; x.lineWidth=3; for(const bx of [3.5,14.5]){ rr((bx-0.85)*S,(4.5-z0)*S,1.7*S,23*S,0.8*S); x.stroke(); }
     if(th.id==='law'){ x.strokeStyle='#d9b44a'; x.lineWidth=4; for(const bx of [3.5,14.5]){ rr((bx-0.78)*S,(4.6-z0)*S,1.56*S,22.8*S,0.7*S); x.stroke(); } }

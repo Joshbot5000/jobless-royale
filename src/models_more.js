@@ -132,6 +132,10 @@ const OUTFIT_NO_BELT=['england','kit','referee','boxer','sumo','swim','bones','t
 function hatMore(hat,x){
   const {head,hs,c,hatC,tc}=x; const hm=(o)=>mat(colr(hatC,tc),o||{s:60});
   switch(hat){
+    case 'peakcap': P(head,'cyl',hm({s:50}),hs*1.25,0.2,hs*1.35,0,hs*0.95,-0.03,-0.12); P(head,'cyl',hm({s:50}),hs*0.95,0.14,hs*0.95,0,hs*0.78,0); P(head,'cyl',mat('#151515',{s:140}),hs*0.75,0.03,hs*0.6,0,hs*0.68,hs*0.62,0.25); P(head,'tor',gold(),hs*0.95,hs*0.95,0.25,0,hs*0.75,0,PI/2); P(head,'sph',gold(),0.08,0.08,0.03,0,hs*1.0,hs*1.12); break;
+    case 'bicorne': P(head,'hemi',mat('#151515',{s:40}),hs*1.05,hs*0.6,hs*1.0,0,hs*0.55,0); P(head,'sph',mat('#151515',{s:40}),hs*1.75,hs*0.6,hs*0.45,0,hs*0.95,0); P(head,'tor',gold(),hs*0.16,hs*0.16,0.4,hs*0.3,hs*1.1,hs*0.38,0,0,0); P(head,'sph',mat('#e5302a'),0.05,0.05,0.03,hs*0.3,hs*1.1,hs*0.4); break;
+    case 'laurel': for(const s of [-1,1]) for(let i=0;i<6;i++){ const a=PI*0.15+i*0.15; P(head,'sph',mat('#d8b030',{s:110,m:0.6}),0.05,0.025,0.03,s*Math.cos(a)*hs*1.02,hs*0.5+i*0.02,Math.sin(a)*hs*1.02-hs*0.2,0,0,s*0.6); } break;
+    case 'bearskin': P(head,'caps',mat('#151515',{s:8}),hs*2.1,hs*1.6,hs*2.0,0,hs*1.15,-0.02); P(head,'tor',gold(),hs*0.7,hs*0.7,0.1,0,-hs*0.35,hs*0.2,PI/2.5); break;
     case 'flatcap': P(head,'hemi',hm({s:15}),hs*1.1,hs*0.55,hs*1.1,0,hs*0.5,-0.01); P(head,'rbox2',hm({s:15}),hs*1.0,0.045,hs*0.55,0,hs*0.55,hs*0.72,0.18); break;
     case 'tiara': { const gm=gold(); P(head,'torThin',gm,hs*0.75,hs*0.75,0.8,0,hs*0.86,0,PI/2); for(let i=0;i<5;i++){ const a=PI*0.25+i/4*PI*0.5; P(head,'cone',gm,0.025,0.08+(i===2?0.04:0),0.025,Math.cos(a)*hs*0.75,hs*0.93,Math.sin(a)*hs*0.75); } P(head,'sph',mat('#ff3dce',{s:150}),0.03,0.03,0.02,0,hs*0.96,hs*0.76); break; }
     case 'visor': P(head,'tor',hm(),hs*1.03,hs*1.03,0.4,0,hs*0.45,0,PI/2); P(head,'cyl',hm(),hs*0.62,0.022,hs*0.7,0,hs*0.44,hs*0.92); break;
@@ -166,6 +170,11 @@ function humanExtras(p,x){
       P(torso,'torThin',red,tw0*1.0,td*1.15,0.5,0,th*0.12,td*0.25,PI/2);
       for(const A of [R.armL,R.armR]) if(A){ P(A,'tor',red,0.085*Math.max(1,(p.w||1)*0.8),0.085*Math.max(1,(p.w||1)*0.8),0.4,0,-0.2,0,PI/2); } }
     P(torso,'sph',skin,tw0*0.82,th*0.32,td*0.7,0,th*0.08,td*0.72); P(torso,'sphLo',mat(shade(x.skin.color.getStyle(),0.75)),0.025,0.02,0.01,0,th*0.12,td*1.38); }
+  if(p.medals){ const cols=['#ffcf3a','#e5302a','#2f80ed','#39d353','#ff8a1f','#ffffff']; for(let i=0;i<p.medals;i++){ const row=Math.floor(i/4), col=i%4; const mx=0.03+col*0.048, my=th*(1.45-row*0.2);
+      P(torso,'rbox2',mat(cols[(i*3)%6],{s:40}),0.04,0.03,0.03,mx,my,td*1.08); P(torso,'cyl',gold(),0.024,0.012,0.024,mx,my-0.035,td*1.1,PI/2); } }
+  if(p.epaulettes){ const tw0=0.27*(p.w||1); for(const s of [-1,1]){ P(torso,'cyl',gold(),0.09,0.03,0.07,s*tw0*0.95,th*1.95,0); for(let i=0;i<5;i++) P(torso,'cyl',gold(),0.006,0.06,0.006,s*tw0*0.95+(i-2)*0.03,th*1.86,0.05); } }
+  if(p.sashRed){ P(torso,'rbox2',mat(p.sashRed,{s:60}),0.06,th*2.2,0.02,0,th*1.0,td*0.99,0,0,-0.7); }
+  if(p.handInCoat&&R.armL){ R.handInCoat=true; }
   if(p.sash){ P(torso,'rbox2',mat(p.sash,{s:60}),0.07,th*2.3,0.02,0,th*1.0,td*0.98,0,0,0.75); P(torso,'rbox2',mat('#ffffff',{map:labelTex('HEN','#ff6bb5','#ffffff'),basic:1}),0.1,0.05,0.025,0.02,th*1.05,td*1.0,0,0,0.75); }
   if(p.ape){ const fc=mat(shade(p.skin,1.6),{s:20}); P(head,'sph',fc,hs*0.82,hs*0.6,hs*0.5,0,-hs*0.3,hs*0.62); P(head,'sph',fc,hs*0.7,hs*0.42,hs*0.3,0,hs*0.1,hs*0.8); P(head,'rbox2',mat(shade(p.skin,0.7)),hs*1.3,0.06,0.08,0,hs*0.42,hs*0.78);
     for(const s of [-1,1]) P(head,'sph',fc,0.09,0.11,0.04,s*hs*1.05,0.02,0); }
@@ -325,6 +334,11 @@ function buildPenguin(p,tc){
 function vehicleMore(p,R,root,x){
   const {body,glass,tire,stripe,chrome,light,wheel,lights}=x;
   switch(p.type){
+    case 'paradetank': for(const s2 of [-1,1]){ P(root,'rboxS',tire,0.32,0.4,1.8,s2*0.6,0.22,0); for(let i=0;i<5;i++) R.wheels.push(P(root,'cyl',mat('#555',{s:60}),0.14,0.34,0.14,s2*0.6,0.22,-0.7+i*0.35,0,0,PI/2)); }
+      P(root,'rboxS',body,1.1,0.42,1.7,0,0.6,0); P(root,'rbox2',stripe,1.12,0.08,1.72,0,0.52,0);
+      { const tu=G0(); tu.position.set(0,0.95,-0.1); root.add(tu); R.turret=tu; P(tu,'sph',body,0.5,0.28,0.55); P(tu,'cyl',body,0.07,1.2,0.07,0,0.05,0.75,PI/2); P(tu,'cyl',gold(),0.09,0.1,0.09,0,0.05,1.35,PI/2);
+        for(const s2 of [-1,1]){ P(tu,'cyl',mat('#888'),0.01,0.6,0.01,s2*0.35,0.4,-0.3); P(tu,'rbox2',mat(s2>0?'#e5302a':'#ffd34d',{s:20}),0.25,0.16,0.01,s2*0.35+s2*0.12,0.62,-0.3); } P(tu,'sph',gold(),0.12,0.06,0.12,0,0.28,0); }
+      lights(0.86,-0.86,0.6,0.4); R.height=1.4; break;
     case 'kebabvan': P(root,'rboxS',body,1.2,1.15,2.2,0,0.95,-0.1); P(root,'rboxS',body,1.16,0.75,0.55,0,0.72,1.18); P(root,'rbox2',glass,1.02,0.36,0.05,0,0.92,1.46);
       for(const s of [-1,1]) P(root,'rbox2',mat('#ffffff',{map:labelTex('KEBABS','#e5302a','#ffd21f'),basic:1}),0.01,0.3,1.5,s*0.61,1.3,-0.15);
       P(root,'rbox2',mat('#3a2414'),0.02,0.4,1.0,0.6,0.88,-0.2); P(root,'rbox2',mat('#fff2c8',{e:0.35}),0.03,0.32,0.9,0.605,0.88,-0.2);
@@ -384,6 +398,10 @@ function vehicleMore(p,R,root,x){
 function buildingMore(p,R,root,T,tc){
   const wd=mat('#6b4423',{s:30}), dk=mat('#2a2d35',{s:60}), steel=metal();
   switch(p.type){
+    case 'goldstatue': { P(root,'rboxS',mat('#e8e0d0',{s:30}),1.1,0.6,1.1,0,0.3,0); P(root,'rbox2',T,1.12,0.08,1.12,0,0.62,0); P(root,'rbox2',mat('#ffffff',{map:labelTex('GLORIOUS','#c89820','#ffffff'),basic:1}),0.9,0.22,0.02,0,0.32,0.56);
+      const f=buildHuman({skin:'#e8b830',hair:['short','#e8b830'],hat:['peakcap','#e8b830'],outfit:['uniform','#e8b830','#c89820'],pants:'#e8b830',statue:true,w:1.2},tc); f.scale.setScalar(1.55); f.position.y=0.66; f.traverse(o=>{ if(o.isMesh) o.material=mat('#f2c23a',{s:150,m:0.75,e:0.08}); }); { const R2=f.userData.rig; R2.armR.rotation.x=-2.6; R2.armR.rotation.z=-0.3; } root.add(f); R.height=3.2; break; }
+    case 'balcony': P(root,'rboxS',mat('#e8dcc8',{s:30}),1.6,1.6,1.0,0,0.8,0); P(root,'rbox2',mat('#c8a64a',{s:110,m:0.6}),1.7,0.1,1.3,0,1.6,0.15); for(let i=0;i<7;i++) P(root,'cyl',mat('#f2ece0'),0.035,0.35,0.035,-0.72+i*0.24,1.8,0.75); P(root,'rbox2',mat('#f2ece0'),1.7,0.06,0.08,0,1.98,0.75);
+      P(root,'rbox2',mat('#b3202a',{s:30}),0.5,1.0,0.03,0,0.95,0.51); P(root,'rbox2',mat('#2a1a10'),0.5,0.8,0.04,0,0.4,0.5); for(const s of [-1,1]) P(root,'rbox2',mat('#b3202a',{s:20}),0.3,1.3,0.03,s*0.6,1.0,0.52); P(root,'rbox2',T,1.62,0.1,1.02,0,0.06,0); R.height=2.2; break;
     case 'karaoke': P(root,'rboxS',mat('#2a1440',{s:60}),1.3,1.0,0.8,0,0.5,0); P(root,'rbox2',T,1.32,0.08,0.82,0,1.02,0);
       P(root,'rbox2',mat('#ffffff',{map:labelTex('♪ SING! ♪','#140a24','#ff3dce'),basic:1}),0.9,0.42,0.04,0,0.65,0.41);
       for(const s of [-1,1]){ P(root,'cyl',mat('#151515'),0.17,0.05,0.17,s*0.48,0.32,0.41,PI/2); P(root,'cyl',mat('#ff3dce',{e:0.8}),0.07,0.06,0.07,s*0.48,0.32,0.43,PI/2); P(root,'cyl',mat('#3dd6ff',{e:0.8}),0.1,0.02,0.1,s*0.48,0.32,0.42,PI/2); }

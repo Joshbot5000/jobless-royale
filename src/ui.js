@@ -185,6 +185,7 @@ function hpBar(x,y,w,h,frac,col,label,alpha=1){
 function statusIcons(u){
   const s=[];
   if(u.frozen>0) s.push(u.stone?'🗿':'❄️'); else if(u.boxT>0&&u.stun>0) s.push('📦'); else if(u.danceT>0&&u.stun>0) s.push('🕺'); else if(u.sleepT>0&&u.stun>0) s.push('💤'); else if(u.stun>0) s.push('💫');
+  if(u.singT>0) s.push('🎤'); if(u.drunkT>0) s.push('🥴');
   if(u.fearT>0) s.push('😱'); if(u.shrinkT>0) s.push('✏️'); if(u.markT>0) s.push('★'); if(u.taunt&&!u.building) s.push('📣');
   if(u.floatT>0) s.push('🪐');
   if(u.slowT>0) s.push('🐌');

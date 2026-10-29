@@ -2037,6 +2037,120 @@ for(const thId in NEWCARDS){ Object.assign(CARDS,NEWCARDS[thId]); const th=THEME
 Object.assign(PROJ,{ nail:['dart','#9aa3ad',0.1,null], scoop:['sphere','#ffb6d8',0.17,null] });
 
 // =====================================================================
+//  ARENA: "The Palace" (Dictators & Despots). Requested by the player, 29 Oct 2026.
+//  Satire of absolute rulers' vanity: medals, statues, parades, rigged votes and famous
+//  anecdotes from ancient history (the Rubicon, Nero's fiddle, Caligula's horse, the Sun King).
+//  Generic parody characters only: no real modern leaders, symbols or atrocities.
+// =====================================================================
+THEMES.push({ id:'palace', name:'The Palace', job:'Dictators & Despots', emoji:'🎖️', added:'2026-10-29', news:'All hail!',
+  ground:['#efe8da','#e2d8c4'], path:'#9e1f2a', pad:'#c8a64a', border:'#5a1a1a', borderTop:'#c89820', outer:'#2a1010', sky:['#1a0808','#6a2020'], hemi:['#fff2d8','#5a3020'],
+  river:{kind:'gold', a:'#c99a1e', b:'#ffe27a', glow:true}, bridge:'#7a1f2a', stone:'#f2ece0', trim:'#c89820',
+  deco:['redBanner','statueGold','fountain','redBanner','podium','statueGold'], spotlights:true,
+  king:{k:'h',skin:'#f2c9a0',hair:['short','#151515'],hat:['peakcap','#3a4a2a'],outfit:['uniform','#3a4a2a','#c89820'],face:['shades'],medals:8,epaulettes:true,w:1.35},
+  archer:{k:'h',skin:'#e8b48a',hair:['short','#3a2414'],hat:['bearskin','#151515'],outfit:['uniform','#b3202a','#ffd34d'],prop:'none'},
+  towerProj:'medal', foes:['Generalissimo Grandioso','His Excellency the Magnificent','Supreme Leader Supremo'],
+  emotes:['All hail me! 🎖️','Applause! 👏','I won 99.9% 🗳️','😤'],
+  cards:['supreme','paradetank','parade','propaganda','palaceguard','emperor','rigged','rally'] });
+
+Object.assign(PROJ,{ leaflet:['leaflet','#ffffff',0.22,null], medal:['medal','#ffcf3a',0.16,'#ffe27a',1] });
+
+const DES={
+ supreme:{short:'Supreme Leader',name:'The Supreme Leader',cost:5,rar:'champion',unlock:0,role:'hero',champ:true,hp:1150,dmg:105,hs:1.1,range:4.5,targets:'all',
+   atk:{k:'proj',proj:'medal'},anim:'point',
+   tap:{k:'charm',cost:2,cd:15,icon:'🫡',name:'Cult of Personality',r:4,dur:4.5},
+   model:HU({skin:'#f2c9a0',hair:['short','#151515'],hat:['peakcap','#3a4a2a'],outfit:['uniform','#3a4a2a','#c89820'],face:['shades'],medals:12,epaulettes:true,w:1.3}),
+   desc:'Wears every medal he has ever awarded himself and throws a few more. TAP – Cult of Personality (2 elixir): every enemy troop nearby is so impressed it salutes and fights for him for 4.5s.'},
+ paradetank:{name:'Parade Tank',cost:5,rar:'epic',unlock:0,role:'wincon',hp:2500,dmg:190,hs:1.5,range:0.9,speed:0.85,targets:'buildings',radius:0.85,mass:15,
+   atk:{k:'melee'},death:{spawn:['parade',3]},anim:'ram',model:{k:'v',type:'paradetank',color:'#4a5a3a'},
+   desc:'Polished to a shine and covered in little flags. Rolls straight at buildings, and three parade soldiers march out when it breaks down.'},
+ parade:{name:'Military Parade',cost:3,rar:'common',unlock:0,role:'swarm',count:6,hp:150,dmg:55,hs:1.0,range:0.5,speed:1.3,radius:0.28,mass:1,
+   atk:{k:'melee'},anim:'thrust',
+   model:HU({skin:'#e8b48a',hair:['short','#3a2414'],hat:['peakcap','#3a4a2a'],outfit:['uniform','#3a4a2a','T'],sc:0.8}),
+   desc:'Six soldiers in perfect step, pressed uniforms and very shiny boots. They march in and keep marching.'},
+ propaganda:{name:'Propaganda Minister',cost:3,rar:'rare',unlock:0,role:'support',hp:560,dmg:75,hs:1.2,range:5,targets:'all',
+   atk:{k:'proj',proj:'leaflet'},onHit:{drunk:3},anim:'throw',
+   model:HU({skin:'#f7c9a0',hair:['slick','#3a3a3a'],outfit:['suit','#3a3a44','#b3202a'],face:['glassesRound'],prop:'megaphone'}),
+   desc:'Showers enemies with glossy leaflets about how great the Leader is. Everyone hit is confused for 3s: they stagger, slow down and miss a third of their attacks.'},
+ secretpolice:{name:'Secret Police',cost:4,rar:'epic',unlock:0,role:'mini',hp:850,dmg:110,hs:1.0,range:0.7,speed:1.2,
+   atk:{k:'melee'},sp:{k:'zap',cd:8,range:4.5,pick:'strongest',maxCost:6,eff:{banish:true},callout:'PAPERS, PLEASE!'},anim:'thrust',
+   model:HU({skin:'#e8b48a',hat:['fedora','#151515'],outfit:['trench','#2a2a2a','T'],face:['shades']}),
+   desc:'Every 8s asks the strongest enemy nearby for its papers. It does not have them, and gets sent all the way back to its own King Tower.'},
+ palaceguard:{name:'Palace Guard',cost:4,rar:'rare',unlock:0,role:'tank',hp:1800,dmg:95,hs:1.2,range:0.8,speed:0.85,radius:0.55,mass:11,taunt:3.5,shield0:400,
+   atk:{k:'melee'},anim:'slam',
+   model:HU({skin:'#f2c9a0',hair:['short','#3a2414'],hat:['bearskin','#151515'],outfit:['uniform','#b3202a','#ffd34d'],w:1.35}),
+   desc:'Does not blink, does not smile, does not move aside. Enemies within 3.5 tiles have to get past the guard first, and the furry hat soaks up the first 400 damage.'},
+ goldstatue:{name:'Giant Golden Statue',cost:4,rar:'epic',unlock:0,type:'building',role:'bld',hp:1700,life:35,dmg:0,hs:1,range:0,radius:0.75,taunt:4.5,
+   atk:{k:'none'},model:{k:'b',type:'goldstatue',color:'#f2c23a'},
+   desc:'A 30-foot golden Leader, pointing at the future. Every enemy within 4.5 tiles feels it has to stop and bow to it, and attacks the statue first.'},
+ parliament:{name:'Rubber-Stamp Parliament',short:'Parliament',cost:3,rar:'common',unlock:0,role:'swarm',count:4,hp:200,dmg:60,hs:1.0,range:0.5,speed:1.0,radius:0.32,
+   atk:{k:'melee'},onHit:{stun:0.35},anim:'slam',
+   model:HU({skin:'#f2c9a0',hair:['short','#d8d8d8'],outfit:['suit','#3a3a44','T'],face:['glassesHalf'],prop:'stamp',sc:0.88}),
+   desc:'Four very old politicians who have never voted no. Every APPROVED! stamp stuns the target for a moment.'},
+ foodtaster:{name:'Royal Food Taster',short:'Food Taster',cost:2,rar:'common',unlock:0,role:'mini',hp:450,dmg:70,hs:0.9,range:0.6,speed:1.4,
+   atk:{k:'melee'},death:{cloud:[2,70,4],callout:'IT WAS THE SOUP!'},anim:'swing',
+   model:HU({skin:'#f7c9a0',hair:['messy','#a0522d'],outfit:['waiter','#ffffff','T'],prop:'spoon',sc:0.92}),
+   desc:'Tries everything first so the Leader does not have to. When it finally falls, it leaves a 4s poison cloud: it really was the soup.'},
+ emperor:{name:'The Little Emperor',short:'Little Emperor',cost:4,rar:'epic',unlock:0,role:'mini',hp:900,dmg:120,hs:1.0,range:0.6,speed:1.15,
+   atk:{k:'melee'},sp:{k:'growOnKill',max:4,f:0.22,callout:'I AM NOT SHORT!'},anim:'swing',
+   model:HU({skin:'#f2d0b0',hair:['short','#3a2414'],hat:['bicorne','#151515'],outfit:['vest2','#ffffff','#1f3a7a'],epaulettes:true,handInCoat:true,prop:'cutlass',sc:0.8}),
+   desc:'Inspired by a famous French emperor. Keeps one hand in his coat and has a lot to prove: he grows bigger and stronger with every troop he defeats, up to 4 times.'},
+ caesar:{name:'Dictator for Life',short:'Dictator',cost:4,rar:'rare',unlock:0,role:'mini',hp:1050,dmg:115,hs:1.1,range:0.7,speed:1.1,swim:true,
+   atk:{k:'melee'},anim:'swing',
+   model:HU({skin:'#e8c8a0',hair:['short','#888'],hat:['laurel','#d8b030'],outfit:['toga','#f4f0e6','#7a1f6a'],prop:'cutlass'}),
+   desc:'The original dictator, from ancient Rome. Crosses the river anywhere, no bridge needed – he has crossed the Rubicon before. The die is cast.'},
+ horse:{name:'Consul Horse',cost:4,rar:'epic',unlock:0,role:'wincon',hp:1400,dmg:200,hs:1.4,range:0.7,speed:1.4,targets:'buildings',radius:0.6,mass:9,
+   atk:{k:'melee'},sp:{k:'charge',after:1,spd:1.7,mult:2,push:1.4,callout:'NEIGH! (MOTION CARRIED)'},anim:'bite',
+   model:DOG({coat:'#8a5a33',coat2:'#6a4022',mane:'#2a1a10',ears:'pointy',tail:'long',snout:0.3,size:1.35,len:1.15,legLen:0.42,cape:'#7a1f6a',crown:true}),
+   desc:'An emperor once made his horse a consul, and it has never looked back. Gallops at buildings and charges in for double damage.'},
+ nero:{name:'The Fiddling Emperor',short:'Fiddler Emperor',cost:4,rar:'epic',unlock:0,role:'splash',hp:900,dmg:60,hs:1.0,range:3.5,targets:'all',
+   atk:{k:'proj',proj:'note'},aura:{r:2.6,poison:55},anim:'strum',
+   model:HU({skin:'#f2c9a0',hair:['curl','#a0522d'],hat:['laurel','#d8b030'],outfit:['toga','#f4f0e6','#b3202a'],prop:'fiddle',flames:true}),
+   desc:'Plays the fiddle while everything burns. Every enemy within 2.6 tiles takes 55 fire damage per second.'},
+ sunking:{name:'The Sun King',cost:4,rar:'rare',unlock:0,role:'support',hp:780,dmg:85,hs:1.2,range:5,targets:'all',
+   atk:{k:'beam',col:'#ffd34d'},aura:{r:3.5,heal:55},anim:'cast',
+   model:HU({skin:'#ffe0c8',hair:['long','#4a2a14'],hat:['crown','#ffd34d'],outfit:['gown','#2f4aa8','#ffd34d'],face:['mustache'],prop:'scepter',cape:'#2f4aa8'}),
+   desc:'"I am the State." Shines a beam of pure self-regard at air and ground, and everyone basking in his glow heals 55 per second.'},
+ general:{name:'Generalissimo',cost:3,rar:'rare',unlock:0,role:'dps',hp:620,dmg:90,hs:1.1,range:5,targets:'all',
+   atk:{k:'proj',proj:'medal'},sp:{k:'growUp',every:3,max:4,callout:'ANOTHER MEDAL FOR ME!'},anim:'throw',
+   model:HU({skin:'#c68b5e',hair:['short','#111'],hat:['peakcap','#5a5a3a'],outfit:['uniform','#5a5a3a','#c89820'],face:['shades','mustache'],medals:16,epaulettes:true}),
+   desc:'Awards himself a new medal every 3 seconds, growing bigger and stronger each time (up to 4). Throws the spares at air and ground.'},
+ yesmen:{name:'Yes Men',cost:2,rar:'common',unlock:0,role:'swarm',count:5,hp:110,dmg:50,hs:0.9,range:0.4,speed:1.6,radius:0.26,mass:1,
+   atk:{k:'melee'},onHit:{laugh:true},anim:'thrust',
+   model:HU({skin:'#e8b48a',hair:['slick','#3a2414'],outfit:['suit','#3a3a44','T'],prop:'clipboard',sc:0.75}),
+   desc:'Five advisers who agree with everything, very loudly and very fast.'},
+ rigged:{name:'Rigged Election',cost:4,rar:'epic',unlock:0,type:'spell',role:'sutil',icon:'🗳️',
+   sp:{k:'convert',r:2.6,dur:4.5,maxCost:5},desc:'99.9% of the vote! Enemy troops in the area costing 5 or less discover they have always supported you, and fight for you for 4.5s.'},
+ rally:{name:'Mandatory Rally',cost:3,rar:'rare',unlock:0,type:'spell',role:'sutil',icon:'👏',
+   sp:{k:'stun',r:3.2,t:2,dmg:50,delay:0.6,fall:'rally'},desc:'A giant portrait of the Leader drops in. Every enemy troop and tower in the area must stop and applaud for 2s.'},
+ fiveyear:{name:'Five-Year Plan',cost:3,rar:'rare',unlock:0,type:'spell',role:'sbuff',icon:'📈',
+   sp:{k:'rush',r:4,t:8,heal:120},desc:'Production targets must be met! Your troops in the area work 40% faster for 8s and patch themselves up by 120.'},
+ fireworks:{name:'Birthday Fireworks',cost:3,rar:'rare',unlock:0,type:'spell',role:'sdmg',icon:'🎆',
+   sp:{k:'barrage',r:3,n:8,dmg:80,mr:1.2,fall:'fireworkB',launch:true},desc:'It is the Leader’s birthday again. Your King launches eight fireworks that burst over the area, 80 damage each.'},
+ // ---- Trophy Road unlocks
+ jester:{name:'Court Jester',cost:3,rar:'rare',unlock:100,role:'mini',hp:650,dmg:90,hs:0.8,range:0.6,speed:1.5,
+   atk:{k:'melee'},onHit:{stun:0.5,laugh:true},anim:'swing',
+   model:HU({skin:'#ffd9b8',hair:['messy','#e5302a'],hat:['pirate','#7a1cff'],outfit:['stripes','#ffd34d','#7a1cff'],face:['mimeFace'],prop:'lollipop'}),
+   desc:'The only one in the palace allowed to make fun of the Leader. Every joke stuns the target for half a second.'},
+ stateTV:{name:'State TV Anchor',short:'TV Anchor',cost:4,rar:'rare',unlock:300,role:'dps',hp:620,dmg:110,hs:1.4,range:6,targets:'all',
+   atk:{k:'beam',col:'#ff3b3b',pierce:true},anim:'point',
+   model:HU({skin:'#f2c9a0',hair:['bun','#151515'],outfit:['suit','#b3202a','#ffffff'],prop:'mic'}),
+   desc:'"Breaking news: the Leader is winning again." A broadcast beam that hits every enemy in a line, air and ground.'},
+ balcony:{name:'Palace Balcony',cost:5,rar:'epic',unlock:600,type:'building',role:'bld',hp:1100,life:40,dmg:0,hs:1,range:0,radius:0.85,
+   spawner:{card:'yesmen',n:2,every:6},atk:{k:'none'},model:{k:'b',type:'balcony',color:'#e8dcc8'},
+   desc:'The Leader waves from the balcony, and two more Yes Men rush out to agree every 6 seconds.'},
+ goldlimo:{name:'Golden Limousine',short:'Gold Limo',cost:6,rar:'epic',unlock:1000,role:'wincon',hp:2600,dmg:220,hs:1.4,range:0.9,speed:1.15,targets:'buildings',radius:0.8,mass:14,armor:0.4,
+   atk:{k:'melee'},sp:{k:'charge',after:0.8,spd:1.7,mult:2,push:1.6,callout:'MAKE WAY!'},death:{blast:[2,220]},anim:'ram',model:{k:'v',type:'limo',color:'#e8b830'},
+   desc:'Solid gold, bulletproof and very long. Races at buildings for a double-damage crash, and armor halves splash damage.'},
+ eternal:{name:'The Eternal Leader',short:'Eternal Leader',cost:6,rar:'legendary',unlock:1600,role:'tank',hp:2400,dmg:160,hs:1.2,range:0.8,speed:0.85,radius:0.6,mass:13,shield0:500,regen:40,
+   atk:{k:'melee',splash:1.2},sp:{k:'reviveSelf',inPlace:true,hp:1,callout:'OFFICIALLY IMMORTAL!'},anim:'slam',
+   model:HU({skin:'#f2c9a0',hair:['short','#d8d8d8'],hat:['crown','#ffd34d'],outfit:['uniform','#ffffff','#ffd34d'],medals:16,epaulettes:true,sashRed:'#b3202a',cape:'#b3202a',w:1.4}),
+   desc:'LEGENDARY. State media says he will live forever. Starts with a 500 shield, heals 40 per second, and the first time he falls he gets straight back up at full health.'},
+};
+{ const th=THEMES[THEMES.length-1]; Object.assign(CARDS,DES); th.pool=[];
+  for(const id in DES){ CARDS[id].id=id; CARDS[id].theme='palace'; th.pool.push(id); }
+  th.pool.sort((a,b)=>CARDS[a].unlock-CARDS[b].unlock); }
+
+// =====================================================================
 //  ARENA: "The Pub" (Pub Regulars). Requested by the player, 29 Oct 2026.
 //  Beer puddles make troops slip, the karaoke machine makes them sing instead of fight,
 //  buzz balls get them drunk, and Beer Belly Barry bounces anyone to the back row.
@@ -3221,6 +3335,10 @@ const OUTFIT_NO_BELT=['england','kit','referee','boxer','sumo','swim','bones','t
 function hatMore(hat,x){
   const {head,hs,c,hatC,tc}=x; const hm=(o)=>mat(colr(hatC,tc),o||{s:60});
   switch(hat){
+    case 'peakcap': P(head,'cyl',hm({s:50}),hs*1.25,0.2,hs*1.35,0,hs*0.95,-0.03,-0.12); P(head,'cyl',hm({s:50}),hs*0.95,0.14,hs*0.95,0,hs*0.78,0); P(head,'cyl',mat('#151515',{s:140}),hs*0.75,0.03,hs*0.6,0,hs*0.68,hs*0.62,0.25); P(head,'tor',gold(),hs*0.95,hs*0.95,0.25,0,hs*0.75,0,PI/2); P(head,'sph',gold(),0.08,0.08,0.03,0,hs*1.0,hs*1.12); break;
+    case 'bicorne': P(head,'hemi',mat('#151515',{s:40}),hs*1.05,hs*0.6,hs*1.0,0,hs*0.55,0); P(head,'sph',mat('#151515',{s:40}),hs*1.75,hs*0.6,hs*0.45,0,hs*0.95,0); P(head,'tor',gold(),hs*0.16,hs*0.16,0.4,hs*0.3,hs*1.1,hs*0.38,0,0,0); P(head,'sph',mat('#e5302a'),0.05,0.05,0.03,hs*0.3,hs*1.1,hs*0.4); break;
+    case 'laurel': for(const s of [-1,1]) for(let i=0;i<6;i++){ const a=PI*0.15+i*0.15; P(head,'sph',mat('#d8b030',{s:110,m:0.6}),0.05,0.025,0.03,s*Math.cos(a)*hs*1.02,hs*0.5+i*0.02,Math.sin(a)*hs*1.02-hs*0.2,0,0,s*0.6); } break;
+    case 'bearskin': P(head,'caps',mat('#151515',{s:8}),hs*2.1,hs*1.6,hs*2.0,0,hs*1.15,-0.02); P(head,'tor',gold(),hs*0.7,hs*0.7,0.1,0,-hs*0.35,hs*0.2,PI/2.5); break;
     case 'flatcap': P(head,'hemi',hm({s:15}),hs*1.1,hs*0.55,hs*1.1,0,hs*0.5,-0.01); P(head,'rbox2',hm({s:15}),hs*1.0,0.045,hs*0.55,0,hs*0.55,hs*0.72,0.18); break;
     case 'tiara': { const gm=gold(); P(head,'torThin',gm,hs*0.75,hs*0.75,0.8,0,hs*0.86,0,PI/2); for(let i=0;i<5;i++){ const a=PI*0.25+i/4*PI*0.5; P(head,'cone',gm,0.025,0.08+(i===2?0.04:0),0.025,Math.cos(a)*hs*0.75,hs*0.93,Math.sin(a)*hs*0.75); } P(head,'sph',mat('#ff3dce',{s:150}),0.03,0.03,0.02,0,hs*0.96,hs*0.76); break; }
     case 'visor': P(head,'tor',hm(),hs*1.03,hs*1.03,0.4,0,hs*0.45,0,PI/2); P(head,'cyl',hm(),hs*0.62,0.022,hs*0.7,0,hs*0.44,hs*0.92); break;
@@ -3255,6 +3373,11 @@ function humanExtras(p,x){
       P(torso,'torThin',red,tw0*1.0,td*1.15,0.5,0,th*0.12,td*0.25,PI/2);
       for(const A of [R.armL,R.armR]) if(A){ P(A,'tor',red,0.085*Math.max(1,(p.w||1)*0.8),0.085*Math.max(1,(p.w||1)*0.8),0.4,0,-0.2,0,PI/2); } }
     P(torso,'sph',skin,tw0*0.82,th*0.32,td*0.7,0,th*0.08,td*0.72); P(torso,'sphLo',mat(shade(x.skin.color.getStyle(),0.75)),0.025,0.02,0.01,0,th*0.12,td*1.38); }
+  if(p.medals){ const cols=['#ffcf3a','#e5302a','#2f80ed','#39d353','#ff8a1f','#ffffff']; for(let i=0;i<p.medals;i++){ const row=Math.floor(i/4), col=i%4; const mx=0.03+col*0.048, my=th*(1.45-row*0.2);
+      P(torso,'rbox2',mat(cols[(i*3)%6],{s:40}),0.04,0.03,0.03,mx,my,td*1.08); P(torso,'cyl',gold(),0.024,0.012,0.024,mx,my-0.035,td*1.1,PI/2); } }
+  if(p.epaulettes){ const tw0=0.27*(p.w||1); for(const s of [-1,1]){ P(torso,'cyl',gold(),0.09,0.03,0.07,s*tw0*0.95,th*1.95,0); for(let i=0;i<5;i++) P(torso,'cyl',gold(),0.006,0.06,0.006,s*tw0*0.95+(i-2)*0.03,th*1.86,0.05); } }
+  if(p.sashRed){ P(torso,'rbox2',mat(p.sashRed,{s:60}),0.06,th*2.2,0.02,0,th*1.0,td*0.99,0,0,-0.7); }
+  if(p.handInCoat&&R.armL){ R.handInCoat=true; }
   if(p.sash){ P(torso,'rbox2',mat(p.sash,{s:60}),0.07,th*2.3,0.02,0,th*1.0,td*0.98,0,0,0.75); P(torso,'rbox2',mat('#ffffff',{map:labelTex('HEN','#ff6bb5','#ffffff'),basic:1}),0.1,0.05,0.025,0.02,th*1.05,td*1.0,0,0,0.75); }
   if(p.ape){ const fc=mat(shade(p.skin,1.6),{s:20}); P(head,'sph',fc,hs*0.82,hs*0.6,hs*0.5,0,-hs*0.3,hs*0.62); P(head,'sph',fc,hs*0.7,hs*0.42,hs*0.3,0,hs*0.1,hs*0.8); P(head,'rbox2',mat(shade(p.skin,0.7)),hs*1.3,0.06,0.08,0,hs*0.42,hs*0.78);
     for(const s of [-1,1]) P(head,'sph',fc,0.09,0.11,0.04,s*hs*1.05,0.02,0); }
@@ -3414,6 +3537,11 @@ function buildPenguin(p,tc){
 function vehicleMore(p,R,root,x){
   const {body,glass,tire,stripe,chrome,light,wheel,lights}=x;
   switch(p.type){
+    case 'paradetank': for(const s2 of [-1,1]){ P(root,'rboxS',tire,0.32,0.4,1.8,s2*0.6,0.22,0); for(let i=0;i<5;i++) R.wheels.push(P(root,'cyl',mat('#555',{s:60}),0.14,0.34,0.14,s2*0.6,0.22,-0.7+i*0.35,0,0,PI/2)); }
+      P(root,'rboxS',body,1.1,0.42,1.7,0,0.6,0); P(root,'rbox2',stripe,1.12,0.08,1.72,0,0.52,0);
+      { const tu=G0(); tu.position.set(0,0.95,-0.1); root.add(tu); R.turret=tu; P(tu,'sph',body,0.5,0.28,0.55); P(tu,'cyl',body,0.07,1.2,0.07,0,0.05,0.75,PI/2); P(tu,'cyl',gold(),0.09,0.1,0.09,0,0.05,1.35,PI/2);
+        for(const s2 of [-1,1]){ P(tu,'cyl',mat('#888'),0.01,0.6,0.01,s2*0.35,0.4,-0.3); P(tu,'rbox2',mat(s2>0?'#e5302a':'#ffd34d',{s:20}),0.25,0.16,0.01,s2*0.35+s2*0.12,0.62,-0.3); } P(tu,'sph',gold(),0.12,0.06,0.12,0,0.28,0); }
+      lights(0.86,-0.86,0.6,0.4); R.height=1.4; break;
     case 'kebabvan': P(root,'rboxS',body,1.2,1.15,2.2,0,0.95,-0.1); P(root,'rboxS',body,1.16,0.75,0.55,0,0.72,1.18); P(root,'rbox2',glass,1.02,0.36,0.05,0,0.92,1.46);
       for(const s of [-1,1]) P(root,'rbox2',mat('#ffffff',{map:labelTex('KEBABS','#e5302a','#ffd21f'),basic:1}),0.01,0.3,1.5,s*0.61,1.3,-0.15);
       P(root,'rbox2',mat('#3a2414'),0.02,0.4,1.0,0.6,0.88,-0.2); P(root,'rbox2',mat('#fff2c8',{e:0.35}),0.03,0.32,0.9,0.605,0.88,-0.2);
@@ -3473,6 +3601,10 @@ function vehicleMore(p,R,root,x){
 function buildingMore(p,R,root,T,tc){
   const wd=mat('#6b4423',{s:30}), dk=mat('#2a2d35',{s:60}), steel=metal();
   switch(p.type){
+    case 'goldstatue': { P(root,'rboxS',mat('#e8e0d0',{s:30}),1.1,0.6,1.1,0,0.3,0); P(root,'rbox2',T,1.12,0.08,1.12,0,0.62,0); P(root,'rbox2',mat('#ffffff',{map:labelTex('GLORIOUS','#c89820','#ffffff'),basic:1}),0.9,0.22,0.02,0,0.32,0.56);
+      const f=buildHuman({skin:'#e8b830',hair:['short','#e8b830'],hat:['peakcap','#e8b830'],outfit:['uniform','#e8b830','#c89820'],pants:'#e8b830',statue:true,w:1.2},tc); f.scale.setScalar(1.55); f.position.y=0.66; f.traverse(o=>{ if(o.isMesh) o.material=mat('#f2c23a',{s:150,m:0.75,e:0.08}); }); { const R2=f.userData.rig; R2.armR.rotation.x=-2.6; R2.armR.rotation.z=-0.3; } root.add(f); R.height=3.2; break; }
+    case 'balcony': P(root,'rboxS',mat('#e8dcc8',{s:30}),1.6,1.6,1.0,0,0.8,0); P(root,'rbox2',mat('#c8a64a',{s:110,m:0.6}),1.7,0.1,1.3,0,1.6,0.15); for(let i=0;i<7;i++) P(root,'cyl',mat('#f2ece0'),0.035,0.35,0.035,-0.72+i*0.24,1.8,0.75); P(root,'rbox2',mat('#f2ece0'),1.7,0.06,0.08,0,1.98,0.75);
+      P(root,'rbox2',mat('#b3202a',{s:30}),0.5,1.0,0.03,0,0.95,0.51); P(root,'rbox2',mat('#2a1a10'),0.5,0.8,0.04,0,0.4,0.5); for(const s of [-1,1]) P(root,'rbox2',mat('#b3202a',{s:20}),0.3,1.3,0.03,s*0.6,1.0,0.52); P(root,'rbox2',T,1.62,0.1,1.02,0,0.06,0); R.height=2.2; break;
     case 'karaoke': P(root,'rboxS',mat('#2a1440',{s:60}),1.3,1.0,0.8,0,0.5,0); P(root,'rbox2',T,1.32,0.08,0.82,0,1.02,0);
       P(root,'rbox2',mat('#ffffff',{map:labelTex('♪ SING! ♪','#140a24','#ff3dce'),basic:1}),0.9,0.42,0.04,0,0.65,0.41);
       for(const s of [-1,1]){ P(root,'cyl',mat('#151515'),0.17,0.05,0.17,s*0.48,0.32,0.41,PI/2); P(root,'cyl',mat('#ff3dce',{e:0.8}),0.07,0.06,0.07,s*0.48,0.32,0.43,PI/2); P(root,'cyl',mat('#3dd6ff',{e:0.8}),0.1,0.02,0.1,s*0.48,0.32,0.42,PI/2); }
@@ -3588,6 +3720,8 @@ function waveBanner(mesh,t,ph,amp=0.08){
 function buildFall(key,tc){
   const g=G0(); const c=x=>mat(colr(x,tc),{s:60});
   switch(key){
+    case 'rally': P(g,'rbox2',mat('#c89820',{s:120,m:0.6}),2.2,2.6,0.16); P(g,'rbox2',mat('#b3202a',{s:30}),1.9,2.3,0.18); { const f=buildHuman({skin:'#f2c9a0',hair:['short','#151515'],hat:['peakcap','#3a4a2a'],outfit:['uniform','#3a4a2a','#c89820'],face:['shades'],medals:8},tc); f.scale.setScalar(1.6); f.position.set(0,-1.15,0.12); g.add(f); } break;
+    case 'fireworkB': { const cols=['#ff2bd6','#ffd34d','#39ff14','#00e5ff','#ff6a00','#ffffff'], col=cols[(Math.random()*cols.length)|0]; P(g,'cyl',mat(col,{s:60,e:0.3}),0.15,0.6,0.15); P(g,'cone',mat('#ffd34d',{s:60}),0.16,0.25,0.16,0,0.42,0); P(g,'cyl',mat('#8a5a2b'),0.02,0.6,0.02,0,-0.55,0); g.userData.col=col; break; }
     case 'keg': { const kw=mat('#9a6a3a',{s:40}), hoop=mat('#6a6e75',{s:140,m:0.6}); P(g,'cyl',kw,0.72,1.5,0.72,0,0,0,0,0,PI/2); P(g,'sph',kw,0.78,0.78,0.78,0,0,0); for(const x of [-0.55,-0.2,0.2,0.55]) P(g,'torThin',hoop,0.78-Math.abs(x)*0.15,0.78-Math.abs(x)*0.15,0.6,x,0,0,0,PI/2);
       for(const s of [-1,1]) P(g,'cyl',mat('#7a4a22',{s:30}),0.6,0.04,0.6,s*0.75,0,0,0,0,PI/2); P(g,'cyl',mat('#c8a64a',{s:150,m:0.7}),0.08,0.12,0.08,0.78,0,0,0,0,PI/2); break; }
     case 'quiz': P(g,'rbox2',mat('#ffffff',{map:labelTex('?','#2f5fd0','#ffd34d'),s:30}),1.7,1.7,0.18); P(g,'rbox2',mat('#ffd34d',{s:60}),1.8,0.1,0.2,0,0.9,0); P(g,'rbox2',mat('#ffd34d',{s:60}),1.8,0.1,0.2,0,-0.9,0); break;
@@ -3628,6 +3762,8 @@ function buildFall(key,tc){
 function buildProj(key,tc){
   const [shape,col,sz] = PROJ[key]||PROJ.cannon; const g=G0(); const glow=(PROJ[key]||[])[4]; const m=mat(colr(col,tc),{e:glow?0.9:0,s:80});
   switch(shape){
+    case 'leaflet': P(g,'box',mat('#ffffff',{map:labelTex('LEADER!','#ffffff','#b3202a'),basic:1}),sz*1.6,sz*0.04,sz*1.1,0,0,0,0.3,0.4,0.2); break;
+    case 'medal': P(g,'cyl',gold(),sz*0.7,sz*0.15,sz*0.7,0,0,0,PI/2); P(g,'rbox2',mat('#e5302a'),sz*0.5,sz*0.7,sz*0.05,0,sz*0.8,0); break;
     case 'pint': P(g,'cyl',mat('#e8a21c',{e:0.15,s:120}),sz*0.42,sz*1.1,sz*0.42); P(g,'cyl',mat('#fff8e6'),sz*0.46,sz*0.3,sz*0.46,0,sz*0.65,0); P(g,'cyl',mat('#e8f6ff',{op:0.35,s:160}),sz*0.5,sz*1.4,sz*0.5,0,sz*0.1,0).userData.noOutline=true; break;
     case 'poolball': { const pc=['#e5302a','#ffd21f','#2f5fd0','#6a1f8a','#ff7a1a','#2e9a3a','#7a1f2a','#151515'][(Math.random()*8)|0]; P(g,'sph',mat(pc,{s:200}),sz,sz,sz); P(g,'sph',mat('#ffffff',{s:60}),sz*0.45,sz*0.45,sz*0.2,0,0,sz*0.85); break; }
     case 'tray': P(g,'cyl',mat('#d8dee6',{s:150}),sz*0.9,sz*0.08,sz*0.9); for(let i=0;i<3;i++){ const a=i/3*TAU; P(g,'cyl',mat('#e8f6ff',{op:0.45,s:160}),sz*0.2,sz*0.6,sz*0.2,Math.cos(a)*sz*0.45,sz*0.3,Math.sin(a)*sz*0.45).userData.noOutline=true; } break;
@@ -3667,6 +3803,9 @@ function buildProj(key,tc){
 function buildDeco(key,theme,rnd){
   const g=G0(); const c=x=>mat(x,{s:30});
   switch(key){
+    case 'redBanner': P(g,'cyl',c('#c89820'),0.06,4.2,0.06,0,2.1,0); P(g,'rbox2',c('#c89820'),1.4,0.08,0.08,0,4.0,0); P(g,'rbox2',c('#b3202a'),1.2,2.6,0.04,0,2.65,0.06); P(g,'cyl',mat('#ffd34d',{s:120,m:0.5}),0.35,0.04,0.35,0,3.1,0.1,PI/2); P(g,'oct',mat('#ffd34d',{s:120,m:0.5}),0.2,0.2,0.05,0,3.1,0.13); break;
+    case 'statueGold': { const st=buildHuman({skin:'#e8b830',hair:['short','#e8b830'],hat:['peakcap','#e8b830'],outfit:['uniform','#e8b830','#c89820'],pants:'#e8b830',statue:true},TEAMC[0]); st.traverse(o=>{ if(o.isMesh) o.material=mat('#f2c23a',{s:150,m:0.75,e:0.08}); }); st.userData.rig.armR.rotation.x=-2.6; st.scale.setScalar(2.2); st.position.y=0.8; g.add(st); P(g,'rboxS',c('#e8e0d0'),1.3,0.8,1.3,0,0.4,0); break; }
+    case 'fountain': P(g,'cyl',c('#e8e0d0'),1.3,0.4,1.3,0,0.2,0); P(g,'cyl',mat('#4fb8ff',{op:0.8,s:150}),1.15,0.05,1.15,0,0.38,0); P(g,'cyl',c('#e8e0d0'),0.15,1.2,0.15,0,0.9,0); P(g,'cyl',c('#e8e0d0'),0.55,0.12,0.55,0,1.5,0); P(g,'sph',mat('#9fe6ff',{op:0.6}),0.2,0.35,0.2,0,1.75,0); break;
     case 'pubsign': P(g,'cyl',c('#2a1a10'),0.08,3.2,0.08,0,1.6,0); P(g,'rbox2',c('#2a1a10'),1.5,0.08,0.08,0.7,3.0,0); P(g,'rbox2',c('#c8a64a'),1.5,1.1,0.12,0.75,2.25,0); P(g,'box',mat('#ffffff',{map:labelTex('JOBLESS ARMS','#14264a','#ffd34d'),basic:1}),1.35,0.95,0.14,0.75,2.25,0); break;
     case 'kegs': { const kw=c('#9a6a3a'), hoop=mat('#55585e',{s:120,m:0.5}); for(let i=0;i<3;i++){ const x=(i-1)*0.85; P(g,'cyl',kw,0.4,0.9,0.4,x,0.45,0); for(const y of [0.15,0.75]) P(g,'torThin',hoop,0.41,0.41,0.4,x,y,0,PI/2); } P(g,'cyl',kw,0.4,0.9,0.4,-0.42,0.42,0.75,PI/2); P(g,'cyl',kw,0.4,0.9,0.4,0.42,0.42,0.75,PI/2); break; }
     case 'bench': { const wd=c('#8a5a2b'); P(g,'rbox2',wd,1.8,0.08,0.8,0,0.75,0); for(const s of [-1,1]){ P(g,'rbox2',wd,1.8,0.06,0.3,0,0.42,s*0.65); P(g,'rbox2',wd,0.08,0.8,1.6,s*0.7,0.38,0,0.4); } P(g,'cyl',c('#ddd'),0.03,1.6,0.03,0,1.5,0); P(g,'cone',mat(rnd()<0.5?'#e5302a':'#2e6a3a',{s:20}),1.3,0.45,1.3,0,2.3,0); P(g,'cyl',mat('#e8a21c',{e:0.15}),0.06,0.15,0.06,0.4,0.86,0.1); P(g,'cyl',mat('#fff8e6'),0.065,0.03,0.065,0.4,0.95,0.1); break; }
@@ -3891,6 +4030,9 @@ function groundTex(th,z0,z1){
         for(let i=0;i<4000;i++){ const px=r()*w, py=r()*h; x.strokeStyle=r()<0.5?'rgba(60,120,30,0.35)':'rgba(200,240,140,0.3)'; x.lineWidth=1.2; x.beginPath(); x.moveTo(px,py); x.lineTo(px+r()*3-1.5,py-3-r()*4); x.stroke(); }
         for(let i=0;i<10;i++){ const px=r()*w, py=r()*h; x.fillStyle='rgba(150,110,60,0.35)'; x.beginPath(); x.ellipse(px,py,20+r()*30,10+r()*16,r()*3,0,TAU); x.fill(); }
         x.fillStyle='rgba(90,60,30,0.3)'; for(let i=0;i<30;i++){ const px=r()*w, py=r()*h; for(const [dx,dy] of [[0,0],[-5,-7],[0,-9],[5,-7]]){ x.beginPath(); x.arc(px+dx,py+dy,dx||dy?2:4,0,TAU); x.fill(); } } break;
+      case 'palace': for(let ty=0;ty<z1-z0;ty++) for(let tx=0;tx<18;tx++){ x.fillStyle=(tx+ty+z0)%2?ga:gb; x.fillRect(tx*S,ty*S,S,S); }
+        x.strokeStyle='rgba(120,100,70,0.18)'; x.lineWidth=1.2; for(let i=0;i<50;i++){ x.beginPath(); let px=r()*w, py=r()*h; x.moveTo(px,py); for(let k=0;k<5;k++){ px+=r()*30-15; py+=r()*30-15; x.lineTo(px,py);} x.stroke(); }
+        x.fillStyle='rgba(200,152,32,0.55)'; for(let ty=0;ty<=z1-z0;ty++) for(let tx=0;tx<=18;tx++){ x.beginPath(); x.moveTo(tx*S,ty*S-5); x.lineTo(tx*S+5,ty*S); x.lineTo(tx*S,ty*S+5); x.lineTo(tx*S-5,ty*S); x.fill(); } break;
       case 'pub': x.fillStyle=ga; x.fillRect(0,0,w,h);
         for(let ty=0;ty<z1-z0;ty++) for(let tx=0;tx<18;tx++){ const cx=tx*S+S/2, cy=ty*S+S/2;
           x.strokeStyle='rgba(214,170,70,0.55)'; x.lineWidth=2.5; x.beginPath(); x.moveTo(cx,cy-S/2); x.lineTo(cx+S/2,cy); x.lineTo(cx,cy+S/2); x.lineTo(cx-S/2,cy); x.closePath(); x.stroke();
@@ -3907,7 +4049,7 @@ function groundTex(th,z0,z1){
     for(const bx of [3.5,14.5]){ rr((bx-0.85)*S,(4.5-z0)*S,1.7*S,23*S,0.8*S); x.fill(); }
     rr(3.5*S,(2.6-z0)*S,11*S,1*S,0.5*S); x.fill(); rr(3.5*S,(28.4-z0)*S,11*S,1*S,0.5*S); x.fill();
     x.restore();
-    if(!['law','fbi','rock','sports','art','film','influencer'].includes(th.id)){ x.save(); for(const bx of [3.5,14.5]){ rr((bx-0.85)*S,(4.5-z0)*S,1.7*S,23*S,0.8*S); x.clip(); }
+    if(!['law','fbi','rock','sports','art','film','influencer','palace'].includes(th.id)){ x.save(); for(const bx of [3.5,14.5]){ rr((bx-0.85)*S,(4.5-z0)*S,1.7*S,23*S,0.8*S); x.clip(); }
       for(let i=0;i<900;i++){ const px=(r()<0.5?3.5:14.5)*S+(r()-0.5)*1.6*S, py=r()*h; x.fillStyle=r()<0.5?'rgba(0,0,0,0.12)':'rgba(255,255,255,0.14)'; x.beginPath(); x.ellipse(px,py,3+r()*4,2+r()*3,r()*3,0,TAU); x.fill(); } x.restore(); }
     x.strokeStyle='rgba(0,0,0,0.18)'; x.lineWidth=3; for(const bx of [3.5,14.5]){ rr((bx-0.85)*S,(4.5-z0)*S,1.7*S,23*S,0.8*S); x.stroke(); }
     if(th.id==='law'){ x.strokeStyle='#d9b44a'; x.lineWidth=4; for(const bx of [3.5,14.5]){ rr((bx-0.78)*S,(4.6-z0)*S,1.56*S,22.8*S,0.7*S); x.stroke(); } }
@@ -4394,6 +4536,7 @@ function resolveSpell(sp){
   const {s,team,x,y}=sp;
   if(sp.obj){ dynRoot.remove(sp.obj); }
   G.shake=Math.max(G.shake,0.35); buzz(30);
+  if(s.fall==='rally'){ for(const e of enemiesIn(team,x,y,s.r,{towers:false})) callout(e,'👏','#ffffff'); for(let i=0;i<14;i++){ const a=Math.random()*TAU, rr=Math.random()*s.r; PSA.spawn(x+Math.cos(a)*rr,0.5,y+Math.sin(a)*rr,0,rnd(2,4),0,1,0.3,['#ffd34d','#e5302a','#ffffff'][i%3],1,3); } }
   if(s.fall==='quiz'){ for(const e of enemiesIn(team,x,y,s.r,{towers:false})) callout(e,['🤔','❓','Er…','Pass!'][(e.uid||0)%4],'#ffffff'); for(let i=0;i<16;i++){ const a=Math.random()*TAU, rr=Math.random()*s.r; PSA.spawn(x+Math.cos(a)*rr,0.4,y+Math.sin(a)*rr,0,rnd(1.5,3),0,1,0.35,'#ffd34d',1,0); } }
   const col = s.fall==='paintcan'?'#ff3dce' : s.fall==='footballBig'?'#c8a46a' : s.fall==='basketBig'?'#ff8a3a' : s.fall==='water'?'#7fd0ff' : s.fall==='bolt'?'#bff4ff' : s.fall==='gavel'?'#ffd34d' : s.fall==='arrowDown'?'#ff3b3b' : s.fall==='tomato'?'#ff4a3a' : '#ffb02e';
   if(s.k==='freeze'){
@@ -5105,6 +5248,7 @@ function syncUnits(dt){
         }
         if(u.kickT>0) u.kickT-=dt;
         if(R.wingsH) R.wingsH.forEach((w,i)=>{ w.rotation.y=(i?1:-1)*(0.3+Math.sin(t*(u.flying?16:10)+u.uid)*0.55); });
+        if(R.handInCoat&&!A.active&&!(u.fearT>0)){ aL=-1.35; zL=-0.75; }
         if(u.fearT>0){ aR=aL=-2.9+Math.sin(t*20)*0.15; zR=-0.4; zL=0.4; }
         if(u.execBusy>0){ aR=-2.8+Math.sin(t*8)*0.1; }
         const look=(!mv&&u.target&&!u.target.dead)?clamp(((Math.atan2(u.target.x-u.x,u.target.y-u.y)-u.yawVis+PI)%TAU+TAU)%TAU-PI,-0.7,0.7):0;
@@ -5459,6 +5603,7 @@ function hpBar(x,y,w,h,frac,col,label,alpha=1){
 function statusIcons(u){
   const s=[];
   if(u.frozen>0) s.push(u.stone?'🗿':'❄️'); else if(u.boxT>0&&u.stun>0) s.push('📦'); else if(u.danceT>0&&u.stun>0) s.push('🕺'); else if(u.sleepT>0&&u.stun>0) s.push('💤'); else if(u.stun>0) s.push('💫');
+  if(u.singT>0) s.push('🎤'); if(u.drunkT>0) s.push('🥴');
   if(u.fearT>0) s.push('😱'); if(u.shrinkT>0) s.push('✏️'); if(u.markT>0) s.push('★'); if(u.taunt&&!u.building) s.push('📣');
   if(u.floatT>0) s.push('🪐');
   if(u.slowT>0) s.push('🐌');

@@ -25,6 +25,7 @@
 | Hollywood Backlot | The Director | CUT!: nearby enemies are rewound 3.5 tiles and stunned |
 | Viral House | Mega Influencer | GO VIRAL!: five Followers appear instantly |
 | Wild Zoo | Head Zookeeper | Tranquilizer: the 3 strongest enemies in range fall asleep for 3s |
+| The Palace | The Supreme Leader | Cult of Personality: nearby enemies salute and fight for him for 4.5s |
 | The Pub | Beer Belly Barry | Belly Bounce: the strongest enemy nearby is launched to the back of the arena |
 
 Every arena also has a second Champion that unlocks at 🏆 1300 (Lord Chancellor, The CEO, Flight Director, FBI Director, Subject Zero, Chief of Medicine, Nonna, Hotshot Captain, Site Foreman, Pop Diva, Golden Retriever, Head Coach, Pop Artist, Movie Star, Podcast Bro, Big Cat Trainer).
@@ -37,6 +38,9 @@ Every arena also has a second Champion that unlocks at 🏆 1300 (Lord Chancello
 
 ### The Pub (player request)
 Requested by the player: Beer Belly Barry (England shirt, Champion, Belly Bounce), The Drunk (spilled pints leave beer puddles that make ground troops slip over), the Karaoke Machine (a building that makes nearby enemies sing instead of fighting), Pub Quiz (a stun spell), the Rolling Keg (the arena's Log) and Buzz Ball Attack (neon cans lobbed from the King Tower that splash colour and make enemies drunk: they stagger, slow down and miss a third of their attacks). Also: Bouncer, Pub Landlord (last orders sends enemies home), Darts Champ (180s), Pool Shark, Barflies, Kebab Van, Glass Collector, Bar Brawler, Stag Do, Hen Party, Pub Dog, Fruit Machine, Happy Hour, and unlocks The Regular, Sunday Roast Chef, Folk Fiddler, Brewery Dray and the Legendary Pub Ghost.
+
+### The Palace (player request)
+Dictators and despots, loosely based on history but only on their vanity and famous anecdotes: no real modern leaders, symbols or atrocities. The Supreme Leader (Champion, Cult of Personality), the Little Emperor (hand in coat, grows with every kill), Dictator for Life (crossed the Rubicon, so he swims the river), Consul Horse (Caligula's horse), the Fiddling Emperor (fire aura while he plays), the Sun King (heal aura), Generalissimo (awards himself medals and grows), Propaganda Minister (leaflets confuse), Secret Police, Palace Guard, Giant Golden Statue (everyone bows to it), Rubber-Stamp Parliament, Royal Food Taster, Military Parade, Parade Tank, Yes Men; spells Rigged Election, Mandatory Rally, Five-Year Plan, Birthday Fireworks; unlocks Court Jester, State TV Anchor, Palace Balcony, Golden Limousine and the Legendary Eternal Leader.
 
 ### Spells from the King Tower
 Spells that are thrown or fired (pans, tomatoes, fireballs, footballs, basketballs, paint, water bombs, banana peels, lawsuits, the drone and buzz balls) are launched from the caster's King Tower: the king winds up and throws, and the spell arcs across the arena. Spells that come from the sky (asteroids, lightning, giant gavels, cages) still drop from above. Mark a spell with `launch:true` to opt in.

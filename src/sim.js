@@ -343,6 +343,7 @@ function resolveSpell(sp){
   const {s,team,x,y}=sp;
   if(sp.obj){ dynRoot.remove(sp.obj); }
   G.shake=Math.max(G.shake,0.35); buzz(30);
+  if(s.fall==='rally'){ for(const e of enemiesIn(team,x,y,s.r,{towers:false})) callout(e,'👏','#ffffff'); for(let i=0;i<14;i++){ const a=Math.random()*TAU, rr=Math.random()*s.r; PSA.spawn(x+Math.cos(a)*rr,0.5,y+Math.sin(a)*rr,0,rnd(2,4),0,1,0.3,['#ffd34d','#e5302a','#ffffff'][i%3],1,3); } }
   if(s.fall==='quiz'){ for(const e of enemiesIn(team,x,y,s.r,{towers:false})) callout(e,['🤔','❓','Er…','Pass!'][(e.uid||0)%4],'#ffffff'); for(let i=0;i<16;i++){ const a=Math.random()*TAU, rr=Math.random()*s.r; PSA.spawn(x+Math.cos(a)*rr,0.4,y+Math.sin(a)*rr,0,rnd(1.5,3),0,1,0.35,'#ffd34d',1,0); } }
   const col = s.fall==='paintcan'?'#ff3dce' : s.fall==='footballBig'?'#c8a46a' : s.fall==='basketBig'?'#ff8a3a' : s.fall==='water'?'#7fd0ff' : s.fall==='bolt'?'#bff4ff' : s.fall==='gavel'?'#ffd34d' : s.fall==='arrowDown'?'#ff3b3b' : s.fall==='tomato'?'#ff4a3a' : '#ffb02e';
   if(s.k==='freeze'){
@@ -1054,6 +1055,7 @@ function syncUnits(dt){
         }
         if(u.kickT>0) u.kickT-=dt;
         if(R.wingsH) R.wingsH.forEach((w,i)=>{ w.rotation.y=(i?1:-1)*(0.3+Math.sin(t*(u.flying?16:10)+u.uid)*0.55); });
+        if(R.handInCoat&&!A.active&&!(u.fearT>0)){ aL=-1.35; zL=-0.75; }
         if(u.fearT>0){ aR=aL=-2.9+Math.sin(t*20)*0.15; zR=-0.4; zL=0.4; }
         if(u.execBusy>0){ aR=-2.8+Math.sin(t*8)*0.1; }
         const look=(!mv&&u.target&&!u.target.dead)?clamp(((Math.atan2(u.target.x-u.x,u.target.y-u.y)-u.yawVis+PI)%TAU+TAU)%TAU-PI,-0.7,0.7):0;
