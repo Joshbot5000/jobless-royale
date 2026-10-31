@@ -470,7 +470,7 @@ function arenaTile(i){
   const th=THEMES[i]; const b=document.createElement('button'); b.type='button'; b.className='arena'+(i===arenaIdx?' on':''); b.id='arena-'+th.id;
   b.style.background=`linear-gradient(160deg, ${th.sky[1]} 0%, ${th.ground[1]} 55%, ${th.outer} 100%)`;
   const stars=best[th.id]||0;
-  const fresh=th.added&&(Date.now()-Date.parse(th.added))<4*864e5;
+  const fresh=th.added&&(Date.now()-Date.parse(th.added))<7*864e5;
   b.innerHTML=(fresh?`<span class="anew">NEW · ${th.news||'In the news'}</span>`:'')+`<span class="aemoji">${th.emoji}</span><span class="aname">${th.name}</span><span class="ajob">${th.job}</span><span class="astars">${'★'.repeat(stars)}${'☆'.repeat(3-stars)}</span>`;
   const kc=portraitCache['king:'+i]; if(kc){ const c=document.createElement('canvas'); c.width=128; c.height=160; c.className='aking'; c.getContext('2d').drawImage(kc,0,0,128,160); b.appendChild(c); } else requestPortrait('king:'+i);
   b.onclick=()=>{ arenaIdx=i; store.set('arena',i); arenaDeck=loadDeck(th); swapPick=null; renderMenu(); startPreview(); };

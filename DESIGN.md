@@ -77,7 +77,7 @@ Three.js r128. Procedural models built from smooth lathe and capsule shapes, mer
 Soft, rounded sound effects (thuds, whooshes, chimes) replace the old square-wave beeps. The built-in theme is generated live with Web Audio: a 16-bar loop of groove, an 8-bar call-and-answer hook, then a 4-bar breather with no lead, so it never nags. Each arena plays in its own key, the menu has a calmer version, and battle music speeds up for double elixir and overtime. **Sound** and **Music** toggles sit on the menu and the pause screen, and are remembered.
 
 ## News arenas
-A new topical arena is added every two days (see `UPDATING.md`).
+A new topical arena is added every week (see `UPDATING.md`).
 - 2026-10-27 · **Election Night** (Politicians) · midterm election week: The Candidate (Stump Speech), Campaign Bus, Filibuster Senator, Spin Doctor, Lobbyist, Fact Checker, and the Legendary Incumbent.
 - 2026-10-29 · **Ballpark** (Baseball Players) · World Series week: The Slugger (HOME RUN!), Groundskeeper's Mower, Umpire, The Closer, Hot Dog Vendor, Tarp Crew, T-Shirt Cannon, and the Legendary Hall of Famer.
 - 2026-10-31 · **Fright Night** (Scare Actors & Ghost Hunters) · Halloween: The Head Scare Actor (JUMP SCARE!), Haunted Hayride, Vampire Actor, Jump-Scare Coffin, Fortune Teller, Bedsheet Ghosts, Rolling Pumpkin, and the Legendary Headless Horseman.

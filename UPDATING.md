@@ -1,10 +1,10 @@
-# Jobless Royale: the every-2-days news update
+# Jobless Royale: the weekly news update
 
-Every other day the game gets a new **topical arena** inspired by what is big in the news right now
+Every week (Saturday morning) the game gets a new **topical arena** inspired by what is big in the news right now
 (for example a space launch → astronauts, an election → politicians, a World Cup → footballers).
 
 ## 1. Pick the topic
-- Search the news from the **last 48 hours**: world, tech, science, sport, entertainment and business. Use several searches.
+- Search the news from the **last 7 days**: world, tech, science, sport, entertainment and business. Use several searches.
 - Choose the story that is most talked about **and** maps onto a fun set of **jobs**. The arena is about the profession, not the event.
 - Skip anything that would be grim to play: wars, attacks, disasters with victims, deaths and illness. If the top story is grim, pick the next big lighter one.
 - Never use real people's names or likenesses, real brands, logos, or political parties. Satirise the job, never a person or side.
@@ -12,7 +12,7 @@ Every other day the game gets a new **topical arena** inspired by what is big in
 
 ## 2. Build the arena: `src/data_news_YYYYMMDD.js`
 Copy the structure of `src/data_news_20261027.js` (Election Night):
-- `THEMES.push({...})` with `added:'YYYY-MM-DD'` (today) and `news:'<3–5 word headline topic>'`. This shows a NEW badge on the arena for 4 days.
+- `THEMES.push({...})` with `added:'YYYY-MM-DD'` (today) and `news:'<3–5 word headline topic>'`. This shows a NEW badge on the arena for 7 days.
   Give the arena its own colours, river (`kind`: water, pond, lava, void, neon, gold, acid, laser, cement, ink, pool, paint, film), deco, king, archer, `towerProj`, foe names and emotes.
 - **At least 15 characters with `unlock:0`** (available immediately), **including exactly one Champion** (`champ:true` plus a `tap` ability), and **4 spells** with `unlock:0`.
 - **5 Trophy Road characters** at `unlock` 100 (rare), 300 (rare), 600 (epic), 1000 (epic) and 1600 (`rar:'legendary'`).
