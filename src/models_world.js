@@ -70,6 +70,10 @@ function waveBanner(mesh,t,ph,amp=0.08){
 function buildFall(key,tc){
   const g=G0(); const c=x=>mat(colr(x,tc),{s:60});
   switch(key){
+    case 'pumpkinBig': { const pm=mat('#ff8a1f',{s:40}); P(g,'sph',pm,0.9,0.78,0.9); for(let i=0;i<6;i++){ const a=i/6*TAU; P(g,'sph',mat('#f07a10',{s:40}),0.4,0.78,0.4,Math.cos(a)*0.55,0,Math.sin(a)*0.55); } P(g,'cyl',mat('#4a6a2a'),0.08,0.3,0.08,0,0.85,0);
+      for(const s2 of [-1,1]) P(g,'cone4',mat('#ffd34d',{e:1}),0.14,0.16,0.05,s2*0.3,0.2,0.88,PI); P(g,'rbox2',mat('#ffd34d',{e:1}),0.5,0.1,0.05,0,-0.2,0.88); break; }
+    case 'candy': { const cols=['#e5302a','#ffd34d','#7a1cff','#39d353','#ff6bb5'], col=cols[(Math.random()*cols.length)|0]; P(g,'sph',mat(col,{s:120}),0.3,0.22,0.22); for(const s2 of [-1,1]) P(g,'cone4',mat(col,{s:120}),0.15,0.2,0.15,s2*0.35,0,0,0,0,s2*PI/2); g.userData.col=col; break; }
+    case 'booSheet': { const sm=mat('#f4f4f8',{s:20}); P(g,'sph',sm,1.0,1.1,1.0,0,0.6,0); P(g,'bell',sm,1.3,1.4,1.3,0,-0.4,0); for(const s2 of [-1,1]) P(g,'sph',mat('#151515'),0.18,0.26,0.08,s2*0.35,0.7,0.95); P(g,'sph',mat('#151515'),0.2,0.25,0.08,0,0.25,0.98); break; }
     case 'rally': P(g,'rbox2',mat('#c89820',{s:120,m:0.6}),2.2,2.6,0.16); P(g,'rbox2',mat('#b3202a',{s:30}),1.9,2.3,0.18); { const f=buildHuman({skin:'#f2c9a0',hair:['short','#151515'],hat:['peakcap','#3a4a2a'],outfit:['uniform','#3a4a2a','#c89820'],face:['shades'],medals:8},tc); f.scale.setScalar(1.6); f.position.set(0,-1.15,0.12); g.add(f); } break;
     case 'fireworkB': { const cols=['#ff2bd6','#ffd34d','#39ff14','#00e5ff','#ff6a00','#ffffff'], col=cols[(Math.random()*cols.length)|0]; P(g,'cyl',mat(col,{s:60,e:0.3}),0.15,0.6,0.15); P(g,'cone',mat('#ffd34d',{s:60}),0.16,0.25,0.16,0,0.42,0); P(g,'cyl',mat('#8a5a2b'),0.02,0.6,0.02,0,-0.55,0); g.userData.col=col; break; }
     case 'keg': { const kw=mat('#9a6a3a',{s:40}), hoop=mat('#6a6e75',{s:140,m:0.6}); P(g,'cyl',kw,0.72,1.5,0.72,0,0,0,0,0,PI/2); P(g,'sph',kw,0.78,0.78,0.78,0,0,0); for(const x of [-0.55,-0.2,0.2,0.55]) P(g,'torThin',hoop,0.78-Math.abs(x)*0.15,0.78-Math.abs(x)*0.15,0.6,x,0,0,0,PI/2);
@@ -112,6 +116,8 @@ function buildFall(key,tc){
 function buildProj(key,tc){
   const [shape,col,sz] = PROJ[key]||PROJ.cannon; const g=G0(); const glow=(PROJ[key]||[])[4]; const m=mat(colr(col,tc),{e:glow?0.9:0,s:80});
   switch(shape){
+    case 'pumpkin': P(g,'sph',mat('#ff8a1f',{s:40}),sz,sz*0.85,sz); P(g,'cyl',mat('#4a6a2a'),sz*0.12,sz*0.4,sz*0.12,0,sz*0.9,0); P(g,'rbox2',mat('#ffd34d',{e:1}),sz*0.6,sz*0.12,sz*0.05,0,-sz*0.1,sz*0.97); break;
+    case 'candy': P(g,'sph',m,sz*0.7,sz*0.5,sz*0.5); for(const s2 of [-1,1]) P(g,'cone4',m,sz*0.35,sz*0.4,sz*0.35,s2*sz*0.75,0,0,0,0,s2*PI/2); break;
     case 'leaflet': P(g,'box',mat('#ffffff',{map:labelTex('LEADER!','#ffffff','#b3202a'),basic:1}),sz*1.6,sz*0.04,sz*1.1,0,0,0,0.3,0.4,0.2); break;
     case 'medal': P(g,'cyl',gold(),sz*0.7,sz*0.15,sz*0.7,0,0,0,PI/2); P(g,'rbox2',mat('#e5302a'),sz*0.5,sz*0.7,sz*0.05,0,sz*0.8,0); break;
     case 'pint': P(g,'cyl',mat('#e8a21c',{e:0.15,s:120}),sz*0.42,sz*1.1,sz*0.42); P(g,'cyl',mat('#fff8e6'),sz*0.46,sz*0.3,sz*0.46,0,sz*0.65,0); P(g,'cyl',mat('#e8f6ff',{op:0.35,s:160}),sz*0.5,sz*1.4,sz*0.5,0,sz*0.1,0).userData.noOutline=true; break;
@@ -153,6 +159,10 @@ function buildProj(key,tc){
 function buildDeco(key,theme,rnd){
   const g=G0(); const c=x=>mat(x,{s:30});
   switch(key){
+    case 'pumpkins': for(let i=0;i<3;i++){ const s2=0.4+i*0.15, x=(i-1)*0.9; P(g,'sph',c('#ff8a1f'),s2,s2*0.85,s2,x,s2*0.8,0); P(g,'cyl',c('#4a6a2a'),0.05,0.2,0.05,x,s2*1.6,0); P(g,'rbox2',mat('#ffd34d',{e:1}),s2*0.6,s2*0.15,0.04,x,s2*0.7,s2*0.97); for(const k of [-1,1]) P(g,'cone4',mat('#ffd34d',{e:1}),s2*0.15,s2*0.2,0.04,x+k*s2*0.3,s2*0.95,s2*0.95,PI); } break;
+    case 'tombstone': for(let i=0;i<2;i++){ const x=(i-0.5)*1.1; P(g,'rboxS',c('#8a8f99'),0.7,1.0+i*0.3,0.2,x,0.5+i*0.15,0,0,0,(i-0.5)*0.15); P(g,'box',mat('#ffffff',{map:labelTex('R.I.P.','#8a8f99','#3a3a44'),basic:1}),0.5,0.18,0.21,x,0.75+i*0.15,0); } P(g,'rbox2',c('#3a2a1a'),2,0.1,0.8,0,0.05,0.4); break;
+    case 'deadTree': P(g,'cyl',c('#2a1a10'),0.18,2.4,0.22,0,1.2,0); for(let i=0;i<5;i++){ const a=i/5*TAU; P(g,'cyl',c('#2a1a10'),0.06,1.2,0.06,Math.cos(a)*0.4,2.3+i*0.1,Math.sin(a)*0.4,Math.sin(a)*0.8,0,-Math.cos(a)*0.8); } P(g,'sph',mat('#ff8a1f',{e:0.6}),0.15,0.15,0.15,0.5,2.6,0); break;
+    case 'spiderweb': P(g,'cyl',c('#2a1a10'),0.06,2.4,0.06,-1,1.2,0); P(g,'cyl',c('#2a1a10'),0.06,2.4,0.06,1,1.2,0); for(let i=1;i<4;i++) P(g,'torThin',mat('#e8e8f0',{op:0.7}),i*0.28,i*0.28,0.2,0,1.6,0,0,0,0); P(g,'sph',c('#151515'),0.15,0.12,0.18,0.2,1.7,0.03); break;
     case 'redBanner': P(g,'cyl',c('#c89820'),0.06,4.2,0.06,0,2.1,0); P(g,'rbox2',c('#c89820'),1.4,0.08,0.08,0,4.0,0); P(g,'rbox2',c('#b3202a'),1.2,2.6,0.04,0,2.65,0.06); P(g,'cyl',mat('#ffd34d',{s:120,m:0.5}),0.35,0.04,0.35,0,3.1,0.1,PI/2); P(g,'oct',mat('#ffd34d',{s:120,m:0.5}),0.2,0.2,0.05,0,3.1,0.13); break;
     case 'statueGold': { const st=buildHuman({skin:'#e8b830',hair:['short','#e8b830'],hat:['peakcap','#e8b830'],outfit:['uniform','#e8b830','#c89820'],pants:'#e8b830',statue:true},TEAMC[0]); st.traverse(o=>{ if(o.isMesh) o.material=mat('#f2c23a',{s:150,m:0.75,e:0.08}); }); st.userData.rig.armR.rotation.x=-2.6; st.scale.setScalar(2.2); st.position.y=0.8; g.add(st); P(g,'rboxS',c('#e8e0d0'),1.3,0.8,1.3,0,0.4,0); break; }
     case 'fountain': P(g,'cyl',c('#e8e0d0'),1.3,0.4,1.3,0,0.2,0); P(g,'cyl',mat('#4fb8ff',{op:0.8,s:150}),1.15,0.05,1.15,0,0.38,0); P(g,'cyl',c('#e8e0d0'),0.15,1.2,0.15,0,0.9,0); P(g,'cyl',c('#e8e0d0'),0.55,0.12,0.55,0,1.5,0); P(g,'sph',mat('#9fe6ff',{op:0.6}),0.2,0.35,0.2,0,1.75,0); break;

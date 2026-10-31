@@ -2493,6 +2493,118 @@ const BAL={
   th.pool.sort((a,b)=>CARDS[a].unlock-CARDS[b].unlock); }
 
 // =====================================================================
+//  NEWS ARENA — 31 Oct 2026: "Fright Night" (Scare Actors & Ghost Hunters).
+//  Topical hook: it is Halloween, and the theme-park fright nights are in full swing.
+//  Satire of the spooky-season jobs; no real films, parks or characters.
+// =====================================================================
+THEMES.push({ id:'fright', name:'Fright Night', job:'Scare Actors & Ghost Hunters', emoji:'🎃', added:'2026-10-31', news:'Happy Halloween!',
+  ground:['#3a3848','#343242'], path:'#b8601a', pad:'#5a5468', border:'#1a1420', borderTop:'#ff8a1f', outer:'#0e0a14', sky:['#05030c','#3a1a5a'], hemi:['#e8d8ff','#2a2030'],
+  river:{kind:'acid', a:'#4a1a7a', b:'#9aff4a', glow:true}, bridge:'#3a2a1a', stone:'#9a94a8', trim:'#ff8a1f',
+  deco:['pumpkins','tombstone','deadTree','spiderweb','pumpkins','tombstone'], spotlights:true,
+  king:{k:'h',skin:'#e8e4f0',hair:['slick','#151515'],outfit:['tux','#151515','#b3202a'],face:['fangs'],prop:'none',cape:'#7a1a2a',w:1.3},
+  archer:{k:'h',skin:'#f7c9a0',hair:['messy','#a0522d'],hat:['witchhat','#2a1a3a'],outfit:['hoodie','#ff8a1f','T'],prop:'candybucket'},
+  towerProj:'candy', foes:['Count Creepula','Madame Mortimer','Doctor Spookenstein'],
+  emotes:['BOO! 👻','Trick or treat? 🍬','Mwahaha! 🦇','😱'],
+  cards:['scaremaster','hayride','trickortreaters','pumpkincarver','ghosthunter','vampire','candyrain','giantpumpkin'] });
+
+Object.assign(PROJ,{ candy:['candy','#ff6bb5',0.16,null], pumpkin:['pumpkin','#ff8a1f',0.22,'#ffd34d'], ecto:['sphere','#9aff4a',0.15,'#9aff4a',1] });
+
+const FRI={
+ scaremaster:{short:'Head Scarer',name:'The Head Scare Actor',cost:5,rar:'champion',unlock:0,role:'hero',champ:true,hp:1300,dmg:140,hs:1.1,range:0.8,speed:1.0,radius:0.5,mass:9,
+   atk:{k:'melee',splash:1.0},anim:'swing',
+   tap:{k:'aoe',cost:2,cd:15,icon:'😱',name:'JUMP SCARE!',r:4,fear:3,stun:0.6,dmg:80,needEnemies:true},
+   model:HU({skin:'#b8c8a8',hair:['messy','#3a3a2a'],outfit:['overalls','#5a4a3a','#3a2a1a'],face:['angry','stitches'],prop:'chainsaw',w:1.3}),
+   desc:'Twenty years in the business, never missed a scare. Revs a (chainless) chainsaw into crowds. TAP – JUMP SCARE! (2 elixir): leaps out of nowhere – every enemy nearby screams, freezes, then runs home in terror for 3s.'},
+ hayride:{name:'Haunted Hayride',cost:5,rar:'epic',unlock:0,role:'wincon',hp:2300,dmg:180,hs:1.4,range:0.9,speed:0.9,targets:'buildings',radius:0.85,mass:14,
+   atk:{k:'melee'},death:{spawn:['trickortreaters',3]},anim:'ram',model:{k:'v',type:'hayride',color:'#c0392b'},
+   desc:'A tractor towing a trailer full of hay bales and screaming kids, heading straight for buildings. When it breaks down, the trick-or-treaters jump off.'},
+ trickortreaters:{name:'Trick-or-Treaters',cost:3,rar:'common',unlock:0,role:'swarm',count:5,hp:140,dmg:50,hs:0.9,range:0.5,speed:1.7,radius:0.26,mass:1,
+   atk:{k:'melee'},anim:'thrust',
+   model:HU({skin:'#f7c9a0',hair:['messy','#a0522d'],hat:['witchhat','#2a1a3a'],outfit:['hoodie','#ff8a1f','T'],prop:'candybucket',sc:0.72}),
+   desc:'Five kids on a sugar high in homemade costumes. Fast, loud and impossible to stop.'},
+ pumpkincarver:{name:'Pumpkin Carver',cost:4,rar:'rare',unlock:0,role:'splash',hp:640,dmg:120,hs:1.7,range:5,targets:'ground',
+   atk:{k:'proj',proj:'pumpkin',lob:true,splash:1.5},onHit:{burn:[30,3]},anim:'throw',
+   model:HU({skin:'#e8b48a',hair:['short','#a0522d'],hat:['cap','#ff8a1f'],outfit:['apron','#4a6a2a','#ff8a1f'],face:['beard'],prop:'jackolantern'}),
+   desc:'Lobs freshly carved jack-o’-lanterns that burst in a splash, the candles inside setting ground troops alight.'},
+ ghosthunter:{name:'Ghost Hunter',cost:3,rar:'rare',unlock:0,role:'dps',hp:560,dmg:85,hs:0.9,range:5,targets:'all',detect:6,
+   atk:{k:'beam',col:'#9aff4a'},anim:'point',
+   model:HU({skin:'#c68b5e',hair:['short','#151515'],outfit:['jumpsuit','#8a8a6a','T'],face:['goggles'],back:['backpack','#555'],prop:'radargun'}),
+   desc:'Points a beeping meter at everything. Zaps air and ground, and exposes every invisible enemy within 6 tiles so your towers can hit them.'},
+ vampire:{name:'Vampire Actor',cost:4,rar:'epic',unlock:0,role:'mini',hp:950,dmg:130,hs:1.0,range:0.6,speed:1.2,
+   atk:{k:'melee'},onHit:{lifesteal:0.6},anim:'thrust',
+   model:HU({skin:'#e8e4f0',hair:['slick','#151515'],outfit:['tux','#151515','#b3202a'],face:['fangs'],cape:'#7a1a2a'}),
+   desc:'Stays in character all night. Every bite heals it for 60% of the damage dealt. "I vant to drain your health bar."'},
+ zombiewalkers:{name:'Zombie Walkers',cost:4,rar:'rare',unlock:0,role:'swarm',count:3,hp:420,dmg:75,hs:1.1,range:0.5,speed:0.75,radius:0.36,
+   atk:{k:'melee'},sp:{k:'reviveSelf',inPlace:true,hp:0.5,callout:'BRAAAINS!'},anim:'zombie',
+   model:HU({skin:'#9ccf7a',hair:['messy','#3a4a2a'],outfit:['tshirt','#7a6a5a','T'],face:['stitches']}),
+   desc:'Three scare actors in excellent zombie makeup. Slow, but each one gets back up once with half health.'},
+ witch:{name:'Broomstick Witch',cost:4,rar:'rare',unlock:0,role:'air',hp:600,dmg:85,hs:1.2,range:4.5,targets:'all',flying:true,radius:0.4,
+   atk:{k:'proj',proj:'ecto'},onHit:{poison:[30,3]},anim:'cast',
+   model:HU({skin:'#a8d890',hair:['long','#151515'],hat:['witchhat','#2a1a3a'],outfit:['robe','#2a1a3a','#7a1cff'],prop:'broom'}),
+   desc:'Swoops over the river on a broom, throwing bubbling green potions that poison air and ground targets.'},
+ fogmachine:{name:'Fog Machine',cost:3,rar:'rare',unlock:0,type:'building',role:'bld',hp:850,life:35,dmg:0,hs:1,range:0,radius:0.6,
+   atk:{k:'none'},sp:{k:'zap',cd:6,range:5,ally:true,eff:{invis:4},callout:'FOG ROLLING IN…'},model:{k:'b',type:'fogmachine',color:'#2a2a2a'},
+   desc:'Pumps out thick green fog. Every 6s your best troop nearby disappears into it, invisible and untargetable for 4s.'},
+ coffin:{name:'Jump-Scare Coffin',short:'Coffin',cost:3,rar:'epic',unlock:0,type:'building',role:'bld',hp:900,life:30,dmg:0,hs:1,range:0,radius:0.6,
+   atk:{k:'none'},sp:{k:'pulse',cd:5,r:3.2,fear:2,dmg:40,callout:'BOO!'},model:{k:'b',type:'coffin',color:'#4a2a1a'},
+   desc:'Looks harmless until the lid flies open. Every 5s, every enemy within 3.2 tiles jumps out of its skin and runs home for 2s.'},
+ werewolf:{name:'Werewolf Actor',cost:4,rar:'epic',unlock:0,role:'mini',hp:1150,dmg:140,hs:1.0,range:0.6,speed:1.15,
+   atk:{k:'melee'},sp:{k:'charge',after:1.1,spd:1.7,mult:2.2,push:1.5,callout:'AWOOOO!',enrage:true},anim:'swing',
+   model:HU({skin:'#6a5a4a',ape:true,hair:['messy','#3a2a1a'],outfit:['fur','#5a4a3a','#8a7a6a'],face:['fangs'],w:1.3}),
+   desc:'Really commits to the costume. Charges in for 2.2× damage, and goes full wolf (40% faster) below half health.'},
+ blackcat:{name:'Black Cat',cost:2,rar:'common',unlock:0,role:'mini',hp:420,dmg:80,hs:0.8,range:0.5,speed:1.8,radius:0.32,
+   atk:{k:'melee'},onHit:{mark:[4,1.4]},anim:'bite',
+   model:DOG({coat:'#1c1a22',coat2:'#2a2832',cat:true,ears:'pointy',tail:'long',snout:0.06,size:0.7,len:0.9,bigEyes:true,iris:'#ffd34d'}),
+   desc:'Crosses your path, and that is bad luck: everything it scratches (★) takes 40% more damage for 4s.'},
+ mummy:{name:'Mummy Actor',cost:4,rar:'rare',unlock:0,role:'tank',hp:1700,dmg:90,hs:1.3,range:0.7,speed:0.75,radius:0.55,mass:11,shield0:350,
+   atk:{k:'melee'},onHit:{slow:[2.5,0.45]},anim:'zombie',
+   model:HU({skin:'#e8e0c8',hair:['bald','#000'],outfit:['mummy','#e8e0c8','#c8c0a8'],pants:'#e8e0c8',face:['angry'],w:1.3}),
+   desc:'Wrapped in 300 metres of bandages, which soak up the first 350 damage. Every grab wraps the target up and slows it right down.'},
+ fortuneteller:{name:'Fortune Teller',cost:3,rar:'epic',unlock:0,role:'support',hp:600,dmg:65,hs:1.1,range:4.5,targets:'all',
+   atk:{k:'proj',proj:'ecto'},sp:{k:'zap',cd:7,range:5.5,pick:'strongest',eff:{fear:3},callout:'I SEE… DOOM!'},anim:'cast',
+   model:HU({skin:'#c68b5e',hair:['long','#151515'],hat:['headband','#7a1cff'],outfit:['dress','#7a1cff','#ffd34d'],prop:'crystalball'}),
+   desc:'Every 7s gazes into her crystal ball and tells the strongest enemy nearby its future. It runs home in terror for 3s.'},
+ sheetghosts:{name:'Bedsheet Ghosts',cost:3,rar:'common',unlock:0,role:'air',count:3,hp:200,dmg:60,hs:1.0,range:0.5,speed:1.4,targets:'all',flying:true,radius:0.32,mass:1,
+   atk:{k:'melee'},anim:'peck',model:FLY({type:'ghost',noMug:true,size:0.8}),
+   desc:'Three kids under bedsheets with eye holes, floating about going "oooOOOooo" at air and ground.'},
+ scarecrow:{name:'Scarecrow',cost:3,rar:'rare',unlock:0,role:'tank',hp:1250,dmg:60,hs:1.2,range:0.7,speed:0.7,radius:0.5,mass:8,taunt:3.5,
+   atk:{k:'melee'},anim:'slam',
+   model:HU({skin:'#e0c060',hair:['messy','#e0c060'],hat:['strawhat','#d8b060'],outfit:['overalls','#3a5a8a','#b3202a'],face:['stitches']}),
+   desc:'Stuffed with straw and very convincing. Every enemy within 3.5 tiles has to deal with it first.'},
+ candyrain:{name:'Trick or Treat!',cost:3,rar:'rare',unlock:0,type:'spell',role:'sdmg',icon:'🍬',
+   sp:{k:'barrage',r:3,n:9,dmg:70,mr:1.2,slow:[2,0.6],fall:'candy',launch:true},desc:'Your King hurls nine giant wrapped sweets from the tower: 70 damage each, and the sticky ones slow enemies down.'},
+ giantpumpkin:{name:'Rolling Pumpkin',cost:2,rar:'rare',unlock:0,type:'spell',role:'sroll',icon:'🎃',
+   sp:{k:'roll',dmg:210,push:1.7,r:1.15,len:11,model:'pumpkinBig'},desc:'A prize-winning giant jack-o’-lantern rolls down the lane like a log, bowling over every ground troop: 210 damage.'},
+ fullmoon:{name:'Full Moon',cost:3,rar:'epic',unlock:0,type:'spell',role:'sbuff',icon:'🌕',
+   sp:{k:'mega',r:2.5,t:10},desc:'The full moon rises. Your troops in the area transform into giants with 60% more health and damage for 10s.'},
+ boo:{name:'BOO!',cost:3,rar:'rare',unlock:0,type:'spell',role:'sutil',icon:'👻',
+   sp:{k:'stun',r:3,t:1.8,dmg:60,delay:0.5,fall:'booSheet'},desc:'A giant ghost drops in. Every enemy troop and tower in the area jumps out of its skin, frozen for 1.8s.'},
+ // ---- Trophy Road unlocks
+ screamqueen:{name:'Scream Queen',cost:3,rar:'rare',unlock:100,role:'support',hp:620,dmg:60,hs:1.0,range:0.6,speed:1.2,
+   atk:{k:'melee'},sp:{k:'pulse',cd:6,r:3.2,stun:1.5,dmg:50,callout:'AAAAAAAAH!'},anim:'cast',
+   model:HU({skin:'#f7c9a0',hair:['long','#ffcf4a'],outfit:['dress','#ffffff','#b3202a'],face:['glassesRound']}),
+   desc:'Has the best scream in the business. Every 6s it stuns every enemy nearby for 1.5s.'},
+ candyapple:{name:'Candy Apple Seller',cost:3,rar:'rare',unlock:300,role:'support',hp:650,dmg:60,hs:1.2,range:4,targets:'all',
+   atk:{k:'proj',proj:'candy'},aura:{r:3.5,heal:55},anim:'throw',
+   model:HU({skin:'#e8b48a',hair:['bun','#a0522d'],outfit:['apron','#b3202a','#ffffff'],prop:'candybucket'}),
+   desc:'Toffee apples for everyone. Nearby allies heal 55 per second from the sugar rush.'},
+ hearse:{name:'Haunted Hearse',cost:5,rar:'epic',unlock:600,role:'wincon',hp:2100,dmg:200,hs:1.3,range:0.9,speed:1.15,targets:'buildings',radius:0.8,mass:13,
+   atk:{k:'melee'},sp:{k:'charge',after:0.8,spd:1.7,mult:2,push:1.4,callout:'HONK HONK… OOOO!'},death:{spawn:['sheetghosts',3]},anim:'ram',model:{k:'v',type:'hearse',color:'#151515'},
+   desc:'A purple-lit hearse from the haunted attraction car park. Races at buildings, and three bedsheet ghosts float out when it is wrecked.'},
+ megaspider:{name:'Giant Animatronic Spider',short:'Mega Spider',cost:5,rar:'epic',unlock:1000,role:'tank',hp:2400,dmg:120,hs:1.2,range:1.2,speed:0.85,radius:0.75,mass:14,
+   atk:{k:'melee',splash:1.3},onHit:{slow:[2.5,0.4]},anim:'bite',
+   model:DOG({coat:'#2a2a2e',coat2:'#7a1cff',spider:true,ears:'none',tail:'stub',snout:0.04,size:2.0,len:0.85,legLen:0.14}),
+   desc:'The star of the yard display, with glowing eyes. Every bite splashes and wraps enemies in webs, slowing them down.'},
+ horseman:{name:'The Headless Horseman',short:'Horseman',cost:6,rar:'legendary',unlock:1600,role:'wincon',hp:2200,dmg:220,hs:1.3,range:0.8,speed:1.4,targets:'buildings',radius:0.65,mass:11,
+   atk:{k:'melee'},sp:{k:'charge',after:0.8,spd:1.8,mult:2.5,push:2,callout:'WHERE’S MY HEAD?!'},onHit:{fear:2.5},death:{blast:[2,200],callout:'SPLAT! 🎃'},anim:'bite',
+   model:DOG({coat:'#151515',coat2:'#2a2a2a',mane:'#3a1a4a',ears:'pointy',tail:'long',snout:0.3,size:1.4,len:1.15,legLen:0.42,rider:true,iris:'#ff2a2a'}),
+   desc:'LEGENDARY. The legend of the hollow rides again. Gallops at buildings and charges for 2.5× damage, terrifying everything it hits. Its pumpkin head explodes when it falls.'},
+};
+{ const th=THEMES[THEMES.length-1]; Object.assign(CARDS,FRI); th.pool=[];
+  for(const id in FRI){ CARDS[id].id=id; CARDS[id].theme='fright'; th.pool.push(id); }
+  th.pool.sort((a,b)=>CARDS[a].unlock-CARDS[b].unlock); }
+
+// =====================================================================
 //  MODELS (core) — geometry, materials, ink outlines, procedural textures.
 //  Toy-style 3D: smooth lathe/capsule shapes, PBR materials. Forward = +Z, feet at y=0.
 // =====================================================================
@@ -3209,6 +3321,13 @@ function clearModelCache(){ for(const k in MODEL_CACHE) delete MODEL_CACHE[k]; T
 function propMore(name,g,tc){
   const c=x=>mat(colr(x,tc),{s:40}), wood=mat('#8a5a2b',{s:20}), dark=mat('#25272c',{s:60}), steel=metal(), wh=mat('#ffffff',{s:40});
   switch(name){
+    // halloween
+    case 'jackolantern': { const pm=mat('#ff8a1f',{s:40}); P(g,'sph',pm,0.13,0.11,0.13,0,0.02,0.12); for(let i=0;i<4;i++){ const a=i/4*TAU; P(g,'sph',mat('#f07a10',{s:40}),0.06,0.11,0.06,Math.cos(a)*0.08,0.02,0.12+Math.sin(a)*0.08); } P(g,'cyl',mat('#4a6a2a'),0.015,0.05,0.015,0,0.14,0.12);
+      for(const s2 of [-1,1]) P(g,'cone4',mat('#ffd34d',{e:1}),0.025,0.03,0.01,s2*0.04,0.05,0.25,PI); P(g,'rbox2',mat('#ffd34d',{e:1}),0.08,0.02,0.01,0,-0.02,0.25); break; }
+    case 'crystalball': P(g,'sph',mat('#b07aff',{op:0.7,e:0.5,s:160}),0.12,0.12,0.12,0,0.12,0.1).userData.noOutline=true; P(g,'cyl',gold(),0.08,0.05,0.08,0,0.0,0.1); break;
+    case 'broom': P(g,'cyl',wood,0.018,0.9,0.018,0,0.0,0.15,1.1); P(g,'cone',mat('#c8a050',{s:10}),0.09,0.28,0.09,0,-0.18,-0.25,1.1+PI); break;
+    case 'candybucket': P(g,'cyl',mat('#ff8a1f',{s:40}),0.1,0.13,0.09,0,-0.12,0.06); P(g,'torHalf',dark,0.09,0.09,0.2,0,-0.04,0.06); for(let i=0;i<4;i++) P(g,'sph',mat(['#e5302a','#ffd34d','#7a1cff','#39d353'][i],{s:90}),0.03,0.03,0.03,-0.04+i*0.027,-0.04,0.06); break;
+    case 'cross': P(g,'rbox2',mat('#c0c6cc',{s:120,m:0.6}),0.03,0.22,0.03,0,0.12,0.08); P(g,'rbox2',mat('#c0c6cc',{s:120,m:0.6}),0.13,0.03,0.03,0,0.16,0.08); break;
     // pub
     case 'pint': { const gl=mat('#e8f6ff',{op:0.32,s:160}); P(g,'cyl',mat('#e8a21c',{s:120,e:0.12}),0.05,0.15,0.05,0,0.06,0.09); P(g,'cyl',mat('#fff8e6',{s:20}),0.055,0.035,0.055,0,0.15,0.09); P(g,'cyl',gl,0.06,0.19,0.06,0,0.07,0.09).userData.noOutline=true; break; }
     case 'darts': for(const s of [-1,0,1]){ P(g,'cyl',steel,0.006,0.1,0.006,s*0.03,0.13,0.08); P(g,'cyl',mat('#151515'),0.012,0.06,0.012,s*0.03,0.06,0.08); P(g,'cone4',mat(['#e5302a','#ffd21f','#2f80ed'][s+1]),0.03,0.05,0.004,s*0.03,0.01,0.08,PI); } break;
@@ -3297,6 +3416,7 @@ function outfitMore(ot,x){
   const {torso,hips,R,main,acc,skin,tw,th,td,fz,front,button,c,w}=x;
   const wh=mat('#ffffff',{s:40}), bk=mat('#151515',{s:40});
   switch(ot){
+    case 'mummy': { const bm=mat('#e8e0c8',{s:10}); for(let i=0;i<7;i++) P(torso,'torThin',bm,tw*1.03,td*1.03,0.9,0,th*(0.2+i*0.27),0,PI/2+((i%2)?0.15:-0.15)); for(const L of R.legs) for(let i=0;i<3;i++) P(L,'torThin',bm,0.11,0.11,0.6,0,-0.08-i*0.1,0,PI/2+((i%2)?0.2:-0.2)); break; }
     case 'england': P(torso,'tor',acc,0.11,0.1,0.5,0,th*1.86,0,PI/2); for(const s of [-1,1]) P(torso,'rbox2',acc,0.026,0.14,0.035,s*0.04,th*1.66,fz,0,0,s*0.55);
       for(const s of [-1,1]) P(torso,'rbox2',mat('#14264a',{s:40}),0.025,th*1.5,td*1.2,s*tw*0.97,th*1.0,0);
       { const bx=tw*0.42, by=th*1.42, bz=fz*1.18+0.02; P(torso,'rbox2',mat('#ffffff',{s:30}),0.085,0.1,0.02,bx,by,bz); P(torso,'cone4',mat('#14264a'),0.045,0.035,0.022,bx,by-0.055,bz,PI); for(let i=0;i<3;i++) P(torso,'sphLo',mat('#2f5fd0'),0.014,0.01,0.012,bx,by+0.03-i*0.027,bz+0.012); }
@@ -3329,12 +3449,15 @@ function outfitMore(ot,x){
   }
 }
 const OUTFIT_FORE_SKIN=['england','kit','referee','boxer','sumo','swim','tutu','fur','bones','toga'];
-const OUTFIT_NO_BELT=['england','kit','referee','boxer','sumo','swim','bones','toga','tutu','fur','superhero','ringmaster','tracksuit','pirate','cowboy','smock','stripes','tux','safari'];
+const OUTFIT_NO_BELT=['mummy','england','kit','referee','boxer','sumo','swim','bones','toga','tutu','fur','superhero','ringmaster','tracksuit','pirate','cowboy','smock','stripes','tux','safari'];
 
 // ---------------------------------------------------------------- hats & faces
 function hatMore(hat,x){
   const {head,hs,c,hatC,tc}=x; const hm=(o)=>mat(colr(hatC,tc),o||{s:60});
   switch(hat){
+    case 'witchhat': P(head,'cyl',hm({s:20}),hs*1.6,0.03,hs*1.6,0,hs*0.65,0); P(head,'cone',hm({s:20}),hs*0.85,hs*1.9,hs*0.85,0,hs*1.55,-0.05,-0.2); P(head,'cyl',mat('#7a1cff'),hs*0.86,0.06,hs*0.86,0,hs*0.72,0); P(head,'rbox2',gold(),0.06,0.05,0.02,0,hs*0.72,hs*0.86); break;
+    case 'strawhat': P(head,'cyl',mat('#d8b060',{s:10}),hs*1.7,0.03,hs*1.7,0,hs*0.65,0); P(head,'cyl',mat('#d8b060',{s:10}),hs*0.85,0.22,hs*0.85,0,hs*0.85,0); P(head,'cyl',mat('#b3202a'),hs*0.87,0.05,hs*0.87,0,hs*0.76,0); break;
+    case 'sheet': { const sm=mat('#f4f4f8',{s:20}); P(head,'sph',sm,hs*1.25,hs*1.25,hs*1.2,0,0.04,0); for(const s2 of [-1,1]) P(head,'sph',mat('#151515'),0.05,0.07,0.02,s2*0.09,0.05,hs*1.18); break; }
     case 'peakcap': P(head,'cyl',hm({s:50}),hs*1.25,0.2,hs*1.35,0,hs*0.95,-0.03,-0.12); P(head,'cyl',hm({s:50}),hs*0.95,0.14,hs*0.95,0,hs*0.78,0); P(head,'cyl',mat('#151515',{s:140}),hs*0.75,0.03,hs*0.6,0,hs*0.68,hs*0.62,0.25); P(head,'tor',gold(),hs*0.95,hs*0.95,0.25,0,hs*0.75,0,PI/2); P(head,'sph',gold(),0.08,0.08,0.03,0,hs*1.0,hs*1.12); break;
     case 'bicorne': P(head,'hemi',mat('#151515',{s:40}),hs*1.05,hs*0.6,hs*1.0,0,hs*0.55,0); P(head,'sph',mat('#151515',{s:40}),hs*1.75,hs*0.6,hs*0.45,0,hs*0.95,0); P(head,'tor',gold(),hs*0.16,hs*0.16,0.4,hs*0.3,hs*1.1,hs*0.38,0,0,0); P(head,'sph',mat('#e5302a'),0.05,0.05,0.03,hs*0.3,hs*1.1,hs*0.4); break;
     case 'laurel': for(const s of [-1,1]) for(let i=0;i<6;i++){ const a=PI*0.15+i*0.15; P(head,'sph',mat('#d8b030',{s:110,m:0.6}),0.05,0.025,0.03,s*Math.cos(a)*hs*1.02,hs*0.5+i*0.02,Math.sin(a)*hs*1.02-hs*0.2,0,0,s*0.6); } break;
@@ -3356,6 +3479,8 @@ function hatMore(hat,x){
 function faceMore(f,x){
   const {head,hs,fz2}=x;
   switch(f){
+    case 'fangs': for(const s2 of [-1,1]) P(head,'cone',mat('#ffffff'),0.014,0.05,0.014,s2*0.03,-0.14,fz2+0.02,PI); break;
+    case 'stitches': P(head,'rbox2',mat('#3a2a2a'),0.01,0.12,0.01,0.1,0.12,fz2,0,0,0.3); for(let i=0;i<3;i++) P(head,'rbox2',mat('#3a2a2a'),0.04,0.008,0.01,0.1+(i-1)*0.012,0.08+i*0.035,fz2+0.01,0,0,0.3); break;
     case 'flushed': P(head,'sph',mat('#e8505a',{s:60}),0.06,0.055,0.055,0,-0.04,fz2+0.01); for(const s of [-1,1]) P(head,'sph',mat('#f06070',{s:20,op:0.75}),0.075,0.05,0.02,s*0.15,-0.06,fz2-0.02).userData.noOutline=true; break;
     case 'stubble': P(head,'sph',mat('#7a6a5a',{s:10,op:0.55}),hs*0.74,hs*0.5,hs*0.6,0,-hs*0.44,hs*0.22).userData.noOutline=true; break;
     case 'mimeFace': for(const s of [-1,1]) P(head,'cone4',mat('#151515'),0.02,0.06,0.01,s*0.1,0.12,fz2+0.02); P(head,'sph',mat('#e5302a',{s:90}),0.05,0.025,0.02,0,-0.11,fz2+0.02); break;
@@ -3391,6 +3516,7 @@ function humanExtras(p,x){
 // ---------------------------------------------------------------- quadruped extras
 function quadMore(p,R,x){
   const {body,head,front,back,coat,coat2,c,hr,sn,L,ch,tail}=x;
+  if(p.rider){ const rd=buildHuman({skin:'#2a2a2a',hat:null,hair:['bald','#000'],outfit:['trench','#151515','#3a1a4a'],prop:'jackolantern',cape:'#3a1a4a'},x.tc); rd.traverse(o=>{}); const rr=rd.userData.rig; rr.head.visible=false; rr.legs.forEach((l,i)=>l.rotation.z=(i?-1:1)*0.6); rr.armR.rotation.x=-1.2; rd.scale.setScalar(0.85); rd.position.set(0,0.12,-0.02); body.add(rd); }
   const bk=mat('#151515',{s:14});
   if(p.pig){ P(head,'cyl',mat(p.nose||'#ff7aa0',{s:40}),0.07,0.05,0.07,0,-0.03,hr*0.82+sn,PI/2); for(const s of [-1,1]) P(head,'sphLo',mat('#a03a5a'),0.014,0.02,0.01,s*0.025,-0.03,hr*0.82+sn+0.03); P(body,'rbox2',bk,0.12,0.02,0.04,0,0.2*ch,0); }
   if(p.bubble){ P(head,'sph',mat('#cfeeff',{op:0.22,s:150}),hr*1.7,hr*1.7,hr*1.7,0,0.02,0.04).userData.noOutline=true; P(front,'tor',mat('#dadada',{s:80}),0.15,0.15,0.6,0,0.08,0.06,PI/2-0.5); }
@@ -3440,7 +3566,7 @@ function flyerMore(p,R,root,T,wing,tc){
       const hd=G0(); hd.position.set(0,0.3,0.2); root.add(hd); R.head=hd;
       for(const s of [-1,1]) P(hd,'sph',mat('#151520'),0.06,0.085,0.03,s*0.1,0.06,0.08); P(hd,'sph',mat('#151520'),0.05,0.07,0.03,0,-0.1,0.09);
       P(root,'tor',mat('#ffffff',{s:20}),0.24,0.24,0.6,0,0.02,0,PI/2); for(let i=0;i<10;i++){ const a=i/10*TAU; P(root,'sph',mat('#f6f2ea',{s:20}),0.07,0.05,0.05,Math.cos(a)*0.26,0.02,Math.sin(a)*0.24); }
-      { const mg=G0(); mg.position.set(0.32,0.0,0.18); root.add(mg); P(mg,'cyl',mat('#8a939c',{s:150,m:0.6}),0.08,0.16,0.08); P(mg,'cyl',mat('#fff8e6'),0.075,0.03,0.075,0,0.085,0); P(mg,'tor',mat('#8a939c',{s:150,m:0.6}),0.05,0.05,0.4,0.09,0,0,0,PI/2); }
+      if(!p.noMug){ const mg=G0(); mg.position.set(0.32,0.0,0.18); root.add(mg); P(mg,'cyl',mat('#8a939c',{s:150,m:0.6}),0.08,0.16,0.08); P(mg,'cyl',mat('#fff8e6'),0.075,0.03,0.075,0,0.085,0); P(mg,'tor',mat('#8a939c',{s:150,m:0.6}),0.05,0.05,0.4,0.09,0,0,0,PI/2); }
       R.height=0.9; break; }
     case 'shark': { const gr=mat('#7d8ea0',{s:60}), wh=mat('#eef2f6',{s:40});
       P(root,'sph',gr,0.26,0.24,0.6); P(root,'sph',wh,0.2,0.16,0.5,0,-0.08,0.04);
@@ -3537,6 +3663,13 @@ function buildPenguin(p,tc){
 function vehicleMore(p,R,root,x){
   const {body,glass,tire,stripe,chrome,light,wheel,lights}=x;
   switch(p.type){
+    case 'hayride': P(root,'rboxS',mat('#c0392b',{s:40}),0.9,0.7,0.9,0,0.65,0.9); P(root,'cyl',mat('#555'),0.06,0.5,0.06,0.25,1.2,1.1); P(root,'rbox2',mat('#7a5a3a'),1.1,0.12,1.6,0,0.5,-0.4);
+      for(let i=0;i<4;i++) P(root,'rboxS',mat('#e0c060',{s:8}),0.5,0.32,0.38,(i%2-0.5)*0.55,0.75,-0.8+Math.floor(i/2)*0.6);
+      for(let i=0;i<2;i++){ const k=buildHuman({skin:'#f7c9a0',hair:['messy',i?'#a0522d':'#151515'],hat:i?['witchhat','#2a1a3a']:['sheet','#ffffff'],outfit:['hoodie',i?'#7a1cff':'#ff8a1f','T']},x.tc); k.scale.setScalar(0.6); k.position.set((i-0.5)*0.5,0.95,-0.4+i*0.3); root.add(k); }
+      P(root,'sph',mat('#ff8a1f',{s:40}),0.18,0.15,0.18,0.3,0.95,-1.05); wheel(-0.5,0.95,0.32); wheel(0.5,0.95,0.32); wheel(-0.55,-0.6,0.22); wheel(0.55,-0.6,0.22); P(root,'rbox2',stripe,0.92,0.08,0.92,0,0.35,0.9); R.height=1.6; break;
+    case 'hearse': P(root,'rboxS',body,1.05,0.5,2.6,0,0.5,0); P(root,'rboxS',body,0.98,0.55,1.8,0,1.0,-0.3); for(const s2 of [-1,1]) P(root,'rbox2',mat('#c0c6cc',{s:120,m:0.6}),0.02,0.35,1.0,s2*0.5,1.0,-0.5);
+      for(const s2 of [-1,1]) P(root,'torHalf',mat('#c0c6cc',{s:120,m:0.6}),0.2,0.2,0.2,s2*0.5,1.0,-0.2,0,s2*PI/2,0); P(root,'rbox2',glass,0.9,0.3,0.05,0,1.0,0.62);
+      P(root,'rbox2',mat('#7a1cff',{e:0.6}),1.07,0.05,2.62,0,0.36,0); P(root,'rbox2',stripe,1.07,0.06,2.62,0,0.6,0); lights(1.3,-1.3,0.5,0.4); wheel(-0.52,0.85); wheel(0.52,0.85); wheel(-0.52,-0.85); wheel(0.52,-0.85); R.height=1.4; break;
     case 'paradetank': for(const s2 of [-1,1]){ P(root,'rboxS',tire,0.32,0.4,1.8,s2*0.6,0.22,0); for(let i=0;i<5;i++) R.wheels.push(P(root,'cyl',mat('#555',{s:60}),0.14,0.34,0.14,s2*0.6,0.22,-0.7+i*0.35,0,0,PI/2)); }
       P(root,'rboxS',body,1.1,0.42,1.7,0,0.6,0); P(root,'rbox2',stripe,1.12,0.08,1.72,0,0.52,0);
       { const tu=G0(); tu.position.set(0,0.95,-0.1); root.add(tu); R.turret=tu; P(tu,'sph',body,0.5,0.28,0.55); P(tu,'cyl',body,0.07,1.2,0.07,0,0.05,0.75,PI/2); P(tu,'cyl',gold(),0.09,0.1,0.09,0,0.05,1.35,PI/2);
@@ -3601,6 +3734,9 @@ function vehicleMore(p,R,root,x){
 function buildingMore(p,R,root,T,tc){
   const wd=mat('#6b4423',{s:30}), dk=mat('#2a2d35',{s:60}), steel=metal();
   switch(p.type){
+    case 'coffin': P(root,'rbox2',T,1.0,0.08,1.4,0,0.04,0); P(root,'rboxS',mat('#4a2a1a',{s:40}),0.75,1.6,0.45,0,0.85,0); { const lid=G0(); lid.position.set(-0.37,0.85,0.24); root.add(lid); R.jaw=lid; P(lid,'rboxS',mat('#5a3420',{s:40}),0.75,1.6,0.08,0.37,0,0); P(lid,'rbox2',gold(),0.08,0.5,0.02,0.37,0.1,0.05); P(lid,'rbox2',gold(),0.3,0.08,0.02,0.37,0.2,0.05); }
+      P(root,'rbox2',mat('#7a1a2a',{s:20}),0.62,1.45,0.02,0,0.85,0.22); faceEyes(root,0,1.3,0.24,0.1,0.06,{iris:'#ff2a2a'}); R.height=1.8; R.bell=true; break;
+    case 'fogmachine': P(root,'rboxS',mat('#2a2a2a',{s:60}),1.0,0.6,0.8,0,0.3,0); P(root,'rbox2',T,1.02,0.08,0.82,0,0.62,0); P(root,'cyl',mat('#555'),0.15,0.3,0.15,0,0.45,0.45,PI/2); P(root,'rbox2',mat('#39ff6a',{e:0.9}),0.1,0.06,0.02,0.35,0.45,0.41); P(root,'rbox2',mat('#ffffff',{map:labelTex('FOG','#2a2a2a','#9aff4a'),basic:1}),0.5,0.18,0.02,-0.15,0.35,0.41); R.height=1.0; R.smoke=true; break;
     case 'goldstatue': { P(root,'rboxS',mat('#e8e0d0',{s:30}),1.1,0.6,1.1,0,0.3,0); P(root,'rbox2',T,1.12,0.08,1.12,0,0.62,0); P(root,'rbox2',mat('#ffffff',{map:labelTex('GLORIOUS','#c89820','#ffffff'),basic:1}),0.9,0.22,0.02,0,0.32,0.56);
       const f=buildHuman({skin:'#e8b830',hair:['short','#e8b830'],hat:['peakcap','#e8b830'],outfit:['uniform','#e8b830','#c89820'],pants:'#e8b830',statue:true,w:1.2},tc); f.scale.setScalar(1.55); f.position.y=0.66; f.traverse(o=>{ if(o.isMesh) o.material=mat('#f2c23a',{s:150,m:0.75,e:0.08}); }); { const R2=f.userData.rig; R2.armR.rotation.x=-2.6; R2.armR.rotation.z=-0.3; } root.add(f); R.height=3.2; break; }
     case 'balcony': P(root,'rboxS',mat('#e8dcc8',{s:30}),1.6,1.6,1.0,0,0.8,0); P(root,'rbox2',mat('#c8a64a',{s:110,m:0.6}),1.7,0.1,1.3,0,1.6,0.15); for(let i=0;i<7;i++) P(root,'cyl',mat('#f2ece0'),0.035,0.35,0.035,-0.72+i*0.24,1.8,0.75); P(root,'rbox2',mat('#f2ece0'),1.7,0.06,0.08,0,1.98,0.75);
@@ -3720,6 +3856,10 @@ function waveBanner(mesh,t,ph,amp=0.08){
 function buildFall(key,tc){
   const g=G0(); const c=x=>mat(colr(x,tc),{s:60});
   switch(key){
+    case 'pumpkinBig': { const pm=mat('#ff8a1f',{s:40}); P(g,'sph',pm,0.9,0.78,0.9); for(let i=0;i<6;i++){ const a=i/6*TAU; P(g,'sph',mat('#f07a10',{s:40}),0.4,0.78,0.4,Math.cos(a)*0.55,0,Math.sin(a)*0.55); } P(g,'cyl',mat('#4a6a2a'),0.08,0.3,0.08,0,0.85,0);
+      for(const s2 of [-1,1]) P(g,'cone4',mat('#ffd34d',{e:1}),0.14,0.16,0.05,s2*0.3,0.2,0.88,PI); P(g,'rbox2',mat('#ffd34d',{e:1}),0.5,0.1,0.05,0,-0.2,0.88); break; }
+    case 'candy': { const cols=['#e5302a','#ffd34d','#7a1cff','#39d353','#ff6bb5'], col=cols[(Math.random()*cols.length)|0]; P(g,'sph',mat(col,{s:120}),0.3,0.22,0.22); for(const s2 of [-1,1]) P(g,'cone4',mat(col,{s:120}),0.15,0.2,0.15,s2*0.35,0,0,0,0,s2*PI/2); g.userData.col=col; break; }
+    case 'booSheet': { const sm=mat('#f4f4f8',{s:20}); P(g,'sph',sm,1.0,1.1,1.0,0,0.6,0); P(g,'bell',sm,1.3,1.4,1.3,0,-0.4,0); for(const s2 of [-1,1]) P(g,'sph',mat('#151515'),0.18,0.26,0.08,s2*0.35,0.7,0.95); P(g,'sph',mat('#151515'),0.2,0.25,0.08,0,0.25,0.98); break; }
     case 'rally': P(g,'rbox2',mat('#c89820',{s:120,m:0.6}),2.2,2.6,0.16); P(g,'rbox2',mat('#b3202a',{s:30}),1.9,2.3,0.18); { const f=buildHuman({skin:'#f2c9a0',hair:['short','#151515'],hat:['peakcap','#3a4a2a'],outfit:['uniform','#3a4a2a','#c89820'],face:['shades'],medals:8},tc); f.scale.setScalar(1.6); f.position.set(0,-1.15,0.12); g.add(f); } break;
     case 'fireworkB': { const cols=['#ff2bd6','#ffd34d','#39ff14','#00e5ff','#ff6a00','#ffffff'], col=cols[(Math.random()*cols.length)|0]; P(g,'cyl',mat(col,{s:60,e:0.3}),0.15,0.6,0.15); P(g,'cone',mat('#ffd34d',{s:60}),0.16,0.25,0.16,0,0.42,0); P(g,'cyl',mat('#8a5a2b'),0.02,0.6,0.02,0,-0.55,0); g.userData.col=col; break; }
     case 'keg': { const kw=mat('#9a6a3a',{s:40}), hoop=mat('#6a6e75',{s:140,m:0.6}); P(g,'cyl',kw,0.72,1.5,0.72,0,0,0,0,0,PI/2); P(g,'sph',kw,0.78,0.78,0.78,0,0,0); for(const x of [-0.55,-0.2,0.2,0.55]) P(g,'torThin',hoop,0.78-Math.abs(x)*0.15,0.78-Math.abs(x)*0.15,0.6,x,0,0,0,PI/2);
@@ -3762,6 +3902,8 @@ function buildFall(key,tc){
 function buildProj(key,tc){
   const [shape,col,sz] = PROJ[key]||PROJ.cannon; const g=G0(); const glow=(PROJ[key]||[])[4]; const m=mat(colr(col,tc),{e:glow?0.9:0,s:80});
   switch(shape){
+    case 'pumpkin': P(g,'sph',mat('#ff8a1f',{s:40}),sz,sz*0.85,sz); P(g,'cyl',mat('#4a6a2a'),sz*0.12,sz*0.4,sz*0.12,0,sz*0.9,0); P(g,'rbox2',mat('#ffd34d',{e:1}),sz*0.6,sz*0.12,sz*0.05,0,-sz*0.1,sz*0.97); break;
+    case 'candy': P(g,'sph',m,sz*0.7,sz*0.5,sz*0.5); for(const s2 of [-1,1]) P(g,'cone4',m,sz*0.35,sz*0.4,sz*0.35,s2*sz*0.75,0,0,0,0,s2*PI/2); break;
     case 'leaflet': P(g,'box',mat('#ffffff',{map:labelTex('LEADER!','#ffffff','#b3202a'),basic:1}),sz*1.6,sz*0.04,sz*1.1,0,0,0,0.3,0.4,0.2); break;
     case 'medal': P(g,'cyl',gold(),sz*0.7,sz*0.15,sz*0.7,0,0,0,PI/2); P(g,'rbox2',mat('#e5302a'),sz*0.5,sz*0.7,sz*0.05,0,sz*0.8,0); break;
     case 'pint': P(g,'cyl',mat('#e8a21c',{e:0.15,s:120}),sz*0.42,sz*1.1,sz*0.42); P(g,'cyl',mat('#fff8e6'),sz*0.46,sz*0.3,sz*0.46,0,sz*0.65,0); P(g,'cyl',mat('#e8f6ff',{op:0.35,s:160}),sz*0.5,sz*1.4,sz*0.5,0,sz*0.1,0).userData.noOutline=true; break;
@@ -3803,6 +3945,10 @@ function buildProj(key,tc){
 function buildDeco(key,theme,rnd){
   const g=G0(); const c=x=>mat(x,{s:30});
   switch(key){
+    case 'pumpkins': for(let i=0;i<3;i++){ const s2=0.4+i*0.15, x=(i-1)*0.9; P(g,'sph',c('#ff8a1f'),s2,s2*0.85,s2,x,s2*0.8,0); P(g,'cyl',c('#4a6a2a'),0.05,0.2,0.05,x,s2*1.6,0); P(g,'rbox2',mat('#ffd34d',{e:1}),s2*0.6,s2*0.15,0.04,x,s2*0.7,s2*0.97); for(const k of [-1,1]) P(g,'cone4',mat('#ffd34d',{e:1}),s2*0.15,s2*0.2,0.04,x+k*s2*0.3,s2*0.95,s2*0.95,PI); } break;
+    case 'tombstone': for(let i=0;i<2;i++){ const x=(i-0.5)*1.1; P(g,'rboxS',c('#8a8f99'),0.7,1.0+i*0.3,0.2,x,0.5+i*0.15,0,0,0,(i-0.5)*0.15); P(g,'box',mat('#ffffff',{map:labelTex('R.I.P.','#8a8f99','#3a3a44'),basic:1}),0.5,0.18,0.21,x,0.75+i*0.15,0); } P(g,'rbox2',c('#3a2a1a'),2,0.1,0.8,0,0.05,0.4); break;
+    case 'deadTree': P(g,'cyl',c('#2a1a10'),0.18,2.4,0.22,0,1.2,0); for(let i=0;i<5;i++){ const a=i/5*TAU; P(g,'cyl',c('#2a1a10'),0.06,1.2,0.06,Math.cos(a)*0.4,2.3+i*0.1,Math.sin(a)*0.4,Math.sin(a)*0.8,0,-Math.cos(a)*0.8); } P(g,'sph',mat('#ff8a1f',{e:0.6}),0.15,0.15,0.15,0.5,2.6,0); break;
+    case 'spiderweb': P(g,'cyl',c('#2a1a10'),0.06,2.4,0.06,-1,1.2,0); P(g,'cyl',c('#2a1a10'),0.06,2.4,0.06,1,1.2,0); for(let i=1;i<4;i++) P(g,'torThin',mat('#e8e8f0',{op:0.7}),i*0.28,i*0.28,0.2,0,1.6,0,0,0,0); P(g,'sph',c('#151515'),0.15,0.12,0.18,0.2,1.7,0.03); break;
     case 'redBanner': P(g,'cyl',c('#c89820'),0.06,4.2,0.06,0,2.1,0); P(g,'rbox2',c('#c89820'),1.4,0.08,0.08,0,4.0,0); P(g,'rbox2',c('#b3202a'),1.2,2.6,0.04,0,2.65,0.06); P(g,'cyl',mat('#ffd34d',{s:120,m:0.5}),0.35,0.04,0.35,0,3.1,0.1,PI/2); P(g,'oct',mat('#ffd34d',{s:120,m:0.5}),0.2,0.2,0.05,0,3.1,0.13); break;
     case 'statueGold': { const st=buildHuman({skin:'#e8b830',hair:['short','#e8b830'],hat:['peakcap','#e8b830'],outfit:['uniform','#e8b830','#c89820'],pants:'#e8b830',statue:true},TEAMC[0]); st.traverse(o=>{ if(o.isMesh) o.material=mat('#f2c23a',{s:150,m:0.75,e:0.08}); }); st.userData.rig.armR.rotation.x=-2.6; st.scale.setScalar(2.2); st.position.y=0.8; g.add(st); P(g,'rboxS',c('#e8e0d0'),1.3,0.8,1.3,0,0.4,0); break; }
     case 'fountain': P(g,'cyl',c('#e8e0d0'),1.3,0.4,1.3,0,0.2,0); P(g,'cyl',mat('#4fb8ff',{op:0.8,s:150}),1.15,0.05,1.15,0,0.38,0); P(g,'cyl',c('#e8e0d0'),0.15,1.2,0.15,0,0.9,0); P(g,'cyl',c('#e8e0d0'),0.55,0.12,0.55,0,1.5,0); P(g,'sph',mat('#9fe6ff',{op:0.6}),0.2,0.35,0.2,0,1.75,0); break;
@@ -5080,7 +5226,7 @@ function useTap(team){
       for(let i=0;i<40;i++){ const k=Math.random(), sp=rnd(-0.5,0.5); (tp.col?PSA:PSN).spawn(u.x+fx*k*tp.range+fy*sp*k*2,0.8,u.y+fy*k*tp.range-fx*sp*k*2,fx*4,rnd(0,2),fy*4,0.6,0.35,tp.col?'#ffb02e':'#9fe0ff',0.8,tp.col?0:6); } sfx('boom'); break; }
     case 'aoe': { const en=G.units.filter(e=>e.team!==u.team&&!e.dead&&!e.building&&!hidden(e)&&dist(e,u)<=tp.r), al=G.units.filter(v=>v.team===u.team&&!v.dead&&!v.building&&dist(v,u)<=tp.r);
       if(tp.needEnemies&&!en.length){ ok=false; break; } if(tp.needAllies&&!al.some(v=>v!==u)&&!(tp.ally&&tp.ally.healPct&&u.hp<u.maxHp)){ ok=false; break; }
-      for(const e of en){ if(tp.dmg) damage(e,tp.dmg,u,{splash:true}); if(e.dead) continue; if(tp.stun) e.stun=Math.max(e.stun,tp.stun); if(tp.frozen){ e.frozen=Math.max(e.frozen,tp.frozen); e.stone=!!tp.stone; } if(tp.push) knock(e,u.x,u.y,tp.push); if(tp.rewind) rewindUnit(e,tp.rewind); }
+      for(const e of en){ if(tp.dmg) damage(e,tp.dmg,u,{splash:true}); if(e.dead) continue; if(tp.stun) e.stun=Math.max(e.stun,tp.stun); if(tp.frozen){ e.frozen=Math.max(e.frozen,tp.frozen); e.stone=!!tp.stone; } if(tp.push) knock(e,u.x,u.y,tp.push); if(tp.rewind) rewindUnit(e,tp.rewind); if(tp.fear) e.fearT=Math.max(e.fearT||0,tp.fear); }
       if(tp.ally) for(const v of al){ const a=tp.ally; if(a.healPct) v.hp=Math.min(v.maxHp,v.hp+v.maxHp*a.healPct); if(a.shield) v.shield=Math.max(v.shield,a.shield); if(a.giant) makeGiant(v,a.giant); if(a.rush) v.rush=Math.max(v.rush,a.rush); PSA.spawn(v.x,1.2,v.y,0,1.5,0,0.7,0.35,'#7dff8a',1,0); }
       const col=tp.frozen?(tp.stone?'#c8c0b4':'#bfefff'):tp.ally&&!tp.stun?'#7dff8a':tp.rewind?'#ffd34d':'#ffffff';
       fxRing(u.x,u.y,0.3,tp.r,0.6,col); fxBurst(u.x,1,u.y,30,col,5,0.25,0.7,4,true); G.shake=Math.max(G.shake,0.25); sfx(tp.frozen?'freeze':'power');
