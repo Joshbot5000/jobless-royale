@@ -18,7 +18,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--night);color:var
 #gl,#hud{position:absolute;left:0;top:0;display:block;touch-action:none}
 .screen{position:absolute;inset:0;overflow-y:auto;touch-action:pan-y;
   background:linear-gradient(180deg,rgba(20,33,61,.55) 0%,rgba(20,33,61,.82) 38%,rgba(12,18,36,.94) 100%);
-  padding-block:16px 30px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));box-sizing:border-box}
+  padding-top:max(16px,calc(env(safe-area-inset-top,0px) + 10px));padding-bottom:max(30px,calc(env(safe-area-inset-bottom,0px) + 20px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));box-sizing:border-box}
 .screen[hidden]{display:none!important}
 .col{display:flex;flex-direction:column;align-items:center;gap:14px;max-width:470px;margin:0 auto}
 h1{margin:4px 0 0;font-size:clamp(46px,13vw,64px);line-height:.9;text-align:center;letter-spacing:1px;color:var(--gold);

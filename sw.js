@@ -1,5 +1,5 @@
 // Jobless Royale offline cache: the whole game is one HTML file, so caching it makes it work with no signal.
-const CACHE = "jobless-royale-75ee3a4f6f";
+const CACHE = "jobless-royale-ee1aaed304";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener("activate", e => {
