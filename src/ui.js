@@ -383,6 +383,7 @@ function tryDeploy(i,p){
   const id=G.hands[0][i]; if(!id) return;
   if(G.elixir[0]<CARDS[id].cost){ G.msg={s:'Not enough elixir!',t:1.1}; sfx('bad'); return; }
   const wp=screenToGround(p.x,p.y); if(!wp) return;
+  if(G.puppet){ if(CARDS[id].champ&&champOf(0)){ G.msg={s:'Your Champion is already in battle!',t:1.4}; sfx('bad'); return; } netSend({t:'play',i,id,x:wp.x,y:wp.y}); G.sel=-1; buzz(15); sfx(CARDS[id].champ?'champ':'deploy'); return; }
   const r=playCard(0,i,wp.x,wp.y);
   if(r==='champ'){ G.msg={s:'Your Champion is already in battle!',t:1.4}; sfx('bad'); return; }
   if(r){ G.sel=-1; buzz(15); if(CARDS[id].champ) sfx('champ'); }
@@ -390,9 +391,10 @@ function tryDeploy(i,p){
 hud.addEventListener('pointerdown',e=>{
   e.preventDefault(); initAudio(); if(!G||G.over||G.paused) return; const p=pt(e);
   if(hit(pauseRect,p)){ pauseGame(); return; }
-  if(emoteOpen){ const r=emoteRects.find(r=>hit(r,p)); emoteOpen=false; if(r){ G.emotes=G.emotes.filter(x=>x.team!==0); G.emotes.push({team:0,text:G.th.emotes[r.i],t:0}); sfx('emote'); if(Math.random()<0.6) setTimeout(()=>{ if(G&&!G.over) aiEmote(Math.random()<0.5?'taunt':'gloat',true); },900+Math.random()*800); return; } }
+  if(emoteOpen){ const r=emoteRects.find(r=>hit(r,p)); emoteOpen=false; if(r){ sfx('emote'); if(G.puppet){ netSend({t:'emote',i:r.i}); return; } G.emotes=G.emotes.filter(x=>x.team!==0); G.emotes.push({team:0,text:G.th.emotes[r.i],t:0}); if(G.online) return; if(Math.random()<0.6) setTimeout(()=>{ if(G&&!G.over) aiEmote(Math.random()<0.5?'taunt':'gloat',true); },900+Math.random()*800); return; } }
   if(hit(emoteRect,p)){ emoteOpen=true; sfx('pop'); return; }
   if(tapState(0)&&Math.hypot(p.x-(tapRect.x+tapRect.r),p.y-(tapRect.y+tapRect.r))<tapRect.r+4){
+    if(G.puppet){ const st=tapState(0); if(st&&!st.ready){ G.msg={s:G.elixir[0]<st.tp.cost?'Not enough elixir!':'Ability recharging…',t:1.1}; sfx('bad'); return; } netSend({t:'tap'}); buzz(25); sfx('champ'); return; }
     const r=useTap(0); const msg={elixir:'Not enough elixir!',cd:'Ability recharging…',notarget:'No target in range!',stunned:'Your Champion is stunned!'}[r];
     if(msg){ G.msg={s:msg,t:1.1}; sfx('bad'); } else if(r==='ok'){ buzz(25); sfx('champ'); } return; }
   const ci=cardRects.findIndex(r=>hit(r,p));
@@ -407,9 +409,9 @@ hud.addEventListener('pointercancel',()=>{ clearTimeout(holdTimer); infoCard=nul
 hud.addEventListener('contextmenu',e=>e.preventDefault());
 
 // ---------------------------------------------------------------- screens
-function pauseGame(){ G.paused=true; $('#pause').hidden=false; }
+function pauseGame(){ if(!G.online) G.paused=true; $('#pause').hidden=false; $('#quitBtn').textContent=G.online?'LEAVE MATCH':'QUIT BATTLE'; $('#pauseNote').hidden=!G.online; }
 $('#resumeBtn').onclick=()=>{ G.paused=false; $('#pause').hidden=true; last=performance.now(); };
-$('#quitBtn').onclick=()=>{ $('#pause').hidden=true; G=null; showMenu(); };
+$('#quitBtn').onclick=()=>{ $('#pause').hidden=true; if(G&&G.online){ netLeave(); return; } G=null; showMenu(); };
 function randomDeck(pool){
   const chars=pool.filter(k=>!isSpell(k)), spells=pool.filter(isSpell);
   for(let tries=0;tries<300;tries++){
@@ -441,11 +443,16 @@ function startBattle(){
   G.hands[0].concat(G.queues[0]).forEach(requestPortrait); G.hands[1].concat(G.queues[1]).forEach(requestPortrait);
   last=performance.now(); fpsAcc=0; fpsN=0; Music.stop(); Music.kick();
 }
-$('#playBtn').onclick=startBattle; $('#againBtn').onclick=startBattle;
+$('#playBtn').onclick=startBattle; $('#againBtn').onclick=()=>{ if(G&&G.online){ netRematch(); return; } startBattle(); };
 $('#nextBtn').onclick=()=>{ arenaIdx=(arenaIdx+1)%THEMES.length; store.set('arena',arenaIdx); arenaDeck=loadDeck(THEMES[arenaIdx]); startBattle(); };
-$('#menuBtn').onclick=()=>{ G=null; showMenu(); };
+$('#menuBtn').onclick=()=>{ if(G&&G.online){ netLeave(); return; } G=null; showMenu(); };
 function showEnd(){ Music.stop();
   const w=G.winner, th=G.th;
+  for(const id of ['againBtn','nextBtn']) $('#'+id).hidden=false; $('#menuBtn').textContent='MENU'; $('#againBtn').textContent='REMATCH';
+  if(G.online){ $('#endUnlock').hidden=true; $('#endTitle').textContent=w===0?'VICTORY!':w===1?'DEFEAT':'DRAW'; $('#endTitle').style.color=w===0?'#ffc83d':w===1?'#ff8a85':'#e8e8e8';
+    $('#cBlue').textContent='👑'.repeat(G.crowns[0])||'–'; $('#cRed').textContent='👑'.repeat(G.crowns[1])||'–'; $('#endFoe').textContent=G.foe;
+    $('#endTro').textContent='👥 Friendly match (no trophies)'; $('#endSub').textContent=w===0?`You beat ${G.foe}!`:w===1?`${G.foe} won ${G.crowns[1]}–${G.crowns[0]}.`:'Even crowns and even towers.';
+    $('#nextBtn').hidden=true; $('#menuBtn').textContent='LEAVE'; if(G.puppet){ $('#againBtn').textContent='ASK FOR REMATCH'; } $('#end').hidden=false; return; }
   const delta = w===0 ? 25+G.crowns[0]*5 : w===1 ? -15 : 0;
   const before=trophies;
   trophies=Math.max(0,trophies+delta); store.set('trophies',trophies);
@@ -583,13 +590,13 @@ function frame(now){
       if(!G.paused){ const steps=AUTOTEST?3:1;
         // drama: brief hit-stop on huge blows, slow motion when towers fall or Champions land
         let ts=1; if(G.freezeT>0){ G.freezeT-=rawDt; ts=0.06; } else if(G.slowT>0){ G.slowT-=rawDt; ts=G.slowT>0.25?0.32:0.32+(1-G.slowT/0.25)*0.68; }
-        const sdt=dt*ts; for(let i=0;i<steps;i++) update(sdt); syncUnits(sdt*steps); syncWorld(sdt*steps); updateGhost();
+        const sdt=dt*ts; if(G.puppet) netGuestTick(sdt); else for(let i=0;i<steps;i++) update(sdt); NET.rec=false; syncUnits(sdt*steps); syncWorld(sdt*steps); updateGhost();
         if(G.fovKick>0){ G.fovKick=Math.max(0,G.fovKick-rawDt*1.6); camera.fov=36-Math.sin(G.fovKick*PI)*2.6; camera.updateProjectionMatrix(); } else if(camera.fov!==36){ camera.fov=36; camera.updateProjectionMatrix(); }
         if(!AUTOTEST&&QUALITY.shadows&&!G.over){ fpsAcc+=rawDt; fpsN++; if(fpsN>=150){ if(fpsAcc/fpsN>1/30){ setQuality('smooth'); G.msg={s:'Switched to Smooth graphics for speed',t:2.5}; } fpsAcc=0; fpsN=0; } } }
       animateArena(dt,G.t);
       const sh=G.shake; const ox=sh>0?(Math.random()-0.5)*sh*0.5:0, oy=sh>0?(Math.random()-0.5)*sh*0.5:0;
       camera.position.x+=ox; camera.position.y+=oy; renderer.render(scene,camera); camera.position.x-=ox; camera.position.y-=oy;
-      hx.setTransform(DPR,0,0,DPR,0,0); hx.clearRect(0,0,W,H); drawWorldOverlay(); drawHUD();
+      hx.setTransform(DPR,0,0,DPR,0,0); hx.clearRect(0,0,W,H); drawWorldOverlay(); drawHUD(); if(G&&G.online) netAfterFrame(rawDt);
     } else if(menuPreview){
       menuPreview.t+=dt; const a=menuPreview.t*0.12; camera.position.set(9+Math.sin(a)*24,18,16+Math.cos(a)*24); camera.lookAt(9,0,16);
       menuPreview.models.forEach((m,i)=>{ m.position.y=(m.userData.baseY??(m.userData.baseY=m.position.y))+Math.abs(Math.sin(menuPreview.t*4+i))*0.25; m.rotation.y+=dt*0.8; });
@@ -600,7 +607,7 @@ function frame(now){
   requestAnimationFrame(frame);
 }
 window.addEventListener('resize',layout); window.addEventListener('orientationchange',()=>setTimeout(layout,200)); setTimeout(layout,300); setTimeout(layout,1200);
-document.addEventListener('visibilitychange',()=>{ if(document.hidden&&G&&!G.over&&!G.paused) pauseGame(); if(AC){ if(document.hidden) AC.suspend(); else AC.resume(); } });
+document.addEventListener('visibilitychange',()=>{ if(document.hidden&&G&&!G.over&&!G.paused&&!G.online) pauseGame(); if(AC){ if(document.hidden) AC.suspend(); else AC.resume(); } });
 document.querySelectorAll('[data-snd]').forEach(b=>b.onclick=()=>{ initAudio(); setSound(b.dataset.snd,!SND[b.dataset.snd]); });
 document.addEventListener('pointerdown',()=>initAudio(),{passive:true});
 syncSoundButtons();

@@ -90,6 +90,11 @@ h2{margin:6px 0 -4px;font-size:18px;letter-spacing:1px;align-self:flex-start;tex
 #endUnlock{width:100%;display:flex;flex-direction:column;align-items:center;gap:8px}
 .unlockHead{font-size:22px;color:var(--gold);text-shadow:0 2px 0 var(--ink)}
 .unlockGrid{max-width:360px}
+.netin{font-family:var(--display);font-size:20px;color:var(--ink);background:var(--cream);border:3px solid var(--ink);border-radius:12px;padding:8px 12px;width:min(100%,280px);box-sizing:border-box;text-align:center}
+.netin.code{width:150px;letter-spacing:4px;text-transform:uppercase}
+.netjoin{display:flex;gap:10px;align-items:center}
+.netstatus{min-height:3em;text-align:center;font-family:system-ui,sans-serif;font-weight:700;font-size:15px;line-height:1.4;white-space:pre-line}
+.netstatus .bigcode{display:block;font-family:var(--display);font-size:46px;font-weight:400;letter-spacing:6px;color:var(--gold);text-shadow:0 3px 0 var(--ink)}
 @media (max-width:380px){ .mode{font-size:10px} .mode span{font-size:18px} }
 @media (prefers-reduced-motion:reduce){.btn{transition:none}}
 </style>
@@ -106,6 +111,7 @@ h2{margin:6px 0 -4px;font-size:18px;letter-spacing:1px;align-self:flex-start;tex
       <div class="tag small" id="nextUnlock"></div>
       <button class="btn" id="playBtn">BATTLE</button>
       <button class="btn blue" id="randBtn">🎲 RANDOM DECK</button>
+      <button class="btn blue" id="friendBtn">👥 PLAY A FRIEND</button>
       <div class="tag small" id="deckPeek"></div>
       <h2>GAME MODE</h2>
       <div id="modes" class="modes"></div>
@@ -143,6 +149,7 @@ h2{margin:6px 0 -4px;font-size:18px;letter-spacing:1px;align-self:flex-start;tex
         <li>Side tower = 1 crown. King tower = 3 crowns and instant victory.</li>
         <li>Knock out a side tower to deploy deeper into that lane.</li>
         <li>Power orbs appear on the bridges. The first troop to touch one gets Fire, Turbo, Giant, Shield or Heal.</li>
+        <li>👥 <b>Play a Friend</b>: one of you creates a room and reads out the 4-letter code, the other joins with it. Friendly matches don't change your trophies.</li>
         <li>Tap 💬 to send an emote. Win to earn trophies and stars for each arena.</li>
       </ul>
     </div>
@@ -174,6 +181,22 @@ h2{margin:6px 0 -4px;font-size:18px;letter-spacing:1px;align-self:flex-start;tex
     </div>
   </div>
 
+  <div id="online" class="screen" hidden>
+    <div class="col">
+      <h1>PLAY A<br>FRIEND</h1>
+      <div class="tag small">Battle a friend on another phone. You both need internet and this same app.</div>
+      <input id="netName" class="netin" maxlength="14" placeholder="Your name" autocomplete="off">
+      <div class="tag" id="netArena"></div>
+      <button class="btn" id="netCreate">CREATE ROOM</button>
+      <div class="tag small">or join your friend’s room:</div>
+      <div class="netjoin"><input id="netCode" class="netin code" maxlength="6" placeholder="CODE" autocomplete="off" autocapitalize="characters"><button class="btn blue sm" id="netJoin">JOIN</button></div>
+      <div id="netStatus" class="netstatus" aria-live="polite"></div>
+      <button class="btn blue sm" id="netShare" hidden>📤 SEND CODE</button>
+      <button class="btn" id="netStart" hidden>START BATTLE</button>
+      <button class="btn blue" id="netBack">BACK</button>
+    </div>
+  </div>
+
   <div id="pause" class="screen" hidden>
     <div class="col">
       <h1>PAUSED</h1>
@@ -182,11 +205,13 @@ h2{margin:6px 0 -4px;font-size:18px;letter-spacing:1px;align-self:flex-start;tex
         <button data-snd="sfx" aria-pressed="true">🔊 Sound</button>
         <button data-snd="music" aria-pressed="true">🎵 Music</button>
       </div>
+      <div class="tag small" id="pauseNote" hidden>Online match: the battle keeps going while this menu is open.</div>
       <button class="btn blue" id="quitBtn">QUIT BATTLE</button>
     </div>
   </div>
 </div>
 <!--THREE-->
+<!--PEER-->
 <script>
 'use strict';
 /*GAME*/

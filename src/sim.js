@@ -327,7 +327,7 @@ function castSpell(id,team,x,y){
     case 'cloud': spawnCloud(team,x,y,s.r,s.dps,s.t,s.slow,s.towerPct,s.col||'#7dff4a'); fxRing(x,y,0.3,s.r,0.5,s.col||'#7dff4a'); sfx('freeze'); break;
     case 'slow': spawnCloud(team,x,y,s.r,0,s.t,s.f,0,'#9a9ca2'); areaDamage(team,x,y,s.r,s.dmg,{towers:false}); fxRing(x,y,0.3,s.r,0.5,'#cfd2d8'); fxPuff(x,0.3,y,16,'#b9bbc0',0.7,1); sfx('pop'); break;
     case 'barrage': G.barrage.push({team,s,x,y,left:s.n,t:0}); if(s.launch) kingLaunch(team,x,y); break;
-    case 'roll': { const dir=team===0?-1:1; const obj=buildFall(s.model,tc); dynRoot.add(obj); G.rolls.push({team,x,y,dir,traveled:0,len:s.len,r:s.r,dmg:s.dmg,push:s.push,hit:new Set(),obj,spin:0}); sfx('kick'); break; }
+    case 'roll': { const dir=team===0?-1:1; const obj=buildFall(s.model,tc); dynRoot.add(obj); G.rolls.push({key:s.model,team,x,y,dir,traveled:0,len:s.len,r:s.r,dmg:s.dmg,push:s.push,hit:new Set(),obj,spin:0}); sfx('kick'); break; }
     case 'float': fxRing(x,y,0.3,s.r,0.6,'#c8b6ff'); sfx('freeze');
       for(const u of G.units) if(u.team!==team&&!u.dead&&!u.building&&!u.flying&&Math.hypot(u.x-x,u.y-y)<=s.r+u.radius*0.5){ u.floatT=s.t; u.floatDmg=s.dmg; u.floatTeam=team; }
       for(let i=0;i<30;i++){ const a=Math.random()*TAU, rr=Math.random()*s.r; PSA.spawn(x+Math.cos(a)*rr,0.2,y+Math.sin(a)*rr,0,rnd(0.5,1.5),0,rnd(1,2),0.2,'#c8b6ff',1,0); }
@@ -390,7 +390,7 @@ function update(dt){
   G.rate=rate;
   for(let t=0;t<2;t++){ const mul=t===1?G.diff.elixirMul:(AUTOTEST?G.diff.elixirMul:1); G.elixir[t]=Math.min(10,G.elixir[t]+dt/2.8*rate*mul); }
   if(G.mode.chaos){ G.chaosT-=dt; if(G.chaosT<=0){ G.chaosT=20; const ev=CHAOS_EVENTS[Math.random()*CHAOS_EVENTS.length|0]; ev.run(); showBanner(ev.icon+' '+ev.name,'Chaos event!',1.6,'#ffd34d'); feedLog(`${ev.icon} Chaos: ${ev.name}`,-1); sfx('power'); } }
-  G.aiTimer-=dt; if(G.aiTimer<=0){ G.aiTimer=G.diff.think*rnd(0.7,1.3); aiAct(1); }
+  G.aiTimer-=dt; if(G.aiTimer<=0&&!G.online){ G.aiTimer=G.diff.think*rnd(0.7,1.3); aiAct(1); }
   if(AUTOTEST){ G.ai0Timer-=dt; if(G.ai0Timer<=0){ G.ai0Timer=G.diff.think*rnd(0.7,1.3); aiAct(0); } }
   G.aiEmoteCd-=dt;
   for(let t=0;t<2;t++) if(G.tapCd[t]>0) G.tapCd[t]-=dt;
@@ -774,7 +774,7 @@ function endGame(w){
 function callout(at,text,col,big){ G.callouts.push({x:at.x,y:at.y,h:(at.h!=null?at.h:((at.flying?1.6:0)+2.0*(at.scale||1))),text,col,t:0,max:big?1.5:1.15,big:!!big,follow:at.uid?at:null}); }
 function showBanner(s,sub,dur,col='#fff'){ if(G) G.banner={s,sub,t:0,dur,col}; }
 function aiEmote(kind,force){
-  if(!G||(!force&&G.aiEmoteCd>0)) return; G.aiEmoteCd=8;
+  if(!G||G.online||(!force&&G.aiEmoteCd>0)) return; G.aiEmoteCd=8;
   const em=G.th.emotes; const txt = kind==='gloat'?em[2]: kind==='sad'?em[3]: Math.random()<0.5?em[0]:em[1];
   G.emotes.push({team:1,text:txt,t:0});
 }
@@ -908,7 +908,7 @@ function useTap(team){
     case 'spawn': { const n=tp.n; for(let i=0;i<n;i++){ const a=i/n*TAU; let sx=clamp(u.x+Math.cos(a)*1.1,0.6,17.4), sy=u.y+Math.sin(a)*1.1; if(sy>14.8&&sy<17.2&&!CARDS[tp.card].flying) sy=sy<16?14.6:17.4; spawnUnit(tp.card,team,sx,sy,0.35+i*0.05); }
       fxRing(u.x,u.y,0.3,2,0.5,TEAMC[team].light); fxBurst(u.x,1,u.y,24,'#ffd34d',4,0.25,0.6,4,true); sfx('deploy'); feedLog(`${tp.icon} ${who} ${u.c.short||u.c.name}: ${tp.name}`,team); break; }
     case 'kick': { const dir=team===0?-1:1; const obj=buildFall('kickball',TEAMC[team]); dynRoot.add(obj);
-      G.rolls.push({team,x:clamp(u.x,1,17),y:u.y+dir*0.8,dir,traveled:0,len:tp.len,r:tp.r,dmg:tp.dmg,push:tp.push,hit:new Set(),obj,spin:0,burn:tp.burn,towerPct:tp.towerPct,fire:true});
+      G.rolls.push({key:'kickball',team,x:clamp(u.x,1,17),y:u.y+dir*0.8,dir,traveled:0,len:tp.len,r:tp.r,dmg:tp.dmg,push:tp.push,hit:new Set(),obj,spin:0,burn:tp.burn,towerPct:tp.towerPct,fire:true});
       u.kickT=0.4; sfx('kick'); G.shake=Math.max(G.shake,0.15); fxBurst(u.x,0.5,u.y+dir*0.8,20,'#ff7a1a',4,0.25,0.5,4,true); break; }
     case 'bounce': { const t=strongestEnemy(u,tp.range); if(!t){ ok=false; break; }
       const tx=clamp(t.x+rnd(-1.5,1.5),1.2,16.8), ty=t.team===1?rnd(1.2,3.4):rnd(28.6,30.8);

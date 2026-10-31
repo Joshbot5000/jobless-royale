@@ -14,12 +14,13 @@ src = root / 'src'
 arenas = sorted(p.name for p in src.glob('data_arena_*.js'))
 news = sorted(p.name for p in src.glob('data_news_*.js'))
 files = ['data.js', 'data_more1.js', 'data_more2.js', 'data_more3.js'] + arenas + news + [
-    'models_core.js', 'models_chars.js', 'models_more.js', 'models_world.js', 'engine.js', 'sim.js', 'ui.js']
+    'models_core.js', 'models_chars.js', 'models_more.js', 'models_world.js', 'engine.js', 'sim.js', 'ui.js', 'net.js']
 game = '\n'.join((src / f).read_text() for f in files)
 shell = (src / 'shell.html').read_text()
 three = (root / 'vendor' / 'three.min.js').read_text()
 
-page = shell.replace('/*GAME*/', game)
+peer = (root / 'vendor' / 'peerjs.min.js').read_text()
+page = shell.replace('/*GAME*/', game).replace('<!--PEER-->', '<script>' + peer + '</script>')
 cdn = page.replace('<!--THREE-->', '<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>')
 offline = page.replace('<!--THREE-->', '<script>' + three + '</script>')
 dist = root / 'dist'; dist.mkdir(exist_ok=True)

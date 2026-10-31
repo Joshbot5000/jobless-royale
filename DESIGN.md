@@ -48,6 +48,9 @@ Spells that are thrown or fired (pans, tomatoes, fireballs, footballs, basketbal
 ### Mechanics added with the expansion
 Bouncing shots, red cards that send a troop back to its own king tower, swimmers that ignore the bridges, fear (runs home), shrink, stone and ice freezes, invisible-box traps, lassos and yanks, rewind, cloning, splitting slimes, mystery-box random spawns, elixir refunds on death, regeneration, lifesteal, taunting troops, cement trails, a child star that grows up mid-battle, and flaming kick-rolls.
 
+## Play a Friend (online)
+One phone creates a room (a code like `BAKO42`), the other joins with it. The room creator's phone runs the real battle as team 0; the friend's phone runs no simulation at all. It sends its card plays, Champion taps and emotes to the host, and draws a mirrored copy of the host's battle from snapshots sent about 12 times a second, so both players see their own towers at the bottom. One-shot effects (bursts, rings, callouts, sounds, feed lines, damage numbers) are recorded on the host while the simulation runs and replayed on the friend's phone. The host's arena and mode are used; each player brings their own deck. Friendly matches never change trophies. Transport is PeerJS (vendored in `vendor/peerjs.min.js`): a WebRTC data channel with PeerJS's public broker for the room code and its TURN relays for strict mobile networks. `src/net.js` holds all of it; `?net=local` swaps in a BroadcastChannel transport so two browser tabs can play each other in tests.
+
 ## Game modes
 Classic, Rush Hour (triple elixir), Sudden Death (first tower wins), Chaos (power orbs everywhere and a random arena event every 20s), and Mix & Match (a 6 + 2 deck from every card you have unlocked, one Champion maximum).
 
