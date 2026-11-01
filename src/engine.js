@@ -11,6 +11,8 @@ const _v3 = new THREE.Vector3();
 
 function init3D(canvas){
   renderer = new THREE.WebGLRenderer({canvas, antialias:true, powerPreference:'high-performance'});
+  // if the phone reclaims the GPU (low memory, app switching), reload cleanly instead of freezing on a black screen; progress is saved
+  canvas.addEventListener('webglcontextlost',e=>{ e.preventDefault(); },false); canvas.addEventListener('webglcontextrestored',()=>location.reload(),false);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
   renderer.shadowMap.enabled = QUALITY.shadows; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   scene = new THREE.Scene();

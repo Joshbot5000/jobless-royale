@@ -49,6 +49,7 @@ function mkTower(team,kind,x,y){
     cd:0.5,active:!k,target:null,dead:false,frozen:0,hackT:0,atk:0,mass:1e6,yaw:team?0:PI};
 }
 function newGame(themeIdx,diffIdx,modeKey='classic',deck0=null,deck1=null){
+  pruneModels();
   const th=THEMES[themeIdx];
   dynRoot.children.slice().forEach(o=>dynRoot.remove(o)); clearFx3();
   buildArena(th);

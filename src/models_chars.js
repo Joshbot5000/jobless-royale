@@ -516,7 +516,12 @@ function buildModel(m,team){
 }
 
 // ---------------------------------------------------------------- model cache: build once per (model, team), merge rigid parts, add outlines, clone per spawn
-const MODEL_CACHE={}, TPL_RIG=new Map();
+const MODEL_CACHE={}, TPL_RIG=new Map(); let MODEL_GEN=0;
+const SHARED_GEO=()=>new Set(Object.values(GEO));
+// free a model's own GPU buffers (merged parts, custom shapes); shared primitives stay
+function freeModel(root,shared=SHARED_GEO()){ const seen=new Set(); root.traverse(o=>{ if(o.isMesh&&!shared.has(o.geometry)&&!seen.has(o.geometry)){ seen.add(o.geometry); o.geometry.dispose(); } }); }
+// called at the start of each match: drop models not used this match or last, so memory stays flat however many arenas you visit
+function pruneModels(){ MODEL_GEN++; const sh=SHARED_GEO(); for(const k in MODEL_CACHE){ const t=MODEL_CACHE[k]; if((t.userData.used||0)<MODEL_GEN-2){ freeModel(t,sh); TPL_RIG.delete(t); delete MODEL_CACHE[k]; } } }
 function mergeRigid(node){
   for(const ch of node.children.slice()) if(ch.children.length) mergeRigid(ch);
   const groups=new Map();
@@ -537,7 +542,10 @@ function getModel(m,team,opts={}){
   const ink = opts.ink || TEAMC[team].ink;
   const key=JSON.stringify(m)+'|'+team+'|'+(QUALITY.outlines?ink:'')+'|'+QUALITY.shadows;
   let tpl=MODEL_CACHE[key];
-  if(!tpl){ tpl=buildModel(m,team); tagRig(tpl); TPL_RIG.set(tpl,tpl.userData.rig); tpl.userData={}; mergeRigid(tpl); if(QUALITY.outlines) addOutlines(tpl,ink); setShadows(tpl,QUALITY.shadows,false); MODEL_CACHE[key]=tpl; }
+  if(!tpl){ tpl=buildModel(m,team); tagRig(tpl); TPL_RIG.set(tpl,tpl.userData.rig); tpl.userData={}; mergeRigid(tpl); if(QUALITY.outlines) addOutlines(tpl,ink); setShadows(tpl,QUALITY.shadows,false);
+    if(opts.temp){ const R=TPL_RIG.get(tpl); TPL_RIG.delete(tpl); tpl.userData={rig:R,temp:true}; return tpl; }   // one-off (card portraits): not cached, caller frees it
+    MODEL_CACHE[key]=tpl; }
+  tpl.userData.used=MODEL_GEN;
   const c=tpl.clone(), R0=TPL_RIG.get(tpl), R={};
   for(const k in R0){ const v=R0[k]; if(!(v&&v.isObject3D)&&!(Array.isArray(v)&&v[0]&&v[0].isObject3D)) R[k]=v; }
   c.traverse(o=>{ if(o.name&&o.name.startsWith('rig:')){ const [,k,i]=o.name.split(':'); if(i!==undefined) (R[k]=R[k]||[])[+i]=o; else R[k]=o; } });

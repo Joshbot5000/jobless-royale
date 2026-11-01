@@ -124,7 +124,7 @@ function layout(){
 }
 
 // ---------------------------------------------------------------- portraits (second WebGL context, studio lighting)
-let pr=null; const portraitCache={}, portraitQueue=[];
+let pr=null; const portraitCache={}, portraitQueue=[], portraitOrder=[], PORTRAIT_MAX=180;
 function portraitRenderer(){
   if(pr) return pr;
   const c=document.createElement('canvas'); c.width=256; c.height=320;
@@ -138,7 +138,7 @@ function requestPortrait(key){ if(CARDS[key]&&CARDS[key].type==='spell') return;
 function makePortrait(key){
   const P0=portraitRenderer();
   const m = key.startsWith('king:') ? THEMES[+key.slice(5)].king : CARDS[key].model;
-  const model=getModel(m,0);
+  const model=getModel(m,0,{temp:true});
   const R=model.userData.rig; if(R&&R.type==='h'){ R.armR.rotation.x=-0.9; R.armL.rotation.x=0.15; } if(R&&R.blackCap) R.blackCap.visible=false;
   model.rotation.y=m.k==='v'?0.7:0.5; P0.sc.add(model);
   model.updateMatrixWorld(true);
@@ -147,11 +147,18 @@ function makePortrait(key){
   const d=h/(2*Math.tan(15*PI/180))*1.05;
   P0.cam.position.set(ctr.x, ctr.y+h*0.14, ctr.z+d); P0.cam.lookAt(ctr.x,ctr.y,ctr.z);
   P0.r.render(P0.sc,P0.cam);
-  const out=document.createElement('canvas'); out.width=256; out.height=320; out.getContext('2d').drawImage(P0.c,0,0);
-  P0.sc.remove(model);
-  portraitCache[key]=out; return out;
+  const out=document.createElement('canvas'); out.width=192; out.height=240; out.getContext('2d').drawImage(P0.c,0,0,192,240);
+  P0.sc.remove(model); if(model.userData.temp) freeModel(model);
+  portraitCache[key]=out; portraitOrder.push(key);
+  // keep at most PORTRAIT_MAX pictures (phones kill apps that hoard canvas memory); never drop ones in use
+  if(portraitOrder.length>PORTRAIT_MAX){ const keep=new Set(curDeck()); if(G) G.hands.concat(G.queues).forEach(a=>a.forEach(k=>keep.add(k)));
+    const i=portraitOrder.findIndex(k=>!keep.has(k)&&!k.startsWith('king:')); if(i>=0){ delete portraitCache[portraitOrder[i]]; portraitOrder.splice(i,1); } }
+  return out;
 }
-function pumpPortraits(n=2){ let did=false; while(n-->0&&portraitQueue.length){ makePortrait(portraitQueue.shift()); did=true; } if(did) faceCache={}; return did; }
+// returns the keys drawn this frame; menus repaint just those tiles instead of rebuilding every card
+function pumpPortraits(n=2){ const done=[]; while(n-->0&&portraitQueue.length){ const k=portraitQueue.shift(); makePortrait(k); done.push(k); } if(done.length) faceCache={}; return done; }
+function repaintTiles(keys){ let kings=false; for(const k of keys){ if(k.startsWith('king:')){ kings=true; continue; }
+    document.querySelectorAll('.cardtile[data-card="'+k+'"] canvas').forEach(c=>drawTileFace(c,k)); } return kings; }
 let faceCache={};
 function cardFace(id,w,h){
   const key=id+'_'+Math.round(w)+'_'+Math.round(h);
@@ -502,13 +509,15 @@ function cardInfo(id){ const d=CARDS[id]; const kind=d.type==='spell'?'Spell':d.
 function cardTile(id,onTap,extra=''){
   const b=document.createElement('button'); b.type='button'; b.className='cardtile '+extra; b.id='card-'+id+(extra?'-'+extra.split(' ')[0]:''); const lk=!unlocked(id);
   b.setAttribute('aria-label',CARDS[id].name+', '+CARDS[id].cost+' elixir'+(lk?', locked until '+CARDS[id].unlock+' trophies':''));
-  const c=document.createElement('canvas'); const w=88,h=110; c.width=w*2; c.height=h*2; const x=c.getContext('2d'); drawCardFace(x,id,w,h,2);
-  if(lk){ x.save(); x.scale(2,2); x.fillStyle='rgba(12,16,34,.72)'; rrp(x,0,0,w,h,w*0.1); x.fill(); x.font=`${w*0.34}px ${FONT}`; x.textAlign='center'; x.textBaseline='middle'; x.fillText('🔒',w/2,h*0.36);
-    x.font=`${w*0.17}px ${FONT}`; x.lineWidth=3; x.strokeStyle='#14161c'; x.strokeText('🏆'+CARDS[id].unlock,w/2,h*0.62); x.fillStyle='#ffd34d'; x.fillText('🏆'+CARDS[id].unlock,w/2,h*0.62); x.restore(); }
+  b.dataset.card=id; const c=document.createElement('canvas'); drawTileFace(c,id);
   b.appendChild(c);
   if(swapPick===id) b.classList.add('pick');
   b.onclick=()=>{ cardInfo(id); if(onTap) onTap(id); };
   return b;
+}
+function drawTileFace(c,id){ const w=88,h=110, lk=!unlocked(id); c.width=w*2; c.height=h*2; const x=c.getContext('2d'); drawCardFace(x,id,w,h,2);
+  if(lk){ x.save(); x.scale(2,2); x.fillStyle='rgba(12,16,34,.72)'; rrp(x,0,0,w,h,w*0.1); x.fill(); x.font=`${w*0.34}px ${FONT}`; x.textAlign='center'; x.textBaseline='middle'; x.fillText('🔒',w/2,h*0.36);
+    x.font=`${w*0.17}px ${FONT}`; x.lineWidth=3; x.strokeStyle='#14161c'; x.strokeText('🏆'+CARDS[id].unlock,w/2,h*0.62); x.fillStyle='#ffd34d'; x.fillText('🏆'+CARDS[id].unlock,w/2,h*0.62); x.restore(); }
 }
 function emptySlot(label){ const e=document.createElement('div'); e.className='cardtile empty'; e.innerHTML=`<span>${label}</span>`; return e; }
 // One tap: a fresh legal deck (6 characters incl. a Champion + 2 spells) from every unlocked card in this arena, or the whole game in Mix & Match.
@@ -576,7 +585,7 @@ function renderMenu(){
   document.querySelectorAll('#qualSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.q===(QUALITY.shadows?'high':'smooth'))));
 }
 document.querySelectorAll('#diffSeg button').forEach(b=>b.onclick=()=>{ diffIdx=+b.dataset.d; store.set('diff',diffIdx); renderMenu(); });
-function setQuality(q){ store.set('quality',q); QUALITY.outlines=QUALITY.shadows=q==='high'; applyQuality(); for(const k in portraitCache) delete portraitCache[k]; faceCache={}; layout(); }
+function setQuality(q){ store.set('quality',q); QUALITY.outlines=QUALITY.shadows=q==='high'; applyQuality(); for(const k in portraitCache) delete portraitCache[k]; portraitOrder.length=0; faceCache={}; layout(); }
 document.querySelectorAll('#qualSeg button').forEach(b=>b.onclick=()=>{ setQuality(b.dataset.q); renderMenu(); startPreview(); });
 
 // ---------------------------------------------------------------- loop
@@ -584,7 +593,7 @@ let last=performance.now(), menuDirty=0, fpsAcc=0, fpsN=0;
 function frame(now){
   let rawDt=(now-last)/1000, dt=Math.min(0.05,rawDt); last=now;
   try{
-    if(pumpPortraits(G?2:3) && !G && !$('#menu').hidden){ menuDirty=0.25; }
+    { const done=pumpPortraits(G?2:3); if(done.length&&!G&&repaintTiles(done)&&!$('#menu').hidden) menuDirty=0.25; }
     if(menuDirty>0){ menuDirty-=dt; if(menuDirty<=0) renderMenu(); }
     if(G){
       if(!G.paused){ const steps=AUTOTEST?3:1;
