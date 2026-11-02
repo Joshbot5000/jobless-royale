@@ -56,7 +56,7 @@ Joining has to survive real phones:
 - **The host's phone sleeping.** The friend keeps looking for as long as they stay on the screen, and connects as soon as the host's app is back. Both screens show a live count of the online servers they reach, so a dead connection is never silent.
 - **Friend drops in the lobby.** The room stays open for them to rejoin.
 - **Different versions.** `build.py` stamps a `BUILD` id into the page and writes `version.txt`. On a mismatch, whichever phone is out of date reloads itself into the same room (`?room=CODE` for the friend, `?host=CODE` re-opens the room for the host). A session flag stops reload loops, and the service worker revalidates the page so a reload really fetches the new version.
-- **Relays.** Trystero's STUN servers plus the PeerJS TURN relays, for mobile data and strict wifi.
+- **Relays.** Trystero's STUN servers plus the PeerJS TURN relays. If the friend has no direct link after 7 seconds (typical when both phones are on mobile data and the free TURN relay is down), the game falls back to relaying every message through three public MQTT brokers at once (EMQX, HiveMQ, Mosquitto, over secure websockets). It uses a tiny built-in MQTT client and drops duplicate messages. A keepalive spots a friend who has gone; gaps caused by this phone freezing are ignored. `?mqtt=ws://…` points at a local broker for tests.
 - **Inside the claude.ai page,** WebRTC is blocked, so the online screen links to the GitHub Pages app instead.
 - `?nostrrelay=ws://…&torrentrelay=ws://…` points the game at local signalling servers for testing; giving only one tests that network alone.
 
