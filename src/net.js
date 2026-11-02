@@ -46,7 +46,7 @@ const netBlocked=()=>{ try{ return window.top!==window.self; }catch(e){ return t
 const APP_URL='https://joshbot5000.github.io/jobless-royale/';
 // join room CODE on every network; onConn(conn) fires for each friend connection that opens (possibly one per network)
 function netJoinRooms(code,onConn){
-  const T=window.Trystero, test=netQ('nostrrelay')||netQ('torrentrelay'); NET.rooms=[]; NET.peers=new Map();
+  const T=window.Trystero, test=netQ('nostrrelay')||netQ('torrentrelay')||netQ('mqtt'); NET.rooms=[]; NET.peers=new Map();
   for(const kind of ['nostr','torrent']){
     if(!T||!T[kind]) continue; const urls=netQ(kind+'relay'); if(test&&!urls) continue;   // tests: only the local servers given
     try{
