@@ -130,8 +130,10 @@ async function netCheckUpdate(q){
   try{ const r=await fetch('version.txt?'+Date.now(),{cache:'no-store'}); if(!r.ok) return false; const v=(await r.text()).trim();
     if(/^[0-9a-f]{10}$/.test(v)&&v!==BUILD){ let tried=null; try{ tried=sessionStorage.getItem('jrUpd'); sessionStorage.setItem('jrUpd',v); }catch(e){} if(tried===v) return 'stuck'; // never loop
       try{ await fetch(location.pathname,{cache:'reload'}); }catch(e){}   // refresh the browser's copy so the reload really gets the new version
-      const u=new URL(location.href); u.searchParams.delete('room'); u.searchParams.delete('host'); for(const k in q||{}) u.searchParams.set(k,q[k]);
-      if($('#netStatus')) netStatus('Updating to the latest version…'); setTimeout(()=>location.replace(u.toString()),300); return true; } }catch(e){}
+      if($('#netStatus')) netStatus('Updating to the latest version…');
+      setTimeout(()=>{ const u=new URL(location.href); u.searchParams.delete('room'); u.searchParams.delete('host');
+        if(!q&&NET.code&&NET.role) q=NET.role==='host'?{host:NET.code}:{room:NET.code}; // a room was opened while we checked: carry it over
+        for(const k in q||{}) u.searchParams.set(k,q[k]); location.replace(u.toString()); },300); return true; } }catch(e){}
   return false; }
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&!G&&!NET.role) netCheckUpdate(); });
 // invite links: ...?room=CODE opens straight into the room and joins
