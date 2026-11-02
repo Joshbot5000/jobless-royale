@@ -250,7 +250,7 @@ h2{margin:6px 0 -4px;font-size:18px;letter-spacing:1px;align-self:flex-start;tex
 </script>
 <script>
 'use strict';
-const BUILD='f1f9f54520';
+const BUILD='4c1f2a9646';
 // =====================================================================
 //  DATA — arenas (themes) and cards. Colors: 'T' team, 'D' team dark, 'L' team light.
 // =====================================================================
@@ -6363,14 +6363,15 @@ $('#netShare').onclick=async()=>{ const link=netLink(), text=`Battle me in Joble
 // true if a newer version exists (the page reloads, rejoining the room automatically when a code is given)
 // Returns true if a newer version was found (the page reloads into the same room: q={room:CODE} rejoins, q={host:CODE} re-opens),
 // 'stuck' if we're out of date but a reload didn't help, false if we're already up to date.
-async function netCheckUpdate(q){
+function netCheckUpdate(q){ if(q) NET.rejoin=q; return NET.updP||(NET.updP=netCheckUpdate0().finally(()=>{ NET.updP=null; })); } // one check at a time
+async function netCheckUpdate0(){ let q;
   if(!/^https?:/.test(location.protocol)||netBlocked()) return false;
   try{ const r=await fetch('version.txt?'+Date.now(),{cache:'no-store'}); if(!r.ok) return false; const v=(await r.text()).trim();
     if(/^[0-9a-f]{10}$/.test(v)&&v!==BUILD){ let tried=null; try{ tried=sessionStorage.getItem('jrUpd'); sessionStorage.setItem('jrUpd',v); }catch(e){} if(tried===v) return 'stuck'; // never loop
       try{ await fetch(location.pathname,{cache:'reload'}); }catch(e){}   // refresh the browser's copy so the reload really gets the new version
       if($('#netStatus')) netStatus('Updating to the latest version…');
       setTimeout(()=>{ const u=new URL(location.href); u.searchParams.delete('room'); u.searchParams.delete('host');
-        if(!q&&NET.code&&NET.role) q=NET.role==='host'?{host:NET.code}:{room:NET.code}; // a room was opened while we checked: carry it over
+        q=NET.rejoin||(NET.code&&NET.role?(NET.role==='host'?{host:NET.code}:{room:NET.code}):null); // a room was opened while we checked: carry it over
         for(const k in q||{}) u.searchParams.set(k,q[k]); location.replace(u.toString()); },300); return true; } }catch(e){}
   return false; }
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&!G&&!NET.role) netCheckUpdate(); });
