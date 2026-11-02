@@ -28,7 +28,7 @@ function netSetupConn(c){
   c.on('data',d=>{ try{ netOnMessage(d); }catch(e){ console.error(e); } });
   // host still in the lobby: keep the room open for them to come back instead of closing it
   const lost=why=>{ if(NET.conn!==c) return; if(NET.role==='host'&&!(G&&G.online)&&!NET_LOCAL){ NET.conn=null; NET.ready=false; $('#netStart').hidden=true; netShowCode(); netStatus($('#netStatus').innerHTML.replace('Waiting for them…',NET.friend+' disconnected. Waiting for them to rejoin…')); netWatch(); return; }
-    if(NET.role==='guest'&&!(G&&G.online)&&!NET_LOCAL&&NET.rooms&&NET.rooms.length){ NET.conn=null; NET.ready=false; netStatus('Lost the room. Reconnecting…'); netWatch(); return; }  // guest in the lobby: rooms are still joined, the host will reappear
+    if(NET.role==='guest'&&!(G&&G.online)&&!NET_LOCAL&&((NET.rooms&&NET.rooms.length)||NET.mq)){ NET.conn=null; NET.ready=false; netStatus('Lost the room. Reconnecting…'); netWatch(); return; }  // guest in the lobby: rooms are still joined, the host will reappear
     netLost(why); };
   c.on('close',()=>lost('Your friend left.'));
   c.on('error',()=>lost('Connection lost.'));
@@ -68,13 +68,64 @@ function netPeerConn(entry,id){ const h={};
   return c; }
 function netLeaveRooms(){ for(const r of NET.rooms||[]){ try{ r.room.leave(); }catch(e){} } NET.rooms=[]; if(NET.peers) NET.peers.clear(); }
 // how many signalling servers this phone currently reaches (shown while waiting, so a dead connection is obvious)
-function netServers(){ const T=window.Trystero; let n=0; if(!T) return 0;
-  for(const k of ['nostr','torrent']){ try{ const s=T[k].getRelaySockets?T[k].getRelaySockets():{}; for(const u in s) if(s[u]&&s[u].readyState===1) n++; }catch(e){} } return n; }
+function netServers(){ const T=window.Trystero; let n=0; if(!T) return netRelayUp();
+  for(const k of ['nostr','torrent']){ try{ const s=T[k].getRelaySockets?T[k].getRelaySockets():{}; for(const u in s) if(s[u]&&s[u].readyState===1) n++; }catch(e){} } return n+netRelayUp(); }
+// ---------------------------------------------------------------- relay fallback (MQTT)
+// When the phones can't open a direct link (typical when BOTH are on mobile data and the free TURN relay is down),
+// the game messages go through public MQTT message brokers instead: ordinary secure websockets that work on any
+// network. Three brokers at once; every message goes to all of them and duplicates are dropped.
+const NET_MQTT=['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt','wss://test.mosquitto.org:8081/mqtt'];
+function mqttClient(url,topic,onMsg){ // minimal MQTT 3.1.1 over websocket: connect, subscribe, QoS-0 publish, keepalive
+  const enc=new TextEncoder(), dec=new TextDecoder(), cl={url,up:false,alive:true,ws:null};
+  const vlen=n=>{ const o=[]; do{ let d=n%128; n=Math.floor(n/128); if(n>0) d|=128; o.push(d); }while(n>0); return o; };
+  const s16=s=>{ const b=enc.encode(s), o=new Uint8Array(b.length+2); o[0]=b.length>>8; o[1]=b.length&255; o.set(b,2); return o; };
+  const cat=(...a)=>{ const n=a.reduce((t,x)=>t+x.length,0), o=new Uint8Array(n); let i=0; for(const x of a){ o.set(x,i); i+=x.length; } return o; };
+  const pkt=(h,body)=>cat(Uint8Array.of(h,...vlen(body.length)),body);
+  const send=b=>{ try{ if(cl.ws&&cl.ws.readyState===1) cl.ws.send(b); }catch(e){} };
+  let buf=new Uint8Array(0), ping=null, retry=1000;
+  cl.publish=(t,payload)=>{ if(cl.up) send(pkt(0x30,cat(s16(t),enc.encode(payload)))); };
+  cl.close=()=>{ cl.alive=false; cl.up=false; clearInterval(ping); try{ cl.ws&&cl.ws.close(); }catch(e){} };
+  const open=()=>{ if(!cl.alive) return; let ws; try{ ws=new WebSocket(url,['mqtt']); }catch(e){ return later(); } cl.ws=ws; ws.binaryType='arraybuffer'; buf=new Uint8Array(0);
+    ws.onopen=()=>{ send(pkt(0x10,cat(Uint8Array.of(0,4,77,81,84,84,4,2,0,30),s16('jr'+Math.random().toString(36).slice(2,12))))); clearInterval(ping); ping=setInterval(()=>send(Uint8Array.of(0xC0,0)),20000); };
+    ws.onmessage=e=>{ buf=cat(buf,new Uint8Array(e.data));
+      for(;;){ if(buf.length<2) break; let m=1,n=0,i=1,b; do{ if(i>=buf.length) return; b=buf[i++]; n+=(b&127)*m; m*=128; }while(b&128); if(buf.length<i+n) break;
+        const h=buf[0], body=buf.subarray(i,i+n); buf=buf.slice(i+n); const type=h>>4;
+        if(type===2&&body[1]===0){ cl.up=true; retry=1000; send(pkt(0x82,cat(Uint8Array.of(0,1),s16(topic),Uint8Array.of(0)))); }
+        else if(type===3){ const tl=(body[0]<<8)|body[1], q=(h>>1)&3, off=2+tl+(q?2:0); try{ onMsg(dec.decode(body.subarray(off))); }catch(e){ console.error(e); } } } };
+    ws.onclose=ws.onerror=()=>{ if(cl.ws!==ws) return; cl.ws=null; cl.up=false; clearInterval(ping); later(); }; };
+  const later=()=>{ if(!cl.alive) return; setTimeout(open,retry); retry=Math.min(retry*2,15000); };
+  open(); return cl; }
+// side 'h' (host) listens on .../h and talks on .../g; the guest the other way round
+function netRelayStart(code,side,onConn){
+  const test=netQ('nostrrelay')||netQ('torrentrelay')||netQ('mqtt'), urls=netQ('mqtt')?netQ('mqtt').split(','):test?[]:NET_MQTT;
+  const base='jroyale2/'+code+'/', mine=base+side, theirs=base+(side==='h'?'g':'h');
+  const R=NET.mq={clients:[],conns:new Map(),seen:new Set(),order:[],seq:0,theirs};
+  const onMsg=raw=>{ if(NET.mq!==R) return; let m; try{ m=JSON.parse(raw); }catch(e){ return; } if(!m||!m.f||m.f===NET_SID||(m.to&&m.to!==NET_SID)) return;
+    const key=m.f+':'+m.n; if(R.seen.has(key)) return; R.seen.add(key); R.order.push(key); if(R.order.length>800) R.seen.delete(R.order.shift());
+    if(side==='g'&&NET.friendSid&&m.f!==NET.friendSid) return;
+    const k=side==='g'?'host':m.f; let c=R.conns.get(k);            // a guest only ever talks to the one host
+    if(!c){ if(side==='g') return; c=netRelayConn(m.f); R.conns.set(k,c); onConn(c); }   // host: a new friend; attach handlers before the first message
+    c.rx(m); };
+  for(const u of urls) R.clients.push(mqttClient(u,mine,onMsg));
+  return R; }
+function netRelayConn(peer){ const R=NET.mq, h={}, key=peer||'host'; let lastRx=Date.now(), lastS=-1;
+  const c={open:true,kind:'relay',peerId:peer,on(ev,f){ (h[ev]=h[ev]||[]).push(f); return c; },
+    send(d){ if(!c.open||NET.mq!==R) return; const raw=JSON.stringify(peer?{f:NET_SID,to:peer,n:++R.seq,d}:{f:NET_SID,n:++R.seq,d}); for(const cl of R.clients) cl.publish(R.theirs,raw); },
+    close(){ if(!c.open) return; c.send({t:'_bye'}); c.open=false; clearInterval(c.hb); R.conns.delete(key); },
+    fire(ev,x){ (h[ev]||[]).forEach(f=>{ try{ f(x); }catch(e){ console.error(e); } }); },
+    rx(m){ lastRx=Date.now(); c.got=true; const d=m.d; if(!d||!c.open) return; if(d.t==='_p') return;
+      if(d.t==='_bye'){ c.open=false; clearInterval(c.hb); R.conns.delete(key); c.fire('close'); return; }
+      if(d.t==='s'){ if(m.n<lastS) return; lastS=m.n; } c.fire('data',d); } };
+  c.hb=setInterval(()=>{ if(!c.open) return clearInterval(c.hb); c.send({t:'_p'}); if(c.got&&Date.now()-lastRx>15000){ c.open=false; clearInterval(c.hb); R.conns.delete(key); c.fire('close'); } },2000);
+  return c; }
+function netRelayStop(){ const R=NET.mq; if(!R) return; for(const c of R.conns.values()) try{ c.close(); }catch(e){} setTimeout(()=>R.clients.forEach(cl=>cl.close()),150); NET.mq=null; }
+const netRelayUp=()=>NET.mq?NET.mq.clients.filter(c=>c.up).length:0;
 function netHost(fixed){ // fixed: re-open the same room code (after an automatic update)
   netReset(); NET.role='host'; NET.code=fixed||netMakeCode(); store.set('netName',myName());
   $('#netCreate').disabled=true; $('#netJoin').disabled=true;
   if(NET_LOCAL){ const bc=new BroadcastChannel('jroyale-'+NET.code+'-lobby'); bc.onmessage=()=>{ bc.close(); netSetupConn(localConn(NET.code,'host')); }; NET.lobbyBC=bc; netShowCode(); return; }
-  if(!window.Trystero||!netJoinRooms(NET.code,netHostConn)){ netStatus('⚠️ Online play could not load. Check your internet and reopen the app.'); netResetButtons(); return; }
+  const n=window.Trystero?netJoinRooms(NET.code,netHostConn):0; netRelayStart(NET.code,'h',netHostConn);
+  if(!n&&!NET.mq.clients.length){ netStatus('⚠️ Online play could not load. Check your internet and reopen the app.'); netResetButtons(); return; }
   netShowCode(); netWatch();
 }
 // a friend's phone connected over one of the networks: introduce ourselves; adopt it when it says hello
@@ -91,7 +142,7 @@ function netShowCode(){ NET.shown=true; netStatus(`Your room code<span class="bi
 function netWatch(){ clearInterval(NET.watchT); NET.t0=Date.now();
   NET.watchT=setInterval(()=>{ if(!NET.role||NET.ready||(G&&G.online)){ clearInterval(NET.watchT); return; }
     const n=netServers(), s=Math.round((Date.now()-NET.t0)/1000);
-    if(NET.role==='guest'&&!NET.conn){ netStatus(`Looking for room <b>${NET.code}</b>… ${s}s<br>`+(n?`Connected to ${n} online server${n>1?'s':''}. ${s>15?'Make sure your friend still has the room screen open (if they left the app, ask them to open it again).':''}`:(s>8?'⚠️ Can\'t reach any online servers yet. Check your internet (try switching between wifi and mobile data).':'Reaching online servers…'))); }
+    if(NET.role==='guest'&&(!NET.conn||NET.conn.kind==='relay')){ netStatus(`Looking for room <b>${NET.code}</b>… ${s}s<br>`+(n?`Connected to ${n} online server${n>1?'s':''}. ${s>15?'Make sure your friend still has the room screen open (if they left the app, ask them to open it again).':''}`:(s>8?'⚠️ Can\'t reach any online servers yet. Check your internet (try switching between wifi and mobile data).':'Reaching online servers…'))); }
     else { const el=$('#netDiag'); if(el) el.textContent=n?`🟢 Room is live on ${n} online server${n>1?'s':''}`:(s>8?'🔴 Can\'t reach online servers. Check your internet.':'⏳ Opening room…'); } },1000); }
 function netJoin(){
   const code=$('#netCode').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,''); if(code.length<4){ netStatus('Type the code your friend sees on their screen.'); return; }
@@ -99,16 +150,21 @@ function netJoin(){
   $('#netCreate').disabled=true; $('#netJoin').disabled=true; netStatus('Looking for room <b>'+code+'</b>…');
   const hello=()=>netSend({t:'hello',name:myName(),ver:NET_VER,build:BUILD,sid:NET_SID});
   if(NET_LOCAL){ const c=localConn(code,'guest'); netSetupConn(c); const bc=new BroadcastChannel('jroyale-'+code+'-lobby'); bc.postMessage(1); bc.close(); setTimeout(hello,120); return; }
-  if(!window.Trystero){ netStatus('⚠️ Online play could not load. Check your internet and reopen the app.'); netResetButtons(); return; }
   // adopt the first connection that says it's the host; ignore the same host arriving over a second network
   netJoinRooms(code,c=>c.on('data',d=>{ if(!d||d.t!=='iam'||!d.host||NET.role!=='guest') return; if(NET.conn&&NET.conn.open!==false) return;
     NET.friendSid=d.sid; netSetupConn(c); netStatus('Connected! Joining…'); hello(); }));
+  // no direct link after 7s? go through the relay brokers instead (and keep saying hello until the host answers)
+  netRelayStart(code,'g',()=>{}); const t0=Date.now();
+  NET.relayT=setInterval(()=>{ if(NET.role!=='guest'||NET.ready||!NET.mq){ clearInterval(NET.relayT); return; }
+    if(NET.conn&&NET.conn.kind==='relay'&&NET.conn.open){ hello(); return; }
+    if(!NET.conn&&Date.now()-t0>7000&&netRelayUp()){ const c=netRelayConn(null); NET.mq.conns.set('host',c); netSetupConn(c); hello(); } },2500);
+  if(!NET.rooms.length&&!NET.mq.clients.length){ netStatus('⚠️ Online play could not load. Check your internet and reopen the app.'); netResetButtons(); return; }
   netWatch(); $('#netJoin').disabled=true;
 }
 function netErr(e){ return e.type==='network'||e.type==='server-error'?'Could not reach the online service. Check your internet and try again.':e.type==='browser-incompatible'?'This browser does not support online play.':'Online error ('+(e.type||'unknown')+'). Try again.'; }
 function myName(){ const v=($('#netName').value||'').trim().slice(0,14); return v||'Player'; }
 function netResetButtons(){ $('#netCreate').disabled=false; $('#netJoin').disabled=false; $('#netStart').hidden=true; $('#netShare').hidden=true; }
-function netReset(){ clearInterval(NET.watchT); try{ if(NET.conn) NET.conn.close(); }catch(e){} netLeaveRooms(); try{ if(NET.lobbyBC) NET.lobbyBC.close(); }catch(e){}
+function netReset(){ clearInterval(NET.watchT); clearInterval(NET.relayT); try{ if(NET.conn) NET.conn.close(); }catch(e){} netLeaveRooms(); netRelayStop(); try{ if(NET.lobbyBC) NET.lobbyBC.close(); }catch(e){}
   Object.assign(NET,{pending:null,shown:false,role:null,peer:null,conn:null,code:null,rec:false,ev:[],ready:false,friendDeck:null,guestWantsRematch:false,last:null,towerMap:null,lobbyBC:null}); NET.objs.clear(); NET.units.clear(); NET.projs.clear(); NET.orbs.clear(); NET.clouds=[]; }
 function netLost(why){
   if(!NET.role) return; const inMatch=!!(G&&G.online); netReset();
