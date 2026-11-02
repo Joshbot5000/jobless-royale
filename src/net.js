@@ -5,10 +5,10 @@
 //  copy of the host's battle from snapshots (~12 per second), so the guest also sees its own
 //  towers at the bottom. One-shot effects (bursts, rings, callouts, sounds, feed lines) are
 //  recorded on the host and replayed on the guest.
-//  Transport: PeerJS (WebRTC data channel, public broker + TURN relays), or BroadcastChannel
+//  Transport: Trystero (WebRTC data channel; signalling over public Nostr relays + WebTorrent trackers), or BroadcastChannel
 //  between two tabs when the page is opened with ?net=local (used by the automated tests).
 // =====================================================================
-const NET={role:null,peer:null,conn:null,code:null,rec:false,ev:[],nid:0,sendT:0,friend:'Friend',friendDeck:null,ready:false,
+const NET={rooms:[],peers:new Map(),role:null,peer:null,conn:null,code:null,rec:false,ev:[],nid:0,sendT:0,friend:'Friend',friendDeck:null,ready:false,
   guestWantsRematch:false,last:null,towerMap:null,objs:new Map(),units:new Map(),projs:new Map(),orbs:new Map(),clouds:[],snapT:0,lastSnapAt:0,elixRate:1};
 const NET_VER=Object.keys(CARDS).length+'/'+THEMES.length;
 const NET_LOCAL=/[?&]net=local/.test(location.search);
@@ -27,77 +27,88 @@ function netSetupConn(c){
   NET.conn=c;
   c.on('data',d=>{ try{ netOnMessage(d); }catch(e){ console.error(e); } });
   // host still in the lobby: keep the room open for them to come back instead of closing it
-  const lost=why=>{ if(NET.conn!==c) return; if(NET.role==='host'&&!(G&&G.online)&&!NET_LOCAL){ NET.conn=null; NET.ready=false; $('#netStart').hidden=true; netShowCode(); netStatus($('#netStatus').innerHTML.replace('Waiting for them…',NET.friend+' disconnected. Waiting for them to rejoin…')); return; } netLost(why); };
+  const lost=why=>{ if(NET.conn!==c) return; if(NET.role==='host'&&!(G&&G.online)&&!NET_LOCAL){ NET.conn=null; NET.ready=false; $('#netStart').hidden=true; netShowCode(); netStatus($('#netStatus').innerHTML.replace('Waiting for them…',NET.friend+' disconnected. Waiting for them to rejoin…')); netWatch(); return; }
+    if(NET.role==='guest'&&!(G&&G.online)&&!NET_LOCAL&&NET.rooms&&NET.rooms.length){ NET.conn=null; NET.ready=false; netStatus('Lost the room. Reconnecting…'); netWatch(); return; }  // guest in the lobby: rooms are still joined, the host will reappear
+    netLost(why); };
   c.on('close',()=>lost('Your friend left.'));
   c.on('error',()=>lost('Connection lost.'));
 }
 function netSend(m){ if(NET.conn&&NET.conn.open!==false){ try{ NET.conn.send(m); }catch(e){} } }
-// Free public STUN + several TURN relays (UDP, TCP and TLS on 443) so phones on mobile data / strict wifi can still connect
-const NET_ICE={iceServers:[
-  {urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']},
-  {urls:['turn:eu-0.turn.peerjs.com:3478','turn:us-0.turn.peerjs.com:3478'],username:'peerjs',credential:'peerjsp'},
-  {urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp','turns:openrelay.metered.ca:443'],username:'openrelayproject',credential:'openrelayproject'}]};
-function peerOpts(){ const o={debug:0,config:NET_ICE}, h=new URLSearchParams(location.search).get('peerhost'); // ?peerhost=host:port -> private broker (tests)
-  if(h){ const [host,port]=h.split(':'); Object.assign(o,{host,port:+port||9000,path:'/',secure:false}); } return o; }
+// Finding each other: both phones join the same room on TWO independent families of free public signalling servers at
+// once (Nostr relays and WebTorrent trackers, via Trystero). Each family is several servers, so one server or even a
+// whole family being down doesn't matter: whichever answers first connects the phones. After that the battle runs over
+// a direct WebRTC data channel and no server is involved.
+const NET_APP='jobless-royale-v2';
+const NET_TURN=[{urls:['turn:eu-0.turn.peerjs.com:3478','turn:us-0.turn.peerjs.com:3478'],username:'peerjs',credential:'peerjsp'}];
+const NET_SID=Math.random().toString(36).slice(2,10);           // this page's session id: spots the same friend arriving over two networks
+const netQ=k=>new URLSearchParams(location.search).get(k);
 const netBlocked=()=>{ try{ return window.top!==window.self; }catch(e){ return true; } }; // inside the claude.ai page, where WebRTC is blocked
 const APP_URL='https://joshbot5000.github.io/jobless-royale/';
+// join room CODE on every network; onConn(conn) fires for each friend connection that opens (possibly one per network)
+function netJoinRooms(code,onConn){
+  const T=window.Trystero, test=netQ('nostrrelay')||netQ('torrentrelay'); NET.rooms=[]; NET.peers=new Map();
+  for(const kind of ['nostr','torrent']){
+    if(!T||!T[kind]) continue; const urls=netQ(kind+'relay'); if(test&&!urls) continue;   // tests: only the local servers given
+    try{
+      const cfg={appId:NET_APP,turnConfig:NET_TURN,relayConfig:urls?{urls:urls.split(',')}:{redundancy:kind==='nostr'?10:5,warnOnRelayFailure:false}};
+      const room=T[kind].joinRoom(cfg,'room-'+code), act=room.makeAction('m'), entry={kind,room,act};
+      act.onMessage=(d,meta)=>{ const c=NET.peers.get(kind+':'+(meta&&meta.peerId)); if(c&&c.open) c._fire('data',d); };
+      room.onPeerJoin=id=>{ if(!NET.rooms.includes(entry)) return; const c=netPeerConn(entry,id); NET.peers.set(kind+':'+id,c); onConn(c); };
+      room.onPeerLeave=id=>{ const k=kind+':'+id, c=NET.peers.get(k); NET.peers.delete(k); if(c&&c.open){ c.open=false; c._fire('close'); } };
+      NET.rooms.push(entry);
+    }catch(e){ console.warn('signalling '+kind+' failed',e); }
+  }
+  return NET.rooms.length;
+}
+function netPeerConn(entry,id){ const h={};
+  const c={open:true,kind:entry.kind,peerId:id,on(ev,f){ (h[ev]=h[ev]||[]).push(f); return c; },
+    send(d){ if(c.open){ try{ entry.act.send(d,{target:id}); }catch(e){} } },
+    close(){ if(!c.open) return; c.send({t:'_bye'}); c.open=false; },                // local close: tell them, don't fire our own handlers
+    _fire(ev,x){ if(ev==='data'&&x&&x.t==='_bye'){ if(c.open){ c.open=false; (h.close||[]).forEach(f=>f()); } return; } (h[ev]||[]).forEach(f=>{ try{ f(x); }catch(e){ console.error(e); } }); } };
+  return c; }
+function netLeaveRooms(){ for(const r of NET.rooms||[]){ try{ r.room.leave(); }catch(e){} } NET.rooms=[]; if(NET.peers) NET.peers.clear(); }
+// how many signalling servers this phone currently reaches (shown while waiting, so a dead connection is obvious)
+function netServers(){ const T=window.Trystero; let n=0; if(!T) return 0;
+  for(const k of ['nostr','torrent']){ try{ const s=T[k].getRelaySockets?T[k].getRelaySockets():{}; for(const u in s) if(s[u]&&s[u].readyState===1) n++; }catch(e){} } return n; }
 function netHost(fixed){ // fixed: re-open the same room code (after an automatic update)
-  netReset(); NET.role='host'; NET.code=fixed||netMakeCode(); NET.shown=!!fixed; store.set('netName',myName());
+  netReset(); NET.role='host'; NET.code=fixed||netMakeCode(); store.set('netName',myName());
   $('#netCreate').disabled=true; $('#netJoin').disabled=true;
-  netStatus('Creating room…');
   if(NET_LOCAL){ const bc=new BroadcastChannel('jroyale-'+NET.code+'-lobby'); bc.onmessage=()=>{ bc.close(); netSetupConn(localConn(NET.code,'host')); }; NET.lobbyBC=bc; netShowCode(); return; }
-  if(typeof Peer==='undefined'){ netStatus('⚠️ Online play could not load. Check your internet and reopen the app.'); netResetButtons(); return; }
-  hostPeer();
+  if(!window.Trystero||!netJoinRooms(NET.code,netHostConn)){ netStatus('⚠️ Online play could not load. Check your internet and reopen the app.'); netResetButtons(); return; }
+  netShowCode(); netWatch();
 }
-// (Re)register the room with the broker. Once shown, the code never changes: if the broker still holds our old
-// registration (the phone was asleep while you sent the code), keep retrying the same code until it frees up.
-function hostPeer(){
-  const old=NET.peer; NET.peer=null; try{ if(old) old.destroy(); }catch(e){}
-  const p=new Peer('jroyale-'+NET.code,peerOpts()); NET.peer=p;
-  p.on('open',()=>{ if(NET.peer===p&&!NET.conn) netShowCode(); });
-  p.on('connection',c=>{ if(NET.peer!==p) return;
-    if(NET.conn&&NET.conn.open!==false&&NET.ready){ c.on('open',()=>{ c.send({t:'full'}); setTimeout(()=>c.close(),300); }); return; }
-    c.on('open',()=>{ if(NET.conn&&NET.conn!==c){ const o=NET.conn; NET.conn=null; try{ o.close(); }catch(e){} } netSetupConn(c); }); });
-  p.on('error',e=>{ if(NET.peer!==p) return;
-    if(e.type==='unavailable-id'){ if(!NET.shown){ NET.code=netMakeCode(); hostPeer(); } else setTimeout(()=>{ if(NET.peer===p&&!NET.conn) hostPeer(); },3000); return; }
-    if(e.type==='peer-unavailable') return;
-    if(NET.shown||NET.conn){ setTimeout(netHostRevive,2500); return; }        // network blip: quietly retry, the room stays open
-    netStatus('⚠️ '+netErr(e)); netResetButtons(); });
-  p.on('disconnected',()=>{ if(NET.peer===p) setTimeout(netHostRevive,800); });
+// a friend's phone connected over one of the networks: introduce ourselves; adopt it when it says hello
+function netHostConn(c){
+  c.send({t:'iam',host:1,sid:NET_SID});
+  c.on('data',d=>{ if(NET.conn===c||!d||d.t!=='hello'||NET.role!=='host') return;
+    if(NET.conn&&NET.conn.open!==false){ if(d.sid===NET.friendSid) return; if(NET.ready||(G&&G.online)){ c.send({t:'full'}); return; } }  // same friend on a 2nd network: ignore
+    if(NET.conn&&NET.conn!==c){ const o=NET.conn; NET.conn=null; try{ o.close(); }catch(e){} }
+    NET.friendSid=d.sid; netSetupConn(c); netOnMessage(d); });
 }
-function netHostRevive(){ if(NET.role!=='host'||NET_LOCAL) return; const p=NET.peer;
-  if(!p||p.destroyed) hostPeer(); else if(p.disconnected){ try{ p.reconnect(); }catch(e){ hostPeer(); } } }
-// phones pause the app while you're in Messages sending the code: re-open the room the moment you come back
-document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&NET.role==='host'&&!(G&&G.online)) netHostRevive(); });
 function netLink(){ const base=/^https?:/.test(location.protocol)&&!netBlocked()?location.origin+location.pathname:APP_URL; return base+'?room='+NET.code; }
-function netShowCode(){ NET.shown=true; netStatus(`Your room code<span class="bigcode">${NET.code}</span>Tap 📤 SEND INVITE: your friend just taps the link. (Or they tap PLAY A FRIEND, type the code, then JOIN.)\nKeep this screen open. Waiting for them…`); $('#netShare').hidden=false; }
+function netShowCode(){ NET.shown=true; netStatus(`Your room code<span class="bigcode">${NET.code}</span>Tap 📤 SEND INVITE: your friend just taps the link. (Or they tap PLAY A FRIEND, type the code, then JOIN.)\nKeep this screen open. Waiting for them…<span class="netdiag" id="netDiag"></span>`); $('#netShare').hidden=false; }
+// every second while waiting: show how many servers we reach, so "nothing happening" is never silent
+function netWatch(){ clearInterval(NET.watchT); NET.t0=Date.now();
+  NET.watchT=setInterval(()=>{ if(!NET.role||NET.ready||(G&&G.online)){ clearInterval(NET.watchT); return; }
+    const n=netServers(), s=Math.round((Date.now()-NET.t0)/1000);
+    if(NET.role==='guest'&&!NET.conn){ netStatus(`Looking for room <b>${NET.code}</b>… ${s}s<br>`+(n?`Connected to ${n} online server${n>1?'s':''}. ${s>15?'Make sure your friend still has the room screen open (if they left the app, ask them to open it again).':''}`:(s>8?'⚠️ Can\'t reach any online servers yet. Check your internet (try switching between wifi and mobile data).':'Reaching online servers…'))); }
+    else { const el=$('#netDiag'); if(el) el.textContent=n?`🟢 Room is live on ${n} online server${n>1?'s':''}`:(s>8?'🔴 Can\'t reach online servers. Check your internet.':'⏳ Opening room…'); } },1000); }
 function netJoin(){
   const code=$('#netCode').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,''); if(code.length<4){ netStatus('Type the code your friend sees on their screen.'); return; }
   netReset(); NET.role='guest'; NET.code=code; store.set('netName',myName());
-  $('#netCreate').disabled=true; $('#netJoin').disabled=true; netStatus('Connecting to room '+code+'…');
-  const hello=()=>netSend({t:'hello',name:myName(),ver:NET_VER,build:BUILD});
+  $('#netCreate').disabled=true; $('#netJoin').disabled=true; netStatus('Looking for room <b>'+code+'</b>…');
+  const hello=()=>netSend({t:'hello',name:myName(),ver:NET_VER,build:BUILD,sid:NET_SID});
   if(NET_LOCAL){ const c=localConn(code,'guest'); netSetupConn(c); const bc=new BroadcastChannel('jroyale-'+code+'-lobby'); bc.postMessage(1); bc.close(); setTimeout(hello,120); return; }
-  if(typeof Peer==='undefined'){ netStatus('⚠️ Online play could not load. Check your internet and reopen the app.'); netResetButtons(); return; }
-  // keep trying for up to a minute: the host's phone may still be waking up and re-opening the room
-  const until=Date.now()+60000, p=new Peer(peerOpts()); NET.peer=p; let tries=0;
-  const give=msg=>{ if(NET.peer!==p) return; netStatus('⚠️ '+msg); netResetButtons(); NET.peer=null; NET.role=null; try{ p.destroy(); }catch(e){} };
-  const retry=()=>{ if(NET.peer!==p||NET.conn) return; if(Date.now()>until) return give(`Couldn't reach room ${code}. Check the code, and ask your friend to keep the game open on the room screen, then try again.`); clearTimeout(NET.retryT); NET.retryT=setTimeout(attempt,2500); };
-  const attempt=()=>{ if(NET.peer!==p||NET.conn||NET.pending) return; if(p.disconnected){ try{ p.reconnect(); }catch(e){} NET.retryT=setTimeout(attempt,1500); return; }
-    tries++; if(tries>1) netStatus(`Looking for room ${code}…\nMake sure your friend has the room screen open.`);
-    const c=p.connect('jroyale-'+code,{serialization:'json',reliable:true}); NET.pending=c;
-    const t=setTimeout(()=>{ if(!NET.conn&&NET.pending===c){ NET.pending=null; try{ c.close(); }catch(e){} retry(); } },14000);
-    c.on('open',()=>{ clearTimeout(t); if(NET.conn||NET.peer!==p) return; NET.pending=null; netSetupConn(c); netStatus('Connected! Joining…'); hello(); });
-    c.on('error',()=>{}); };
-  p.on('open',attempt);
-  p.on('error',e=>{ if(NET.peer!==p) return;
-    if(['peer-unavailable','network','server-error','socket-error','socket-closed','webrtc','negotiation-failed','disconnected'].includes(e.type)){ if(!NET.conn){ NET.pending=null; retry(); } return; }
-    if(!NET.conn) give(netErr(e)); });
-  p.on('disconnected',()=>{ if(NET.peer===p&&!p.destroyed&&!NET.conn) setTimeout(()=>{ try{ p.reconnect(); }catch(e){} },800); });
+  if(!window.Trystero){ netStatus('⚠️ Online play could not load. Check your internet and reopen the app.'); netResetButtons(); return; }
+  // adopt the first connection that says it's the host; ignore the same host arriving over a second network
+  netJoinRooms(code,c=>c.on('data',d=>{ if(!d||d.t!=='iam'||!d.host||NET.role!=='guest') return; if(NET.conn&&NET.conn.open!==false) return;
+    NET.friendSid=d.sid; netSetupConn(c); netStatus('Connected! Joining…'); hello(); }));
+  netWatch(); $('#netJoin').disabled=true;
 }
 function netErr(e){ return e.type==='network'||e.type==='server-error'?'Could not reach the online service. Check your internet and try again.':e.type==='browser-incompatible'?'This browser does not support online play.':'Online error ('+(e.type||'unknown')+'). Try again.'; }
 function myName(){ const v=($('#netName').value||'').trim().slice(0,14); return v||'Player'; }
 function netResetButtons(){ $('#netCreate').disabled=false; $('#netJoin').disabled=false; $('#netStart').hidden=true; $('#netShare').hidden=true; }
-function netReset(){ clearTimeout(NET.retryT); try{ if(NET.conn) NET.conn.close(); }catch(e){} try{ if(NET.peer) NET.peer.destroy(); }catch(e){} try{ if(NET.lobbyBC) NET.lobbyBC.close(); }catch(e){}
+function netReset(){ clearInterval(NET.watchT); try{ if(NET.conn) NET.conn.close(); }catch(e){} netLeaveRooms(); try{ if(NET.lobbyBC) NET.lobbyBC.close(); }catch(e){}
   Object.assign(NET,{pending:null,shown:false,role:null,peer:null,conn:null,code:null,rec:false,ev:[],ready:false,friendDeck:null,guestWantsRematch:false,last:null,towerMap:null,lobbyBC:null}); NET.objs.clear(); NET.units.clear(); NET.projs.clear(); NET.orbs.clear(); NET.clouds=[]; }
 function netLost(why){
   if(!NET.role) return; const inMatch=!!(G&&G.online); netReset();

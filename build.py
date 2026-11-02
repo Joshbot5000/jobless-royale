@@ -21,7 +21,7 @@ game = "const BUILD='" + build_id + "';\n" + game
 shell = (src / 'shell.html').read_text()
 three = (root / 'vendor' / 'three.min.js').read_text()
 
-peer = (root / 'vendor' / 'peerjs.min.js').read_text()
+peer = (root / 'vendor' / 'trystero.min.js').read_text()
 page = shell.replace('/*GAME*/', game).replace('<!--PEER-->', '<script>' + peer + '</script>')
 cdn = page.replace('<!--THREE-->', '<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>')
 offline = page.replace('<!--THREE-->', '<script>' + three + '</script>')
