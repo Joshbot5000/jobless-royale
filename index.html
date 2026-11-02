@@ -213,7 +213,7 @@ h2{margin:6px 0 -4px;font-size:18px;letter-spacing:1px;align-self:flex-start;tex
       <div class="tag small">or join your friend’s room:</div>
       <div class="netjoin"><input id="netCode" class="netin code" maxlength="6" placeholder="CODE" autocomplete="off" autocapitalize="characters"><button class="btn blue sm" id="netJoin">JOIN</button></div>
       <div id="netStatus" class="netstatus" aria-live="polite"></div>
-      <button class="btn blue sm" id="netShare" hidden>📤 SEND CODE</button>
+      <button class="btn blue sm" id="netShare" hidden>📤 SEND INVITE</button>
       <button class="btn" id="netStart" hidden>START BATTLE</button>
       <button class="btn blue" id="netBack">BACK</button>
     </div>
@@ -250,6 +250,7 @@ h2{margin:6px 0 -4px;font-size:18px;letter-spacing:1px;align-self:flex-start;tex
 </script>
 <script>
 'use strict';
+const BUILD='1be1fd46d0';
 // =====================================================================
 //  DATA — arenas (themes) and cards. Colors: 'T' team, 'D' team dark, 'L' team light.
 // =====================================================================
@@ -6263,40 +6264,79 @@ function localConn(code,role){ // BroadcastChannel pair, same API subset as a Pe
 function netSetupConn(c){
   NET.conn=c;
   c.on('data',d=>{ try{ netOnMessage(d); }catch(e){ console.error(e); } });
-  c.on('close',()=>netLost('Your friend left.'));
-  c.on('error',()=>netLost('Connection lost.'));
+  // host still in the lobby: keep the room open for them to come back instead of closing it
+  const lost=why=>{ if(NET.conn!==c) return; if(NET.role==='host'&&!(G&&G.online)&&!NET_LOCAL){ NET.conn=null; NET.ready=false; $('#netStart').hidden=true; netShowCode(); netStatus($('#netStatus').innerHTML.replace('Waiting for them…',NET.friend+' disconnected. Waiting for them to rejoin…')); return; } netLost(why); };
+  c.on('close',()=>lost('Your friend left.'));
+  c.on('error',()=>lost('Connection lost.'));
 }
 function netSend(m){ if(NET.conn&&NET.conn.open!==false){ try{ NET.conn.send(m); }catch(e){} } }
-function netHost(){
-  netReset(); NET.role='host'; NET.code=netMakeCode(); store.set('netName',myName());
+// Free public STUN + several TURN relays (UDP, TCP and TLS on 443) so phones on mobile data / strict wifi can still connect
+const NET_ICE={iceServers:[
+  {urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']},
+  {urls:['turn:eu-0.turn.peerjs.com:3478','turn:us-0.turn.peerjs.com:3478'],username:'peerjs',credential:'peerjsp'},
+  {urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp','turns:openrelay.metered.ca:443'],username:'openrelayproject',credential:'openrelayproject'}]};
+function peerOpts(){ const o={debug:0,config:NET_ICE}, h=new URLSearchParams(location.search).get('peerhost'); // ?peerhost=host:port -> private broker (tests)
+  if(h){ const [host,port]=h.split(':'); Object.assign(o,{host,port:+port||9000,path:'/',secure:false}); } return o; }
+const netBlocked=()=>{ try{ return window.top!==window.self; }catch(e){ return true; } }; // inside the claude.ai page, where WebRTC is blocked
+const APP_URL='https://joshbot5000.github.io/jobless-royale/';
+function netHost(fixed){ // fixed: re-open the same room code (after an automatic update)
+  netReset(); NET.role='host'; NET.code=fixed||netMakeCode(); NET.shown=!!fixed; store.set('netName',myName());
   $('#netCreate').disabled=true; $('#netJoin').disabled=true;
   netStatus('Creating room…');
   if(NET_LOCAL){ const bc=new BroadcastChannel('jroyale-'+NET.code+'-lobby'); bc.onmessage=()=>{ bc.close(); netSetupConn(localConn(NET.code,'host')); }; NET.lobbyBC=bc; netShowCode(); return; }
   if(typeof Peer==='undefined'){ netStatus('⚠️ Online play could not load. Check your internet and reopen the app.'); netResetButtons(); return; }
-  const p=new Peer('jroyale-'+NET.code,{debug:0}); NET.peer=p;
-  p.on('open',()=>netShowCode());
-  p.on('connection',c=>{ if(NET.conn){ c.on('open',()=>{ c.send({t:'full'}); setTimeout(()=>c.close(),300); }); return; } c.on('open',()=>netSetupConn(c)); });
-  p.on('error',e=>{ if(e.type==='unavailable-id'){ p.destroy(); netHost(); return; } if(!NET.conn) { netStatus('⚠️ '+netErr(e)); netResetButtons(); } });
-  p.on('disconnected',()=>{ try{ p.reconnect(); }catch(_){} });
+  hostPeer();
 }
-function netShowCode(){ netStatus(`Your room code<span class="bigcode">${NET.code}</span>Tell your friend to tap PLAY A FRIEND → enter this code → JOIN.\nWaiting for them…`); $('#netShare').hidden=!navigator.share; }
+// (Re)register the room with the broker. Once shown, the code never changes: if the broker still holds our old
+// registration (the phone was asleep while you sent the code), keep retrying the same code until it frees up.
+function hostPeer(){
+  const old=NET.peer; NET.peer=null; try{ if(old) old.destroy(); }catch(e){}
+  const p=new Peer('jroyale-'+NET.code,peerOpts()); NET.peer=p;
+  p.on('open',()=>{ if(NET.peer===p&&!NET.conn) netShowCode(); });
+  p.on('connection',c=>{ if(NET.peer!==p) return;
+    if(NET.conn&&NET.conn.open!==false&&NET.ready){ c.on('open',()=>{ c.send({t:'full'}); setTimeout(()=>c.close(),300); }); return; }
+    c.on('open',()=>{ if(NET.conn&&NET.conn!==c){ const o=NET.conn; NET.conn=null; try{ o.close(); }catch(e){} } netSetupConn(c); }); });
+  p.on('error',e=>{ if(NET.peer!==p) return;
+    if(e.type==='unavailable-id'){ if(!NET.shown){ NET.code=netMakeCode(); hostPeer(); } else setTimeout(()=>{ if(NET.peer===p&&!NET.conn) hostPeer(); },3000); return; }
+    if(e.type==='peer-unavailable') return;
+    if(NET.shown||NET.conn){ setTimeout(netHostRevive,2500); return; }        // network blip: quietly retry, the room stays open
+    netStatus('⚠️ '+netErr(e)); netResetButtons(); });
+  p.on('disconnected',()=>{ if(NET.peer===p) setTimeout(netHostRevive,800); });
+}
+function netHostRevive(){ if(NET.role!=='host'||NET_LOCAL) return; const p=NET.peer;
+  if(!p||p.destroyed) hostPeer(); else if(p.disconnected){ try{ p.reconnect(); }catch(e){ hostPeer(); } } }
+// phones pause the app while you're in Messages sending the code: re-open the room the moment you come back
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&NET.role==='host'&&!(G&&G.online)) netHostRevive(); });
+function netLink(){ const base=/^https?:/.test(location.protocol)&&!netBlocked()?location.origin+location.pathname:APP_URL; return base+'?room='+NET.code; }
+function netShowCode(){ NET.shown=true; netStatus(`Your room code<span class="bigcode">${NET.code}</span>Tap 📤 SEND INVITE: your friend just taps the link. (Or they tap PLAY A FRIEND, type the code, then JOIN.)\nKeep this screen open. Waiting for them…`); $('#netShare').hidden=false; }
 function netJoin(){
   const code=$('#netCode').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,''); if(code.length<4){ netStatus('Type the code your friend sees on their screen.'); return; }
   netReset(); NET.role='guest'; NET.code=code; store.set('netName',myName());
-  $('#netCreate').disabled=true; $('#netJoin').disabled=true; netStatus('Connecting to '+code+'…');
-  const hello=()=>netSend({t:'hello',name:myName(),ver:NET_VER});
+  $('#netCreate').disabled=true; $('#netJoin').disabled=true; netStatus('Connecting to room '+code+'…');
+  const hello=()=>netSend({t:'hello',name:myName(),ver:NET_VER,build:BUILD});
   if(NET_LOCAL){ const c=localConn(code,'guest'); netSetupConn(c); const bc=new BroadcastChannel('jroyale-'+code+'-lobby'); bc.postMessage(1); bc.close(); setTimeout(hello,120); return; }
   if(typeof Peer==='undefined'){ netStatus('⚠️ Online play could not load. Check your internet and reopen the app.'); netResetButtons(); return; }
-  const p=new Peer({debug:0}); NET.peer=p;
-  const timer=setTimeout(()=>{ if(!NET.ready){ netStatus('⚠️ Could not reach room '+code+'. Check the code, and that your friend still has the room open.'); netResetButtons(); } },15000);
-  p.on('open',()=>{ const c=p.connect('jroyale-'+code,{serialization:'json',reliable:true}); c.on('open',()=>{ clearTimeout(timer); netSetupConn(c); hello(); }); });
-  p.on('error',e=>{ clearTimeout(timer); netStatus('⚠️ '+(e.type==='peer-unavailable'?'No room called '+code+'. Check the code with your friend.':netErr(e))); netResetButtons(); });
+  // keep trying for up to a minute: the host's phone may still be waking up and re-opening the room
+  const until=Date.now()+60000, p=new Peer(peerOpts()); NET.peer=p; let tries=0;
+  const give=msg=>{ if(NET.peer!==p) return; netStatus('⚠️ '+msg); netResetButtons(); NET.peer=null; NET.role=null; try{ p.destroy(); }catch(e){} };
+  const retry=()=>{ if(NET.peer!==p||NET.conn) return; if(Date.now()>until) return give(`Couldn't reach room ${code}. Check the code, and ask your friend to keep the game open on the room screen, then try again.`); clearTimeout(NET.retryT); NET.retryT=setTimeout(attempt,2500); };
+  const attempt=()=>{ if(NET.peer!==p||NET.conn||NET.pending) return; if(p.disconnected){ try{ p.reconnect(); }catch(e){} NET.retryT=setTimeout(attempt,1500); return; }
+    tries++; if(tries>1) netStatus(`Looking for room ${code}…\nMake sure your friend has the room screen open.`);
+    const c=p.connect('jroyale-'+code,{serialization:'json',reliable:true}); NET.pending=c;
+    const t=setTimeout(()=>{ if(!NET.conn&&NET.pending===c){ NET.pending=null; try{ c.close(); }catch(e){} retry(); } },14000);
+    c.on('open',()=>{ clearTimeout(t); if(NET.conn||NET.peer!==p) return; NET.pending=null; netSetupConn(c); netStatus('Connected! Joining…'); hello(); });
+    c.on('error',()=>{}); };
+  p.on('open',attempt);
+  p.on('error',e=>{ if(NET.peer!==p) return;
+    if(['peer-unavailable','network','server-error','socket-error','socket-closed','webrtc','negotiation-failed','disconnected'].includes(e.type)){ if(!NET.conn){ NET.pending=null; retry(); } return; }
+    if(!NET.conn) give(netErr(e)); });
+  p.on('disconnected',()=>{ if(NET.peer===p&&!p.destroyed&&!NET.conn) setTimeout(()=>{ try{ p.reconnect(); }catch(e){} },800); });
 }
 function netErr(e){ return e.type==='network'||e.type==='server-error'?'Could not reach the online service. Check your internet and try again.':e.type==='browser-incompatible'?'This browser does not support online play.':'Online error ('+(e.type||'unknown')+'). Try again.'; }
 function myName(){ const v=($('#netName').value||'').trim().slice(0,14); return v||'Player'; }
 function netResetButtons(){ $('#netCreate').disabled=false; $('#netJoin').disabled=false; $('#netStart').hidden=true; $('#netShare').hidden=true; }
-function netReset(){ try{ if(NET.conn) NET.conn.close(); }catch(e){} try{ if(NET.peer) NET.peer.destroy(); }catch(e){} try{ if(NET.lobbyBC) NET.lobbyBC.close(); }catch(e){}
-  Object.assign(NET,{role:null,peer:null,conn:null,code:null,rec:false,ev:[],ready:false,friendDeck:null,guestWantsRematch:false,last:null,towerMap:null,lobbyBC:null}); NET.objs.clear(); NET.units.clear(); NET.projs.clear(); NET.orbs.clear(); NET.clouds=[]; }
+function netReset(){ clearTimeout(NET.retryT); try{ if(NET.conn) NET.conn.close(); }catch(e){} try{ if(NET.peer) NET.peer.destroy(); }catch(e){} try{ if(NET.lobbyBC) NET.lobbyBC.close(); }catch(e){}
+  Object.assign(NET,{pending:null,shown:false,role:null,peer:null,conn:null,code:null,rec:false,ev:[],ready:false,friendDeck:null,guestWantsRematch:false,last:null,towerMap:null,lobbyBC:null}); NET.objs.clear(); NET.units.clear(); NET.projs.clear(); NET.orbs.clear(); NET.clouds=[]; }
 function netLost(why){
   if(!NET.role) return; const inMatch=!!(G&&G.online); netReset();
   if(inMatch){ if(!G.over){ G.over=true; G.winner=-1; showBanner('DISCONNECTED',why,2.5,'#ff8080'); } setTimeout(()=>{ if(G&&G.online){ G=null; $('#end').hidden=true; $('#pause').hidden=true; openOnline(); netStatus('⚠️ '+why); } },2600); }
@@ -6308,21 +6348,42 @@ function netLeave(){ netSend({t:'bye'}); netReset(); $('#end').hidden=true; $('#
 function openOnline(){
   $('#menu').hidden=true; $('#online').hidden=false; $('#netName').value=store.get('netName','');
   const th=THEMES[arenaIdx]; $('#netArena').textContent=`If you create the room: ${th.emoji} ${th.name} · ${MODES[modeKey].icon} ${MODES[modeKey].name}`;
-  if(!NET.role){ netResetButtons(); netStatus(''); }
+  if(!NET.role){ netResetButtons(); netStatus(''); netCheckUpdate(); }
+  if(netBlocked()&&!NET_LOCAL) netStatus(`⚠️ Online play doesn't work inside this page. Open the game app instead:<br><a href="${APP_URL}" target="_blank" rel="noopener" style="color:#ffd34d">${APP_URL.replace('https://','')}</a>`);
 }
 $('#friendBtn').onclick=()=>{ initAudio(); openOnline(); };
 $('#netBack').onclick=()=>{ netReset(); $('#online').hidden=true; showMenu(); };
 $('#netCreate').onclick=()=>{ initAudio(); netHost(); };
 $('#netJoin').onclick=()=>{ initAudio(); netJoin(); };
 $('#netCode').addEventListener('keydown',e=>{ if(e.key==='Enter') netJoin(); });
-$('#netShare').onclick=()=>{ try{ navigator.share({title:'Jobless Royale',text:`Battle me in Jobless Royale! Tap PLAY A FRIEND and join room ${NET.code}`,url:location.href.split('?')[0]}); }catch(e){} };
+$('#netShare').onclick=async()=>{ const link=netLink(), text=`Battle me in Jobless Royale! Tap to join my room (code ${NET.code}):`;
+  if(navigator.share){ try{ await navigator.share({title:'Jobless Royale',text,url:link}); }catch(e){} return; }
+  try{ await navigator.clipboard.writeText(text+' '+link); netStatus(`Invite link copied! Paste it to your friend.<span class="bigcode">${NET.code}</span>Keep this screen open. Waiting for them…`); }catch(e){ prompt('Send your friend this link:',link); } };
+// ---------------------------------------------------------------- updates: both phones must run the same build
+// true if a newer version exists (the page reloads, rejoining the room automatically when a code is given)
+// Returns true if a newer version was found (the page reloads into the same room: q={room:CODE} rejoins, q={host:CODE} re-opens),
+// 'stuck' if we're out of date but a reload didn't help, false if we're already up to date.
+async function netCheckUpdate(q){
+  if(!/^https?:/.test(location.protocol)||netBlocked()) return false;
+  try{ const r=await fetch('version.txt?'+Date.now(),{cache:'no-store'}); if(!r.ok) return false; const v=(await r.text()).trim();
+    if(/^[0-9a-f]{10}$/.test(v)&&v!==BUILD){ let tried=null; try{ tried=sessionStorage.getItem('jrUpd'); sessionStorage.setItem('jrUpd',v); }catch(e){} if(tried===v) return 'stuck'; // never loop
+      try{ await fetch(location.pathname,{cache:'reload'}); }catch(e){}   // refresh the browser's copy so the reload really gets the new version
+      const u=new URL(location.href); u.searchParams.delete('room'); u.searchParams.delete('host'); for(const k in q||{}) u.searchParams.set(k,q[k]);
+      if($('#netStatus')) netStatus('Updating to the latest version…'); setTimeout(()=>location.replace(u.toString()),300); return true; } }catch(e){}
+  return false; }
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&!G&&!NET.role) netCheckUpdate(); });
+// invite links: ...?room=CODE opens straight into the room and joins
+(function(){ const q=new URLSearchParams(location.search), clean=k=>(q.get(k)||'').toUpperCase().replace(/[^A-Z0-9]/g,''), room=clean('room'), hostc=clean('host'); if(!(room||hostc)||AUTOTEST) return;
+  if(hostc){ q.delete('host'); const rest=q.toString(); history.replaceState(null,'',location.pathname+(rest?'?'+rest:'')); setTimeout(()=>{ openOnline(); netHost(hostc); },400); return; }
+  q.delete('room'); const rest=q.toString(); history.replaceState(null,'',location.pathname+(rest?'?'+rest:''));
+  setTimeout(()=>{ openOnline(); $('#netCode').value=room; netJoin(); },400); })();
 $('#netStart').onclick=()=>netStartMatch();
 
 // ---------------------------------------------------------------- messages
 function netOnMessage(m){
   if(NET.role==='host'){
     if(m.t==='hello'){ NET.friend=(m.name||'Friend').slice(0,14);
-      if(m.ver!==NET_VER){ netSend({t:'oldver'}); netStatus(`⚠️ ${NET.friend} has a different version of the game. You both need to fully close and reopen the app, then try again.`); return; }
+      if(m.build!==BUILD){ netSend({t:'oldver',build:BUILD}); netStatus(`${NET.friend} has a different version of the game. Updating…\nKeep this screen open: they'll rejoin automatically.`); netCheckUpdate({host:NET.code}); return; }
       netSend({t:'lobby',arena:THEMES[arenaIdx].id,mode:modeKey,name:myName()}); netStatus(`${NET.friend} joined! Picking their deck…`); }
     else if(m.t==='deck'){ NET.friendDeck=(m.deck||[]).filter(k=>CARDS[k]); NET.ready=true; netStatus(`✅ ${NET.friend} is ready.\n${THEMES[arenaIdx].emoji} ${THEMES[arenaIdx].name} · ${MODES[modeKey].name}`); $('#netStart').hidden=false; $('#netShare').hidden=true; }
     else if(m.t==='play'&&G&&G.online&&!G.over){ if(G.hands[1][m.i]!==m.id) return; const r=playCard(1,m.i,MX(m.x),MY(m.y)); if(r==='champ') netSend({t:'msg',s:'Your Champion is already in battle!'}); else if(!r) netSend({t:'msg',s:'Not enough elixir!'}); }
@@ -6335,7 +6396,10 @@ function netOnMessage(m){
       if(!th){ netStatus('⚠️ Your friend has a newer version of the game. Fully close and reopen the app, then try again.'); return; }
       const deck=m.mode==='mix'?mixDeck:loadDeck(th);
       netSend({t:'deck',deck}); netStatus(`✅ Joined ${NET.friend}’s room.\n${th.emoji} ${th.name} · ${MODES[m.mode].name}\nUsing your ${m.mode==='mix'?'Mix & Match':th.name} deck. Waiting for ${NET.friend} to start…`); }
-    else if(m.t==='oldver') { netStatus('⚠️ You and your friend have different versions of the game. Both fully close and reopen the app, then try again.'); netResetButtons(); }
+    else if(m.t==='oldver') { const code=NET.code; netStatus('Your friend has a different version. Updating…'); NET.role=null;
+      netCheckUpdate({room:code}).then(up=>{ if(up===true) return; netReset(); netResetButtons(); $('#netCode').value=code;
+        if(up==='stuck') netStatus('⚠️ Your game needs updating. Close the app fully (swipe it away), open it again, then tap JOIN.');
+        else { netStatus('Your friend is updating their game. Reconnecting…'); setTimeout(()=>{ if(!NET.role&&!$('#online').hidden) netJoin(); },5000); } }); }
     else if(m.t==='full') { netStatus('⚠️ That room already has two players.'); netResetButtons(); }
     else if(m.t==='start') netGuestStart(m);
     else if(m.t==='s'&&G&&G.puppet) netApplySnap(m);

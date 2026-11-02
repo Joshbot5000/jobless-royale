@@ -16,6 +16,8 @@ news = sorted(p.name for p in src.glob('data_news_*.js'))
 files = ['data.js', 'data_more1.js', 'data_more2.js', 'data_more3.js'] + arenas + news + [
     'models_core.js', 'models_chars.js', 'models_more.js', 'models_world.js', 'engine.js', 'sim.js', 'ui.js', 'net.js']
 game = '\n'.join((src / f).read_text() for f in files)
+build_id = hashlib.sha1(game.encode()).hexdigest()[:10]
+game = "const BUILD='" + build_id + "';\n" + game
 shell = (src / 'shell.html').read_text()
 three = (root / 'vendor' / 'three.min.js').read_text()
 
@@ -38,4 +40,5 @@ for f in (root / 'pwa').iterdir():
     data = f.read_bytes()
     if f.name == 'sw.js': data = data.replace(b'jobless-royale-v1', ('jobless-royale-' + version).encode())
     (root / f.name).write_bytes(data)
+(root / 'version.txt').write_text(build_id + '\n')
 print('built', len(news), 'news arenas,', len(html), 'bytes, cache', version)

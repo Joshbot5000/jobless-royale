@@ -11,7 +11,7 @@ self.addEventListener("fetch", e => {
   const put = res => { if (res && (res.ok || res.type === "opaque")) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); } return res; };
   if (new URL(req.url).origin === location.origin) {
     // network first so updates arrive, cache when offline
-    e.respondWith(fetch(req).then(put).catch(() => caches.match(req, {ignoreSearch: true}).then(m => m || caches.match("./index.html"))));
+    e.respondWith(fetch(req, {cache: "no-cache"}).then(put).catch(() => caches.match(req, {ignoreSearch: true}).then(m => m || caches.match("./index.html"))));
   } else {
     // fonts: cache first
     e.respondWith(caches.match(req).then(m => m || fetch(req).then(put)));
