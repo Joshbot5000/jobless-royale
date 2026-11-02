@@ -116,7 +116,9 @@ function netRelayConn(peer){ const R=NET.mq, h={}, key=peer||'host'; let lastRx=
     rx(m){ lastRx=Date.now(); c.got=true; const d=m.d; if(!d||!c.open) return; if(d.t==='_p') return;
       if(d.t==='_bye'){ c.open=false; clearInterval(c.hb); R.conns.delete(key); c.fire('close'); return; }
       if(d.t==='s'){ if(m.n<lastS) return; lastS=m.n; } c.fire('data',d); } };
-  c.hb=setInterval(()=>{ if(!c.open) return clearInterval(c.hb); c.send({t:'_p'}); if(c.got&&Date.now()-lastRx>15000){ c.open=false; clearInterval(c.hb); R.conns.delete(key); c.fire('close'); } },2000);
+  let tick=Date.now();
+  // if THIS phone was frozen (busy or briefly paused), messages are still queued: don't blame the friend for the gap
+  c.hb=setInterval(()=>{ if(!c.open) return clearInterval(c.hb); const now=Date.now(); if(now-tick>5000) lastRx=now; tick=now; c.send({t:'_p'}); if(c.got&&now-lastRx>20000){ c.open=false; clearInterval(c.hb); R.conns.delete(key); c.fire('close'); } },2000);
   return c; }
 function netRelayStop(){ const R=NET.mq; if(!R) return; for(const c of R.conns.values()) try{ c.close(); }catch(e){} setTimeout(()=>R.clients.forEach(cl=>cl.close()),150); NET.mq=null; }
 const netRelayUp=()=>NET.mq?NET.mq.clients.filter(c=>c.up).length:0;
