@@ -2,19 +2,27 @@
 //  MODELS (characters) — humans, animals, flyers, vehicles, buildings
 // =====================================================================
 function faceEyes(parent,x,y,z,sp,r,o={}){
-  const w=mat('#ffffff',{s:60}), iris=mat(o.iris||'#2a1a10',{s:90}), b=mat('#0c0c10',{s:120});
+  const w=mat('#fbf8f4',{s:60}), iris=mat(o.iris||'#2a1a10',{s:90}), b=mat('#0a0a0e',{s:120}), hl=w;
+  const nO=m=>{ m.userData.noOutline=true; return m; };
   for(const s of [-1,1]){
-    const e=P(parent,'sph',w,r*0.86,r*1.08,r*0.55, x+s*sp,y,z); e.userData.noOutline=true;
-    P(parent,'sph',iris,r*0.6,r*0.76,r*0.36, x+s*sp*0.97,y-r*0.06,z+r*0.3).userData.noOutline=true;
-    P(parent,'sphLo',b,r*0.34,r*0.44,r*0.3, x+s*sp*0.97,y-r*0.06,z+r*0.44).userData.noOutline=true;
-    P(parent,'sphLo',w,r*0.17,r*0.17,r*0.1, x+s*sp*0.97+r*0.17,y+r*0.22,z+r*0.62).userData.noOutline=true;
+    const ex=x+s*sp;
+    nO(P(parent,'sph',w,r*0.86,r*1.08,r*0.55, ex,y,z));
+    nO(P(parent,'sph',iris,r*0.62,r*0.78,r*0.36, ex-s*sp*0.03,y-r*0.06,z+r*0.3));          // iris ring
+    nO(P(parent,'sphLo',b,r*0.3,r*0.4,r*0.3, ex-s*sp*0.03,y-r*0.06,z+r*0.47));
+    nO(P(parent,'sphLo',hl,r*0.15,r*0.15,r*0.08, ex-s*sp*0.03+r*0.17,y+r*0.06,z+r*0.62)); // catch-lights
+    nO(P(parent,'sphLo',hl,r*0.07,r*0.07,r*0.05, ex-s*sp*0.03-r*0.16,y-r*0.26,z+r*0.62));
+    if(o.lid){ const open=o.open??0.62;
+      const lr=0.28-open*0.62, lift=(open-0.5)*0.5;
+      nO(P(parent,'lid',o.lid,r*0.86,r*1.1,r*0.56, ex,y+r*0.02,z-r*0.02, lr,0,s*(o.tilt||0)));                       // upper eyelid
+      nO(P(parent,'torHalf',b,r*0.95,r*(0.34+lift),0.35, ex,y+r*(0.06+lift*0.4),z+r*0.5, -0.25,0,s*(o.tilt||0)));     // lash line on the lid edge
+    }
   }
 }
 
 // ---------------------------------------------------------------- props (held in right hand, extend toward +Z)
 function buildProp(name,tc){
   const g=G0(); const c=x=>mat(colr(x,tc),{s:40});
-  const wood=mat('#8a5a2b',{s:20}), dark=mat('#25272c',{s:60}), steel=metal();
+  const wood=mat('#a8703a',{s:30,map:grainTex()}), dark=mat('#25272c',{s:60}), steel=mat('#dfe6ee',{s:130,m:0.75,map:brushedTex()});
   switch(name){
     case 'gavel': P(g,'caps',wood,0.06,0.22,0.06,0,0,0.2,PI/2); P(g,'cyl',mat('#6b3d1f',{s:60}),0.09,0.26,0.09,0,0,0.44,0,0,PI/2); P(g,'cyl',gold(),0.095,0.03,0.095,0.11,0,0.44,0,0,PI/2); P(g,'cyl',gold(),0.095,0.03,0.095,-0.11,0,0.44,0,0,PI/2); break;
     case 'briefcase': P(g,'rbox2',mat('#5a3418',{s:50}),0.34,0.25,0.1,0,-0.15,0.02); P(g,'torHalf',gold(),0.06,0.05,0.4,0,-0.01,0.02); P(g,'box',gold(),0.06,0.04,0.11,0,-0.08,0.02); break;
@@ -73,8 +81,8 @@ function buildProp(name,tc){
 // ---------------------------------------------------------------- humanoid
 function buildHuman(p,tc){
   const g=G0(), R={type:'h'}; g.userData.rig=R;
-  const c=x=>mat(colr(x,tc),{s:35});
-  const skinC=p.skin||'#f7c9a0', skin=mat(skinC,{s:25});
+  const FAB=fabricTex(), c=x=>mat(colr(x,tc),{s:35,bump:FAB});
+  const skinC=p.skin||'#f7c9a0', skin=mat(skinC,{s:25,skin:1}), skinD=mat(shade(skinC,0.86),{s:25,skin:1});
   const [ot,oc='#888',oa='T'] = p.outfit||['tshirt','#888','T'];
   const main=c(oc), acc=c(oa);
   const w=p.w||1, h=p.h||1;
@@ -90,9 +98,14 @@ function buildHuman(p,tc){
   R.legs=[];
   for(const s of [-1,1]){
     const L=G0(); L.position.set(s*0.11*w,0,0); hips.add(L);
-    P(L,'caps',pants,0.2*Math.max(1,w*0.85),0.21,0.2,0,-0.2,0);
-    P(L,'sph',shoe,0.105*Math.max(1,w*0.8),0.075,0.15,0,-0.385,0.045);
-    P(L,'rbox2',mat('#1d1a18',{s:20}),0.2*Math.max(1,w*0.8),0.035,0.3,0,-0.43,0.045);
+    const lw=Math.max(1,w*0.85), fw=Math.max(1,w*0.8);
+    P(L,'limb',pants,0.21*lw,0.13,0.205*lw,0,-0.1,0);                 // thigh
+    P(L,'limb',pants,0.175*lw,0.13,0.18*lw,0,-0.27,0.005);             // shin
+    if(!longWear){ P(L,'torLo',pants,0.085*lw,0.085*lw,0.25,0,-0.355,0.005,PI/2); }   // trouser hem
+    P(L,'shoeS',shoe,0.1*fw,0.07,0.155,0,-0.39,0.05);
+    P(L,'rbox2',mat('#1d1a18',{s:20}),0.19*fw,0.03,0.31,0,-0.435,0.05);   // sole
+    P(L,'rbox2',mat('#1d1a18',{s:20}),0.17*fw,0.04,0.08,0,-0.42,-0.06);   // heel
+    if(ot!=='hazmat'&&ot!=='spacesuit'&&!longWear){ const lace=mat(shade(colr(ot==='suit'?'#3a2a22':'#f2efe8',tc),1),{s:30}); for(let i=0;i<3;i++) P(L,'rbox2',lace,0.07*fw,0.012,0.016,0,-0.345-i*0.012,0.11+i*0.035,-0.5).userData.noOutline=true; }
     R.legs.push(L);
   }
   // torso
@@ -151,24 +164,26 @@ function buildHuman(p,tc){
   }
   if(!longWear && !['vest','firecoat','gi','trench','apron','chef','uniform','overalls'].includes(ot) && !OUTFIT_NO_BELT.includes(ot)){ P(torso,'torThin',acc,tw*0.95,td*0.97,0.38,0,th*0.14,0,PI/2); P(torso,'rbox2',gold(),0.055,0.045,0.025,0,th*0.14,fz+0.02); }
   // neck + head
-  P(torso,'cyl',skin,0.07,0.1,0.07,0,th*1.95,0);
+  P(torso,'limb',skin,0.15,0.075,0.14,0,th*1.97,0); P(torso,'sphLo',skinD,0.07,0.03,0.06,0,th*1.9,0.005).userData.noOutline=true;
   const head=G0(); head.position.y=th*2+0.21; torso.add(head); R.head=head;
   const hs=(p.head||1)*0.3;
-  P(head,'head',skin,hs,hs*0.95,hs*0.93);
-  P(head,'sph',skin,hs*0.72,hs*0.5,hs*0.62,0,-hs*0.42,hs*0.18);
-  for(const s of [-1,1]) P(head,'sph',skin,0.055,0.075,0.04,s*hs*0.97,0,0);
+  P(head,'face',skin,hs,hs*0.98,hs*0.95);
+  for(const s of [-1,1]){ P(head,'sph',skin,0.052,0.074,0.038,s*hs*0.97,-0.01,-0.01,0,s*0.25,0); P(head,'sphLo',skinD,0.03,0.048,0.02,s*hs*1.0,-0.01,0.008,0,s*0.25,0).userData.noOutline=true; }
   const browC = p.hair&&p.hair[0]!=='bald' ? colr(p.hair[1],tc) : '#3a2414';
-  if(p.statue) for(const s of [-1,1]) P(head,'sph',skin,0.06,0.07,0.04,s*0.1,0.03,hs*0.8); else faceEyes(head,0,0.03,hs*0.8,0.1,0.065,{iris:p.iris});
-  const angry=(p.face||[]).includes('angry');
-  for(const s of [-1,1]) P(head,'rbox2',mat(browC,{s:20}),0.1,0.026,0.03,s*0.1,0.13+(angry?-0.01:0),hs*0.86,0,0,s*(angry?0.42:-0.12)).userData.noOutline=true;
-  P(head,'sph',mat(shade(skinC,0.9),{s:25}),0.05,0.045,0.045,0,-0.04,hs*0.95);
-  const mouth=P(head,'smile',mat('#5a1f1f',{s:40}),0.055,0.045,0.05,0,-0.115,hs*0.88,0,0,PI*1.1); mouth.userData.noOutline=true;
+  const angry=(p.face||[]).includes('angry'), sleepy=(p.face||[]).includes('sleepy');
+  if(p.statue) for(const s of [-1,1]) P(head,'sph',skin,0.06,0.07,0.04,s*0.1,0.03,hs*0.8); else faceEyes(head,0,0.03,hs*0.8,0.1,0.065,{iris:p.iris,lid:skin,open:angry?0.48:sleepy?0.3:0.66,tilt:angry?-0.25:0});
+  for(const s of [-1,1]){ const bm=mat(browC,{s:20}); P(head,'capsLo',bm,0.024,0.05,0.022,s*0.07,0.125+(angry?-0.012:0),hs*0.9,0,0,PI/2+s*(angry?0.5:-0.05)).userData.noOutline=true; P(head,'capsLo',bm,0.02,0.04,0.02,s*0.125,0.13+(angry?0.012:0)-0.006,hs*0.86,0,0,PI/2+s*(angry?0.3:-0.35)).userData.noOutline=true; }
+  { P(head,'sph',mat(shade(skinC,0.93),{s:25,skin:1}),0.042,0.04,0.04,0,-0.045,hs*0.95).userData.noOutline=true; 
+  }
+  const lipC=new THREE.Color(skinC).lerp(new THREE.Color('#b8455a'),0.45).getStyle();
+  const mouth=P(head,'smile',mat('#4a1818',{s:40}),0.055,0.04,0.04,0,-0.118,hs*0.9,0,0,PI*1.1); mouth.userData.noOutline=true;
+  P(head,'sphLo',mat(lipC,{s:60,skin:1}),0.03,0.011,0.014,0,-0.166,hs*0.87).userData.noOutline=true;   // lower lip under the smile
   const blush=mat(new THREE.Color(skinC).lerp(new THREE.Color('#ff5a6a'),0.35).getStyle(),{s:20});
   for(const s of [-1,1]) P(head,'sph',blush,0.05,0.032,0.02,s*0.15,-0.06,hs*0.84).userData.noOutline=true;
   // hair
   const hat = p.hat ? p.hat[0] : null;
   const [hst,hc='#3a2414'] = p.hair || (hat?['none']:['short','#3a2414']);
-  const hm=mat(colr(hc,tc),{s:40}), hmS=mat(colr(hc,tc),{s:110});
+  const HT=hairTex(), hm=mat(colr(hc,tc),{s:45,map:HT,bump:HT,bs:0.02}), hmS=mat(colr(hc,tc),{s:110,map:HT,bump:HT,bs:0.015});
   const bangs=(m)=>{ if(hat) return; for(let i=0;i<4;i++){ const a=-0.55+i*0.37; P(head,'sph',m,hs*0.34,hs*0.24,hs*0.28,Math.sin(a)*hs*0.72,hs*0.62,Math.cos(a)*hs*0.62,0.5,0,-a*0.6); } };
   switch(hst){
     case 'short': P(head,'hemi',hm,hs*1.07,hs*0.78,hs*1.05,0,0.04,-0.02); bangs(hm); break;
@@ -237,14 +252,16 @@ function buildHuman(p,tc){
   for(const s of [-1,1]){
     const A=G0(); A.position.set(s*(tw+0.025),th*1.62,0); torso.add(A);
     const aw=Math.max(1,w*0.8);
-    P(A,'sph',sleeve,0.085*aw,0.085,0.085*aw,0,0,0);
-    P(A,'caps',sleeve,0.15*aw,0.13,0.15*aw,0,-0.12,0);
+    P(A,'sph',sleeve,0.088*aw,0.088,0.088*aw,0,0,0);
+    P(A,'limb',sleeve,0.155*aw,0.105,0.155*aw,0,-0.11,0);
     const fore = ['tank','shirtTie','gi'].includes(ot)||OUTFIT_FORE_SKIN.includes(ot) ? skin : sleeve;
-    P(A,'caps',fore,0.13*aw,0.12,0.13*aw,0,-0.26,0);
+    P(A,'limb',fore,0.13*aw,0.105,0.13*aw,0,-0.265,0);
     if(fore===sleeve&&ot!=='hazmat'&&ot!=='spacesuit') P(A,'tor',sleeve,0.065*aw,0.065*aw,0.35,0,-0.34,0,PI/2);
     const hand=G0(); hand.position.set(0,-0.38,0); A.add(hand);
     const gm=ot==='hazmat'?mat('#2a2a2a',{s:40}):ot==='spacesuit'?mat('#dddddd',{s:60}):skin;
-    P(hand,'sph',gm,0.075,0.08,0.068); P(hand,'sph',gm,0.032,0.04,0.03,-s*0.05,0.02,0.04,0,0,s*0.5);
+    P(hand,'sph',gm,0.066,0.074,0.062);                                                   // palm
+    for(let i=0;i<4;i++) P(hand,'sphLo',gm,0.026,0.024,0.024,s*0.024,-0.05+Math.abs(i-1.5)*0.006,-0.036+i*0.024).userData.noOutline=true;   // knuckles of the curled fingers
+    P(hand,'capsLo',gm,0.024,0.034,0.024,-s*0.035,0.0,0.045,0.6,0,s*0.5);               // thumb
     if(s>0){ R.armR=A; R.hand=hand; } else { R.armL=A; R.handL=hand; }
   }
   if(p.prop && p.prop!=='none'){ const pr=buildProp(p.prop,tc); R.hand.add(pr); R.prop=pr;
@@ -265,7 +282,7 @@ function buildHuman(p,tc){
 // ---------------------------------------------------------------- quadruped (dogs, bull, bear, rats, squirrel)
 function buildQuad(p,tc){
   const g=G0(), R={type:'q'}; g.userData.rig=R;
-  const c=x=>mat(colr(x,tc),{s:14});
+  const FUR=hairTex(), c=x=>mat(colr(x,tc),{s:14,bump:FUR,bs:0.03});
   const coat=c(p.coat), coat2=c(p.coat2||p.coat);
   const L=p.len||1, LL=p.legLen??0.22, ch=p.chunky?1.2:1;
   const root=G0(); g.add(root); R.root=root;
@@ -294,7 +311,7 @@ function buildQuad(p,tc){
   P(jaw,'sph',coat2,0.075,0.035,0.05+sn*0.35,0,0,sn*0.4);
   P(jaw,'sph',mat('#ff7a8a',{s:60}),0.045,0.02,0.045,0,0.005,sn*0.4+0.02).userData.noOutline=true;
   const er = p.bigEyes?0.06:0.048;
-  faceEyes(head,0,0.055,hr*0.8,0.078,er,{iris:p.iris||'#3a2210'});
+  faceEyes(head,0,0.055,hr*0.8,0.078,er,{iris:p.iris||'#3a2210',lid:coat,open:0.72});
   for(const s of [-1,1]) P(head,'sph',p.tan?coat2:mat(shade(colr(p.coat,tc),0.7),{s:14}),0.04,0.016,0.02,s*0.08,0.12,hr*0.86,0,0,s*-0.2).userData.noOutline=true;
   const ec=c(p.earColor||p.coat);
   switch(p.ears){
@@ -311,7 +328,7 @@ function buildQuad(p,tc){
   if(p.ring) P(head,'torThin',gold(),0.04,0.04,0.04,0,-0.07,hr*0.7+sn*0.95+0.05,PI/2);
   if(p.crown){ const gm=gold(); P(head,'cyl',gm,hr*0.56,0.085,hr*0.56,0,hr*0.98,-0.01); for(let i=0;i<5;i++){ const a=i/5*TAU; P(head,'cone',gm,0.03,0.1,0.03,Math.cos(a)*hr*0.49,hr*1.1,Math.sin(a)*hr*0.49-0.01); P(head,'sphLo',gm,0.016,0.016,0.016,Math.cos(a)*hr*0.49,hr*1.16,Math.sin(a)*hr*0.49-0.01);} P(head,'sph',mat('#e5443f',{s:150}),0.03,0.03,0.015,0,hr*1.0,hr*0.56); }
   // collar
-  P(front,'tor',c('T'),0.14,0.12,0.55,0,0.07,0.06,PI/2-0.5);
+  P(front,'tor',mat(tc.main,{s:50}),0.14,0.12,0.55,0,0.07,0.06,PI/2-0.5);
   P(front,'sph',gold(),0.032,0.032,0.016,0,-0.05,0.18);
   // legs
   R.legs=[];
@@ -319,8 +336,9 @@ function buildQuad(p,tc){
   for(const [grp,zs] of [[front,1],[back,-1]]) for(const s of [-1,1]){
     const lg=G0(); lg.position.set(s*0.12*ch,-0.06,zs*0.02); grp.add(lg);
     const ll=LL+0.1;
-    P(lg,'caps',coat,0.12*ch,ll*0.5,0.13*ch,0,-ll*0.48,0);
+    P(lg,'limb',coat,0.125*ch,ll*0.5,0.13*ch,0,-ll*0.48,0);
     P(lg,'sph',legm,0.065*ch,0.045,0.08*ch,0,-ll+0.01,0.025);
+    for(let t=-1;t<=1;t++) P(lg,'sphLo',legm,0.026*ch,0.026,0.03*ch,t*0.034*ch,-ll+0.0,0.085).userData.noOutline=true;   // toes
     R.legs.push(lg);
   }
   // tail
@@ -347,7 +365,9 @@ function buildFlyer(p,tc){
   const g=G0(), R={type:'f',wings:[],rotors:[]}; g.userData.rig=R;
   const root=G0(); g.add(root); R.root=root;
   const T=mat(tc.main,{s:50});
-  const wing=(s,col,len,tip)=>{ const wg=G0(); wg.position.set(s*0.18,0.1,0); root.add(wg); for(let i=0;i<3;i++){ P(wg,'sph',i===2&&tip?tip:col,0.16-i*0.02,0.035,0.14-i*0.02,s*(0.12+i*len),0,-i*0.03); } R.wings.push(wg); return wg; };
+  const wing=(s,col,len,tip)=>{ const wg=G0(); wg.position.set(s*0.18,0.1,0); root.add(wg); for(let i=0;i<3;i++){ P(wg,'sph',i===2&&tip?tip:col,0.16-i*0.02,0.035,0.14-i*0.02,s*(0.12+i*len),0,-i*0.03); }
+    for(let i=0;i<6;i++){ const fx=s*(0.1+i*len*0.42); P(wg,'capsLo',i>3&&tip?tip:col,0.05,0.07+i*0.006,0.016,fx,-0.008,-0.12-i*0.012,PI/2-0.15,0,s*(0.1+i*0.12)).userData.noOutline=true; }   // flight feathers along the trailing edge
+    R.wings.push(wg); return wg; };
   switch(p.type){
     case 'eagle': {
       const br=mat('#6b4423',{s:20}), wh=mat('#f6f2ea',{s:20}), yl=mat('#ffc21f',{s:60});
@@ -418,10 +438,12 @@ function buildFlyer(p,tc){
 function buildVehicle(p,tc){
   const g=G0(), R={type:'v'}; g.userData.rig=R;
   const root=G0(); g.add(root); R.root=root;
-  const body=mat(p.color,{s:80}), glass=mat('#25384f',{s:150,m:0.3}), tire=mat('#1e1e22',{s:10}), stripe=mat(tc.main,{s:70}), chrome=metal();
+  const body=mat(p.color,{s:130,m:0.18}), glass=mat('#22344a',{s:160,m:0.55}), tire=mat('#ffffff',{s:12,map:treadTex()}), stripe=mat(tc.main,{s:110,m:0.12}), chrome=metal('#dfe5ec');
   const light=mat('#fff6c8',{e:1}), tail=mat('#ff3030',{e:0.6});
   R.wheels=[];
-  const wheel=(x,z,r=0.23)=>{ const w=P(root,'cyl',tire,r,0.17,r,x,r,z,0,0,PI/2); P(w,'cyl',chrome,0.55,1.06,0.55); P(w,'cyl',mat('#555',{s:60}),0.25,1.1,0.25); R.wheels.push(w); };
+  const wheel=(x,z,r=0.23)=>{ const w=P(root,'cyl',tire,r,0.17,r,x,r,z,0,0,PI/2); P(w,'tor',mat('#1a1a1e',{s:10}),0.86,0.86,1.6,0,0,0,PI/2);
+    P(w,'cyl',chrome,0.58,1.06,0.58); P(w,'cyl',mat('#2a2d33',{s:60}),0.5,1.08,0.5); for(let i=0;i<5;i++){ const a=i/5*TAU; P(w,'box',chrome,0.09,1.1,0.4,Math.cos(a)*0.24,0,Math.sin(a)*0.24,0,PI/2-a,0); }
+    P(w,'cyl',chrome,0.2,1.14,0.2); R.wheels.push(w); };
   const lights=(zf,zb,y,xs)=>{ for(const s of [-1,1]){ P(root,'cyl',light,0.08,0.03,0.08,s*xs,y,zf,PI/2); P(root,'rbox2',tail,0.12,0.06,0.03,s*xs,y,zb); } };
   switch(p.type){
     case 'dozer':
@@ -492,7 +514,7 @@ function buildBuilding(p,tc){
       P(root,'rbox2',bm,1.5,0.9,0.5,0,0.45,0); P(root,'rbox2',mat('#9a9a9a',{s:20}),1.56,0.08,0.56,0,0.92,0);
       P(root,'cyl',metal('#888'),0.02,0.5,0.02,0.6,1.15,0); P(root,'rbox2',T,0.25,0.16,0.01,0.73,1.3,0);
       R.height=1.1; break; }
-    case 'desk': { const wd=mat('#6b4423',{s:40});
+    case 'desk': { const wd=mat('#8a5a33',{s:40,map:grainTex()});
       P(root,'rboxS',wd,1.4,0.12,0.8,0,0.62,0); for(const sx of [-1,1]) P(root,'rbox2',wd,0.12,0.6,0.7,sx*0.62,0.3,0);
       for(let i=-1;i<=1;i++){ const mo=G0(); mo.position.set(i*0.44,0.95,-0.12); mo.rotation.y=-i*0.35; root.add(mo); P(mo,'rbox2',mat('#1a1a1e',{s:80}),0.42,0.3,0.04); P(mo,'plane',mat('#ffffff',{map:screenTex(i===0?'down':'up'+i),basic:1}),0.38,0.26,1,0,0,0.025); P(mo,'cyl',mat('#333'),0.02,0.22,0.02,0,-0.24,0); }
       for(let i=0;i<3;i++) P(root,'rbox2',mat('#4caf3a',{s:20}),0.2,0.05,0.1,-0.4+i*0.08,0.71+i*0.05,0.25);
@@ -515,6 +537,46 @@ function buildModel(m,team){
   return buildBuilding(m,tc);
 }
 
+// ---------------------------------------------------------------- baked ambient occlusion (once per template)
+// Every part is approximated by the ellipsoid of its bounding box. Each vertex is darkened by nearby parts it faces
+// (crevices: under hat brims, round the neck, between arm and body, under the chin) and near the ground, plus a gentle
+// top-lit gradient. Stored as vertex colours; parts that share a material get an AO variant of it.
+const AO_MATS=new Map();
+function aoMat(m){ let v=AO_MATS.get(m); if(!v){ v=m.clone(); v.vertexColors=true; v.onBeforeCompile=m.onBeforeCompile; v.customProgramCacheKey=m.customProgramCacheKey; v.userData={...m.userData}; AO_MATS.set(m,v); } return v; }
+function bakeAO(root){
+  root.updateMatrixWorld(true);
+  const parts=[], inv=new THREE.Matrix4(), box=new THREE.Box3(); const all=new THREE.Box3();
+  root.traverse(o=>{ if(!o.isMesh||o.userData.isOutline) return; const m=o.material; if(!m||m.transparent||m.type!=='MeshStandardMaterial') return;
+    const g=o.geometry; if(!g.boundingBox) g.computeBoundingBox(); const bb=g.boundingBox;
+    const c=bb.getCenter(new THREE.Vector3()), semi=bb.getSize(new THREE.Vector3()).multiplyScalar(0.5); if(semi.x<1e-4||semi.y<1e-4||semi.z<1e-4) return;
+    const mw=o.matrixWorld.clone(), wc=c.clone().applyMatrix4(mw), sc=new THREE.Vector3().setFromMatrixScale(mw), wr=Math.max(semi.x*sc.x,semi.y*sc.y,semi.z*sc.z), avg=(semi.x*sc.x+semi.y*sc.y+semi.z*sc.z)/3;
+    parts.push({o,mw,mi:mw.clone().invert(),c,semi,wc,wr,avg}); box.copy(bb).applyMatrix4(mw); all.union(box); });
+  if(!parts.length) return;
+  const H=Math.max(0.3,all.max.y-all.min.y), y0=all.min.y, F=0.075*Math.min(1.6,H), gF=0.09*H;
+  const p=new THREE.Vector3(), n=new THREE.Vector3(), q=new THREE.Vector3(), d=new THREE.Vector3(), nm=new THREE.Matrix3();
+  for(const A of parts){
+    const g0=A.o.geometry, g=g0.clone(); const pos=g.attributes.position, nor=g.attributes.normal; if(!nor) continue;   // unique vertices only (indexed): far cheaper
+    nm.getNormalMatrix(A.mw);
+    let near=parts.filter(B=>B!==A&&B.wc.distanceTo(A.wc)<A.wr+B.wr+F); if(near.length>14){ near.forEach(B=>B.dd=B.wc.distanceTo(A.wc)-B.wr); near.sort((a,b)=>a.dd-b.dd); near=near.slice(0,14); }
+    const col=new Float32Array(pos.count*3);
+    for(let i=0;i<pos.count;i++){
+      p.fromBufferAttribute(pos,i).applyMatrix4(A.mw); n.fromBufferAttribute(nor,i).applyMatrix3(nm).normalize();
+      let occ=0;
+      for(const B of near){
+        const fB=Math.min(F,B.avg*0.9); if(B.wc.distanceTo(p)>B.wr+fB) continue;
+        q.copy(p).applyMatrix4(B.mi).sub(B.c); const e=Math.hypot(q.x/B.semi.x,q.y/B.semi.y,q.z/B.semi.z);
+        const dist=(e-1)*B.avg; if(dist>fB) continue;
+        d.copy(B.wc).sub(p).normalize(); const face=Math.max(0,n.dot(d)*0.85+0.15);
+        occ+=dist<=0?0.6:(1-dist/fB)*face*0.9;
+      }
+      const gy=p.y-y0; if(gy<gF) occ+=(1-gy/gF)*0.55*Math.max(0.2,-n.y*0.5+0.6);
+      let ao=1-Math.min(0.62,occ*0.62); ao*=0.9+0.12*Math.min(1,gy/H);
+      col[i*3]=col[i*3+1]=col[i*3+2]=ao;
+    }
+    g.setAttribute('color',new THREE.BufferAttribute(col,3)); A.o.geometry=g; A.o.material=aoMat(A.o.material);
+  }
+}
+
 // ---------------------------------------------------------------- model cache: build once per (model, team), merge rigid parts, add outlines, clone per spawn
 const MODEL_CACHE={}, TPL_RIG=new Map(); let MODEL_GEN=0;
 const SHARED_GEO=()=>new Set(Object.values(GEO));
@@ -528,11 +590,11 @@ function mergeRigid(node){
   for(const ch of node.children){ if(!ch.isMesh||ch.children.length||ch.name.startsWith('rig:')) continue; const k=ch.material.uuid+(ch.userData.noOutline?'n':''); if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(ch); }
   for(const list of groups.values()){
     if(list.length<2) continue;
-    const hasUV=list.every(m=>m.geometry.attributes.uv);
-    const pos=[], nor=[], uvs=[];
-    for(const m of list){ m.updateMatrix(); let gg=m.geometry.index?m.geometry.toNonIndexed():m.geometry.clone(); gg.applyMatrix4(m.matrix); pos.push(gg.attributes.position.array); nor.push(gg.attributes.normal.array); if(hasUV) uvs.push(gg.attributes.uv.array); gg.dispose(); }
+    const hasUV=list.every(m=>m.geometry.attributes.uv), hasCol=list.every(m=>m.geometry.attributes.color);
+    const pos=[], nor=[], uvs=[], cols=[];
+    for(const m of list){ m.updateMatrix(); let gg=m.geometry.index?m.geometry.toNonIndexed():m.geometry.clone(); gg.applyMatrix4(m.matrix); pos.push(gg.attributes.position.array); nor.push(gg.attributes.normal.array); if(hasUV) uvs.push(gg.attributes.uv.array); if(hasCol) cols.push(gg.attributes.color.array); gg.dispose(); }
     const cat=(arrs)=>{ const n=arrs.reduce((s,a)=>s+a.length,0), out=new Float32Array(n); let o=0; for(const a of arrs){ out.set(a,o); o+=a.length; } return out; };
-    const mg=new THREE.BufferGeometry(); mg.setAttribute('position',new THREE.BufferAttribute(cat(pos),3)); mg.setAttribute('normal',new THREE.BufferAttribute(cat(nor),3)); if(hasUV) mg.setAttribute('uv',new THREE.BufferAttribute(cat(uvs),2)); mg.computeBoundingSphere();
+    const mg=new THREE.BufferGeometry(); mg.setAttribute('position',new THREE.BufferAttribute(cat(pos),3)); mg.setAttribute('normal',new THREE.BufferAttribute(cat(nor),3)); if(hasUV) mg.setAttribute('uv',new THREE.BufferAttribute(cat(uvs),2)); if(hasCol) mg.setAttribute('color',new THREE.BufferAttribute(cat(cols),3)); mg.computeBoundingSphere();
     const mesh=new THREE.Mesh(mg,list[0].material); mesh.renderOrder=list[0].renderOrder; mesh.userData.noOutline=!!list[0].userData.noOutline; mesh.castShadow=list.some(m=>m.castShadow); mesh.receiveShadow=list.some(m=>m.receiveShadow); node.add(mesh);
     for(const m of list) node.remove(m);
   }
@@ -542,7 +604,11 @@ function getModel(m,team,opts={}){
   const ink = opts.ink || TEAMC[team].ink;
   const key=JSON.stringify(m)+'|'+team+'|'+(QUALITY.outlines?ink:'')+'|'+QUALITY.shadows;
   let tpl=MODEL_CACHE[key];
-  if(!tpl){ tpl=buildModel(m,team); tagRig(tpl); TPL_RIG.set(tpl,tpl.userData.rig); tpl.userData={}; mergeRigid(tpl); if(QUALITY.outlines) addOutlines(tpl,ink); setShadows(tpl,QUALITY.shadows,false);
+  if(!tpl){ tpl=buildModel(m,team); tagRig(tpl); TPL_RIG.set(tpl,tpl.userData.rig); tpl.userData={};
+    // nested models (riders, patients, statues) keep their own rig object full of three.js references; Object3D.clone() JSON-copies
+    // userData, which made every spawn of those cards take up to a second. Their rigs are never used on clones, so drop them.
+    tpl.traverse(o=>{ if(o!==tpl&&o.userData&&o.userData.rig) delete o.userData.rig; });
+    bakeAO(tpl); mergeRigid(tpl); if(QUALITY.outlines) addOutlines(tpl,ink); setShadows(tpl,QUALITY.shadows,false);
     if(opts.temp){ const R=TPL_RIG.get(tpl); TPL_RIG.delete(tpl); tpl.userData={rig:R,temp:true}; return tpl; }   // one-off (card portraits): not cached, caller frees it
     MODEL_CACHE[key]=tpl; }
   tpl.userData.used=MODEL_GEN;
