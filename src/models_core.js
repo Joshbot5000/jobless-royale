@@ -136,12 +136,20 @@ const SDF={
 };
 let SDF_CELL=0.024;                       // battle resolution; card portraits build with a finer cell
 const SDF_CACHE=new Map();
-function sdfGeo(key,fn,bmin,bmax){
-  const cell=SDF_CELL, ck=key+'@'+cell; let g=SDF_CACHE.get(ck); if(g) return g;
+function sdfGeo(key,fn,bmin,bmax,cellMul=1){
+  const cell=SDF_CELL*cellMul, ck=key+'@'+cell; let g=SDF_CACHE.get(ck); if(g) return g;
   const pad=cell*1.5, ox=bmin[0]-pad, oy=bmin[1]-pad, oz=bmin[2]-pad;
   const nx=Math.ceil((bmax[0]-bmin[0]+2*pad)/cell)+1, ny=Math.ceil((bmax[1]-bmin[1]+2*pad)/cell)+1, nz=Math.ceil((bmax[2]-bmin[2]+2*pad)/cell)+1;
   const V=new Float32Array(nx*ny*nz), id=(i,j,k)=>i+nx*(j+ny*k);
-  for(let k=0;k<nz;k++) for(let j=0;j<ny;j++) for(let i=0;i<nx;i++) V[id(i,j,k)]=fn(ox+i*cell,oy+j*cell,oz+k*cell);
+  // two-level sampling: exact values on a stride-2 grid, then exact values only near the surface; points well away from it
+  // are filled by interpolation (only their sign matters to the mesher). 3-5x fewer field evaluations.
+  const ex=new Uint8Array(nx*ny*nz);
+  for(let k=0;k<nz;k+=2) for(let j=0;j<ny;j+=2) for(let i=0;i<nx;i+=2){ const q=id(i,j,k); V[q]=fn(ox+i*cell,oy+j*cell,oz+k*cell); ex[q]=1; }
+  const far=cell*2.6;
+  for(let k=0;k<nz;k++) for(let j=0;j<ny;j++) for(let i=0;i<nx;i++){ const q=id(i,j,k); if(ex[q]) continue;
+    const i0=i&~1, j0=j&~1, k0=k&~1, i1=Math.min(i0+2,nx-1-((nx-1)&1)), j1=Math.min(j0+2,ny-1-((ny-1)&1)), k1=Math.min(k0+2,nz-1-((nz-1)&1));
+    let mn=1e9, mx=-1e9, sum=0, n=0; for(const kk of [k0,k1]) for(const jj of [j0,j1]) for(const ii of [i0,i1]){ const w=V[id(ii,jj,kk)]; if(w<mn) mn=w; if(w>mx) mx=w; sum+=w; n++; }
+    if(i1<=i0&&i>i0||j1<=j0&&j>j0||k1<=k0&&k>k0||!(mn>far||mx<-far)) V[q]=fn(ox+i*cell,oy+j*cell,oz+k*cell); else V[q]=sum/n; }
   const cx=nx-1, cy=ny-1, cz=nz-1, CI=new Int32Array(cx*cy*cz).fill(-1), cid=(i,j,k)=>i+cx*(j+cy*k);
   const pos=[], E=[[0,1],[2,3],[4,5],[6,7],[0,2],[1,3],[4,6],[5,7],[0,4],[1,5],[2,6],[3,7]], C=[[0,0,0],[1,0,0],[0,1,0],[1,1,0],[0,0,1],[1,0,1],[0,1,1],[1,1,1]], cv=new Float32Array(8);
   for(let k=0;k<cz;k++) for(let j=0;j<cy;j++) for(let i=0;i<cx;i++){
@@ -171,7 +179,7 @@ function sdfGeo(key,fn,bmin,bmax){
   g.setIndex(nv>65535?new THREE.Uint32BufferAttribute(idx,1):new THREE.Uint16BufferAttribute(idx,1)); g.computeBoundingSphere(); g.userData.sdf=true;
   SDF_CACHE.set(ck,g); return g; }
 // add a cached SDF mesh to a rig segment
-function S(parent,key,fn,bmin,bmax,m){ const me=new THREE.Mesh(sdfGeo(key,fn,bmin,bmax),m); parent.add(me); return me; }
+function S(parent,key,fn,bmin,bmax,m,cellMul){ const me=new THREE.Mesh(sdfGeo(key,fn,bmin,bmax,cellMul),m); parent.add(me); return me; }
 // surface z of a field along a ray from the front (used to seat eyes, brows and mouths on the sculpted face)
 function sdfFrontZ(fn,x,y,z0,z1){ let z=z0; for(let i=0;i<40&&z>z1;i++){ const d=fn(x,y,z); if(d<0.0008) return z; z-=Math.max(0.002,d*0.9); } return z; }
 

@@ -251,7 +251,7 @@ ${J}`;se.test(ee)&&(H(F),F=setTimeout(re,cs))},_e=()=>{b.iceGatheringState==="co
 </script>
 <script>
 'use strict';
-const BUILD='9cd525d165';
+const BUILD='f3ec531a3b';
 // =====================================================================
 //  DATA — arenas (themes) and cards. Colors: 'T' team, 'D' team dark, 'L' team light.
 // =====================================================================
@@ -2922,12 +2922,20 @@ const SDF={
 };
 let SDF_CELL=0.024;                       // battle resolution; card portraits build with a finer cell
 const SDF_CACHE=new Map();
-function sdfGeo(key,fn,bmin,bmax){
-  const cell=SDF_CELL, ck=key+'@'+cell; let g=SDF_CACHE.get(ck); if(g) return g;
+function sdfGeo(key,fn,bmin,bmax,cellMul=1){
+  const cell=SDF_CELL*cellMul, ck=key+'@'+cell; let g=SDF_CACHE.get(ck); if(g) return g;
   const pad=cell*1.5, ox=bmin[0]-pad, oy=bmin[1]-pad, oz=bmin[2]-pad;
   const nx=Math.ceil((bmax[0]-bmin[0]+2*pad)/cell)+1, ny=Math.ceil((bmax[1]-bmin[1]+2*pad)/cell)+1, nz=Math.ceil((bmax[2]-bmin[2]+2*pad)/cell)+1;
   const V=new Float32Array(nx*ny*nz), id=(i,j,k)=>i+nx*(j+ny*k);
-  for(let k=0;k<nz;k++) for(let j=0;j<ny;j++) for(let i=0;i<nx;i++) V[id(i,j,k)]=fn(ox+i*cell,oy+j*cell,oz+k*cell);
+  // two-level sampling: exact values on a stride-2 grid, then exact values only near the surface; points well away from it
+  // are filled by interpolation (only their sign matters to the mesher). 3-5x fewer field evaluations.
+  const ex=new Uint8Array(nx*ny*nz);
+  for(let k=0;k<nz;k+=2) for(let j=0;j<ny;j+=2) for(let i=0;i<nx;i+=2){ const q=id(i,j,k); V[q]=fn(ox+i*cell,oy+j*cell,oz+k*cell); ex[q]=1; }
+  const far=cell*2.6;
+  for(let k=0;k<nz;k++) for(let j=0;j<ny;j++) for(let i=0;i<nx;i++){ const q=id(i,j,k); if(ex[q]) continue;
+    const i0=i&~1, j0=j&~1, k0=k&~1, i1=Math.min(i0+2,nx-1-((nx-1)&1)), j1=Math.min(j0+2,ny-1-((ny-1)&1)), k1=Math.min(k0+2,nz-1-((nz-1)&1));
+    let mn=1e9, mx=-1e9, sum=0, n=0; for(const kk of [k0,k1]) for(const jj of [j0,j1]) for(const ii of [i0,i1]){ const w=V[id(ii,jj,kk)]; if(w<mn) mn=w; if(w>mx) mx=w; sum+=w; n++; }
+    if(i1<=i0&&i>i0||j1<=j0&&j>j0||k1<=k0&&k>k0||!(mn>far||mx<-far)) V[q]=fn(ox+i*cell,oy+j*cell,oz+k*cell); else V[q]=sum/n; }
   const cx=nx-1, cy=ny-1, cz=nz-1, CI=new Int32Array(cx*cy*cz).fill(-1), cid=(i,j,k)=>i+cx*(j+cy*k);
   const pos=[], E=[[0,1],[2,3],[4,5],[6,7],[0,2],[1,3],[4,6],[5,7],[0,4],[1,5],[2,6],[3,7]], C=[[0,0,0],[1,0,0],[0,1,0],[1,1,0],[0,0,1],[1,0,1],[0,1,1],[1,1,1]], cv=new Float32Array(8);
   for(let k=0;k<cz;k++) for(let j=0;j<cy;j++) for(let i=0;i<cx;i++){
@@ -2957,7 +2965,7 @@ function sdfGeo(key,fn,bmin,bmax){
   g.setIndex(nv>65535?new THREE.Uint32BufferAttribute(idx,1):new THREE.Uint16BufferAttribute(idx,1)); g.computeBoundingSphere(); g.userData.sdf=true;
   SDF_CACHE.set(ck,g); return g; }
 // add a cached SDF mesh to a rig segment
-function S(parent,key,fn,bmin,bmax,m){ const me=new THREE.Mesh(sdfGeo(key,fn,bmin,bmax),m); parent.add(me); return me; }
+function S(parent,key,fn,bmin,bmax,m,cellMul){ const me=new THREE.Mesh(sdfGeo(key,fn,bmin,bmax,cellMul),m); parent.add(me); return me; }
 // surface z of a field along a ray from the front (used to seat eyes, brows and mouths on the sculpted face)
 function sdfFrontZ(fn,x,y,z0,z1){ let z=z0; for(let i=0;i<40&&z>z1;i++){ const d=fn(x,y,z); if(d<0.0008) return z; z-=Math.max(0.002,d*0.9); } return z; }
 
@@ -3105,12 +3113,18 @@ function faceEyes(parent,x,y,z,sp,r,o={}){
   const nO=m=>{ m.userData.noOutline=true; return m; };
   for(const s of [-1,1]){
     const ex=x+s*sp;
-    nO(P(parent,'sph',w,r*0.86,r*1.08,r*0.55, ex,y,z));
+    if(o.clip){ const cf=o.clip, ef=SDF.ell(ex,y,z,r*0.86,r*1.08,r*0.55), f=(X,Y,Z)=>SDF.smax(ef(X,Y,Z),cf(X,Y,Z)-0.007,0.004);
+      nO(S(parent,'eyeW|'+o.clipKey+'|'+[ex,y,z,r].map(v=>v.toFixed(4)).join(','),f,[ex-r,y-r*1.2,z-r*0.7],[ex+r,y+r*1.2,z+r*0.8],w,0.55)); }
+    else nO(P(parent,'sph',w,r*0.86,r*1.08,r*0.55, ex,y,z));
     nO(P(parent,'sph',iris,r*0.62,r*0.78,r*0.36, ex-s*sp*0.03,y-r*0.06,z+r*0.3));          // iris ring
     nO(P(parent,'sphLo',b,r*0.3,r*0.4,r*0.3, ex-s*sp*0.03,y-r*0.06,z+r*0.47));
     nO(P(parent,'sphLo',hl,r*0.15,r*0.15,r*0.08, ex-s*sp*0.03+r*0.17,y+r*0.06,z+r*0.62)); // catch-lights
     nO(P(parent,'sphLo',hl,r*0.07,r*0.07,r*0.05, ex-s*sp*0.03-r*0.16,y-r*0.26,z+r*0.62));
-    if(o.lid){ const open=o.open??0.62;
+    if(o.lid&&o.clip){ const open=o.open??0.62, cf=o.clip, tl=o.tilt||0, y0=y+r*(open*1.35-0.5), lf=SDF.ell(ex,y,z,r*0.92,r*1.14,r*0.62);
+      const f=(X,Y,Z)=>SDF.smax(SDF.smax(lf(X,Y,Z),cf(X,Y,Z)-0.009,0.004),(y0+s*tl*(X-ex)*0.7)-Y,0.004);
+      nO(S(parent,'lid|'+o.clipKey+'|'+[ex,y,z,r,open,tl].map(v=>v.toFixed(4)).join(','),f,[ex-r*1.05,y-r*1.2,z-r*0.75],[ex+r*1.05,y+r*1.3,z+r*0.85],o.lid,0.55));
+      nO(P(parent,'torHalf',b,r*0.95,r*0.3,0.35, ex,y0-r*0.24,z+r*0.5, -0.2,0,s*tl*0.7));                                      // lash line on the lid edge
+    } else if(o.lid){ const open=o.open??0.62;
       const lr=0.28-open*0.62, lift=(open-0.5)*0.5;
       nO(P(parent,'lid',o.lid,r*0.86,r*1.1,r*0.56, ex,y+r*0.02,z-r*0.02, lr,0,s*(o.tilt||0)));                       // upper eyelid
       nO(P(parent,'torHalf',b,r*0.95,r*(0.34+lift),0.35, ex,y+r*(0.06+lift*0.4),z+r*0.5, -0.25,0,s*(o.tilt||0)));     // lash line on the lid edge
@@ -3192,7 +3206,9 @@ function buildHuman(p,tc){
   const shoe=mat(ot==='hazmat'?'#2a2a2a':ot==='spacesuit'?'#e2e2e2':'#3a2a22',{s:60});
   const sleeve = ot==='tank' ? skin : main;
   const root=G0(); g.add(root); R.root=root;
-  const LR=1.36, HK=0.72;                       // leg stretch and head scale: ~1:4.2 head-to-body, stylised-realistic
+  const LR=1.36, HK=0.72; let TORF=null, NECKF=null, LEGF=null, ARMF=null, ARMB=null, TORB=null;
+  // face variety: round, long, square or classic, from a stable hash of the look (the cast stops sharing one face)
+  const fhash=[...JSON.stringify([p.outfit,p.hat,p.hair,p.face,p.skin])].reduce((a,ch)=>(a*33+ch.charCodeAt(0))>>>0,5), FV=fhash%4;                       // leg stretch and head scale: ~1:4.2 head-to-body, stylised-realistic
   const lift=G0(); lift.position.y=0.44*(LR-1); root.add(lift);
   const hips=G0(); hips.position.y=0.44; lift.add(hips); R.hips=hips;
   // legs
@@ -3200,7 +3216,7 @@ function buildHuman(p,tc){
   for(const s of [-1,1]){
     const L=G0(); L.position.set(s*0.11*w,0,0); hips.add(L);
     const lw=Math.max(1,w*0.85), fw=Math.max(1,w*0.8);
-    { const legF=SDF.cutBelow(SDF.blend([[SDF.ell(0,-0.01,0,0.104*lw,0.07,0.1*lw),0],[SDF.rcone(0,-0.03,0.002,0,-0.2,0.014,0.1*lw,0.068*lw),0.05],[SDF.ell(0,-0.205,0.024,0.058*lw,0.048,0.05*lw),0.03],
+    { const legF=LEGF=SDF.cutBelow(SDF.blend([[SDF.ell(0,-0.01,0,0.104*lw,0.07,0.1*lw),0],[SDF.rcone(0,-0.03,0.002,0,-0.2,0.014,0.1*lw,0.068*lw),0.05],[SDF.ell(0,-0.205,0.024,0.058*lw,0.048,0.05*lw),0.03],
         [SDF.rcone(0,-0.215,0.008,0,-0.37,0,0.066*lw,0.047*lw),0.04],[SDF.ell(0,-0.262,-0.016,0.068*lw,0.062,0.066*lw),0.05]]),-0.378);
       S(L,'leg|'+lw.toFixed(3),legF,[-0.13*lw,-0.4,-0.13*lw],[0.13*lw,0.08,0.13*lw],pants); }
     if(!longWear&&!suitLegs) P(L,'rbox2',mat(shade(colr(pantsC,tc),1.18),{s:35}),0.012,0.36,0.012,0,-0.2,0.102*lw).userData.noOutline=true;   // trouser crease
@@ -3216,7 +3232,8 @@ function buildHuman(p,tc){
   const tw=0.27*w, th=0.29*h, td=0.205*Math.max(1,w*0.85);
   { const aw0=Math.max(1,w*0.8), torF=SDF.blend([[SDF.ell(0,th*0.28,-td*0.05,tw*0.9,th*0.36,td*1.0),0],[SDF.ell(0,th*0.82,0,tw*0.74,th*0.42,td*0.88),0.1],[SDF.ell(0,th*1.32,td*0.02,tw*0.96,th*0.47,td*0.98),0.11],
       [SDF.ell(0,th*1.74,-td*0.06,tw*0.72,th*0.22,td*0.72),0.08],[SDF.ell(-(tw*0.84),th*1.6,0,0.086*aw0,0.084,0.086*aw0),0.07],[SDF.ell(tw*0.84,th*1.6,0,0.086*aw0,0.084,0.086*aw0),0.07]]);
-    S(torso,'torso|'+[tw,th,td,aw0].map(v=>v.toFixed(3)).join(','),torF,[-tw-0.12*aw0,-th*0.15,-td*1.15],[tw+0.12*aw0,th*2.02,td*1.15],main); }
+    TORF=torF; TORB=[[-tw-0.12*aw0,-th*0.15,-td*1.15],[tw+0.12*aw0,th*2.02,td*1.15],[tw,th,td,aw0].map(v=>v.toFixed(3)).join(',')];
+    S(torso,'torso|'+TORB[2],torF,TORB[0],TORB[1],main); }
   const fz=td*0.94;
   const front=(m,sx,sy,x,y,z=0)=>P(torso,'rbox2',m,sx,sy,0.03,x,y,fz+z);
   const button=(y,m=gold())=>P(torso,'sphLo',m,0.022,0.022,0.012,0,y,fz+0.012);
@@ -3279,19 +3296,24 @@ function buildHuman(p,tc){
   if(!longWear && !['vest','firecoat','gi','trench','apron','chef','uniform','overalls'].includes(ot) && !OUTFIT_NO_BELT.includes(ot)){ P(torso,'torThin',mat('#3a2a20',{s:70}),tw*0.93,td*0.96,0.42,0,th*0.14,0,PI/2); P(torso,'rbox2',gold(),0.06,0.05,0.02,0,th*0.14,fz+0.02); P(torso,'rbox2',mat('#3a2a20',{s:70}),0.036,0.028,0.022,0,th*0.14,fz+0.024).userData.noOutline=true; }
   // neck + head
   const hs=(p.head||1)*0.3;
-  S(torso,'neck|'+[tw,th,td].map(v=>v.toFixed(3)).join(','),SDF.blend([[SDF.rcone(0,th*1.7,-0.012,0,th*2.06+0.02,0.004,0.068,0.056),0],[SDF.ell(0,th*1.76,-0.02,tw*0.52,0.05,td*0.52),0.06]]),[-tw*0.6,th*1.6,-td*0.7],[tw*0.6,th*2.1+0.04,td*0.7],skin);
+  NECKF=SDF.blend([[SDF.rcone(0,th*1.7,-0.012,0,th*2.06+0.02,0.004,0.068,0.056),0],[SDF.ell(0,th*1.76,-0.02,tw*0.52,0.05,td*0.52),0.06]]);
+  S(torso,'neck|'+[tw,th,td].map(v=>v.toFixed(3)).join(','),NECKF,[-tw*0.6,th*1.6,-td*0.7],[tw*0.6,th*2.1+0.04,td*0.7],skin);
   const head=G0(); head.position.y=th*2+0.035+hs*0.92*HK; head.scale.setScalar(HK); torso.add(head); R.head=head;
-  const headF=SDF.blend([[SDF.ell(0,0.012,-0.012,hs*0.98,hs*0.97,hs*0.98),0],[SDF.ell(0,-hs*0.42,hs*0.16,hs*0.66,hs*0.5,hs*0.68),0.09],[SDF.ell(0,-hs*0.72,hs*0.5,hs*0.26,hs*0.2,hs*0.25),0.07],
+  const [crY,jW,jY,chW,chY]=[[0.95,0.72,0.5,0.22,0.7],[1.03,0.62,0.56,0.24,0.78],[0.97,0.76,0.46,0.34,0.7],[0.97,0.66,0.5,0.26,0.72]][FV];
+  const headF0=SDF.blend([[SDF.ell(0,0.012,-0.012,hs*0.98,hs*crY,hs*0.98),0],[SDF.ell(0,-hs*0.42,hs*0.16,hs*jW,hs*jY,hs*0.68),0.09],[SDF.ell(0,-hs*chY,hs*0.5,hs*chW,hs*0.2,hs*0.25),0.07],
     [SDF.ell(-hs*0.46,-hs*0.27,hs*0.55,hs*0.35,hs*0.27,hs*0.34),0.06],[SDF.ell(hs*0.46,-hs*0.27,hs*0.55,hs*0.35,hs*0.27,hs*0.34),0.06],
     [SDF.rcone(0,0.022,hs*0.86,0,-0.045,hs*0.99,0.011,0.023),0.022],[SDF.ell(-0.024,-0.056,hs*0.95,0.016,0.012,0.014),0.012],[SDF.ell(0.024,-0.056,hs*0.95,0.016,0.012,0.014),0.012],
     [SDF.ell(-hs*0.95,-0.015,-0.02,0.024,0.074,0.05),0.03],[SDF.ell(hs*0.95,-0.015,-0.02,0.024,0.074,0.05),0.03]]);
-  S(head,'head|'+hs.toFixed(3),headF,[-hs*1.12,-hs*1.0,-hs*1.1],[hs*1.12,hs*1.05,hs*1.16],skin);
+  // eye sockets: the whites sit inside a soft recess, so nothing pokes through the face beside the lids
+  const ER=0.074, EX=0.105, EZ=sdfFrontZ(headF0,EX,0.03,hs*1.4,0)-ER*0.42, sock=(x,y,z)=>Math.min(SDF.ell(-EX,0.03,EZ,ER*0.8,ER*1.0,ER*0.58)(x,y,z),SDF.ell(EX,0.03,EZ,ER*0.8,ER*1.0,ER*0.58)(x,y,z));
+  const headF=headF0;
+  S(head,'head|'+hs.toFixed(3)+'|'+FV+(p.statue?'s':''),headF,[-hs*1.12,-hs*1.0,-hs*1.1],[hs*1.12,hs*1.05,hs*1.16],skin);
   for(const s of [-1,1]) P(head,'sphLo',skinD,0.01,0.045,0.03,s*(hs*0.95+0.02),-0.015,0.004,0,s*0.3,0).userData.noOutline=true;   // inner ear
   const browC = p.hair&&p.hair[0]!=='bald' ? colr(p.hair[1],tc) : '#3a2414';
   const angry=(p.face||[]).includes('angry'), sleepy=(p.face||[]).includes('sleepy');
-  if(p.statue) for(const s of [-1,1]) P(head,'sph',skin,0.06,0.07,0.04,s*0.1,0.03,hs*0.8); else faceEyes(head,0,0.03,hs*0.8,0.1,0.065,{iris:p.iris,lid:skin,open:angry?0.48:sleepy?0.3:0.66,tilt:angry?-0.25:0});
+  if(p.statue) for(const s of [-1,1]) P(head,'sph',skin,0.06,0.07,0.04,s*0.1,0.03,hs*0.8); else faceEyes(head,0,0.03,EZ,EX,ER,{clip:headF0,clipKey:'h'+hs.toFixed(3)+FV,iris:p.iris,lid:skin,open:angry?0.48:sleepy?0.3:0.7,tilt:angry?-0.25:0});
   const onFace=(x,y,lift=0.004)=>sdfFrontZ(headF,x,y,hs*1.45,0)+lift;   // z of the sculpted face surface
-  for(const s of [-1,1]){ const bm=mat(browC,{s:20}); for(const [bx,by,ba,bl] of [[0.068,0.098+(angry?-0.012:0),angry?0.5:-0.05,0.05],[0.122,0.101+(angry?0.008:0),angry?0.3:-0.38,0.04]])
+  for(const s of [-1,1]){ const bm=mat(browC,{s:20}); for(const [bx,by,ba,bl] of [[0.07,0.136+(angry?-0.012:0),angry?0.5:-0.05,0.05],[0.128,0.139+(angry?0.008:0),angry?0.3:-0.38,0.04]])
     P(head,'capsLo',bm,0.022,bl,0.016,s*bx,by,onFace(s*bx,by,0.006),-0.1,0,PI/2+s*ba).userData.noOutline=true; }
   const lipC=new THREE.Color(skinC).lerp(new THREE.Color('#b8455a'),0.45).getStyle(), lipM=mat(lipC,{s:60,skin:1}), mline=mat('#4a1818',{s:40});
   const my=angry?-0.128:-0.118, mz=onFace(0,my,0.002);
@@ -3304,20 +3326,37 @@ function buildHuman(p,tc){
   const hat = p.hat ? p.hat[0] : null;
   const [hst,hc='#3a2414'] = p.hair || (hat?['none']:['short','#3a2414']);
   const HT=hairTex(), hm=mat(colr(hc,tc),{s:45,map:HT,bump:HT,bs:0.02}), hmS=mat(colr(hc,tc),{s:110,map:HT,bump:HT,bs:0.015});
-  const cap=(m,sy=0.8,tilt=-0.4)=>{ P(head,'hemi',m,hs*1.07,hs*sy,hs*1.06,0,0.03,-0.02,tilt); P(head,'sph',m,hs*0.9,hs*0.5,hs*0.45,0,-hs*0.18,-hs*0.68); };   // hairline above the brows, full at the nape
-  const crown=(m,part=1)=>{ for(let i=0;i<5;i++){ const t=i/4-0.5, x=(t*1.3+0.12*part)*hs; P(head,'sph',m,hs*0.42,hs*0.26,hs*0.62,x,hs*(0.8-Math.abs(t)*0.32),hs*0.06,0.25,0,-t*0.9); } };   // volume lobes, side parting
-  const sideburns=()=>{};   // the hair cap now meets the sculpted ears cleanly
-  const bangs=(m)=>{ if(hat) return; for(let i=0;i<4;i++){ const a=-0.6+i*0.38; P(head,'sph',m,hs*0.32,hs*0.2,hs*0.26,Math.sin(a)*hs*0.74,hs*0.66,Math.cos(a)*hs*0.66,0.65,0,-a*0.6); } };
+  // Hair is a sculpted field too: a cap with irregular lobes, a crown lift, a fringe broken into locks, tufts over the ears,
+  // a nape line, and per-style shapes. Lobe placement is varied by a hash, so no two haircuts are identical.
+  const hseed=[...(hst+hc+(p.outfit||[]).join('')+(p.face||[]).join(''))].reduce((a,ch)=>(a*31+ch.charCodeAt(0))>>>0,7), hrnd=seeded(hseed%9973+1);
+  const hairField=(style)=>{ const L=[], add=(f,k)=>L.push([f,k]), lush=style==='messy'||style==='curl'||style==='afro'; let capR=style==='slick'?1.035:style==='afro'?1.25:1.065;
+    if(hat) capR=Math.min(capR,1.03); add(SDF.ell(0,0.045,-0.02,hs*capR,hs*(style==='afro'&&!hat?1.15:0.99),hs*(capR-0.01)),0);
+    const nl=hat?0:lush?12:7; for(let i=0;i<nl;i++){ const a=hrnd()*TAU, el=0.3+hrnd()*0.75, rr=hs*(lush?0.3:0.21)*(0.75+hrnd()*0.5), R0=hs*capR*0.97;
+      add(SDF.ell(Math.cos(a)*Math.cos(el)*R0,0.045+Math.sin(el)*R0*0.96,Math.sin(a)*Math.cos(el)*R0-0.02,rr,rr*0.78,rr),0.05); }
+    if(!hat){
+      if(style==='slick') add(SDF.ell(0,hs*0.58,-hs*0.22,hs*0.78,hs*0.36,hs*0.86),0.06);
+      else add(SDF.ell(hs*0.16*(hrnd()-0.5),hs*0.74,-hs*0.04,hs*0.72,hs*0.4,hs*0.76),0.06);                                   // crown lift
+      if(style!=='slick'&&style!=='afro'){ const n=3+Math.floor(hrnd()*3), part=(hrnd()-0.5)*hs*0.3;
+        for(let i=0;i<n;i++){ const t=n>1?i/(n-1)-0.5:0, x0=t*hs*1.05+part*0.3, sw=(hrnd()-0.5)*0.05+part*0.15;
+          add(SDF.rcone(x0*0.85,hs*0.8,hs*0.46,x0+sw,hs*(0.4+hrnd()*0.1),hs*0.93,hs*(0.17+hrnd()*0.04),hs*0.05),0.035); } }           // fringe locks
+    }
+    for(const s of [-1,1]) add(SDF.rcone(s*hs*0.84,0.075,0.03,s*hs*0.98,-0.03-hrnd()*0.02,0.045,hs*0.15,hs*0.055),0.04);             // strands over the ears
+    for(let i=0;i<3;i++){ const x=(i-1)*hs*0.4; add(SDF.rcone(x,-hs*0.05,-hs*0.85,x*1.1,-hs*(0.42+hrnd()*0.1),-hs*0.8,hs*0.2,hs*0.07),0.05); }   // nape tufts
+    if(style==='long'){ add(SDF.ell(0,-hs*0.55,-hs*0.52,hs*0.98,hs*1.25,hs*0.52),0.08); for(const s of [-1,1]) add(SDF.rcone(s*hs*0.86,0,0.0,s*hs*0.8,-hs*1.35,0.04,hs*0.26,hs*0.18),0.07); }
+    if(style==='bun'){ add(SDF.ell(0,hs*0.78,-hs*0.64,hs*0.42,hs*0.42,hs*0.42),0.06); }
+    if(style==='ponytail'){ add(SDF.rcone(0,hs*0.25,-hs*0.98,0,-hs*0.55,-hs*1.18,hs*0.3,hs*0.2),0.05); add(SDF.rcone(0,-hs*0.55,-hs*1.18,0,-hs*1.25,-hs*1.05,hs*0.2,hs*0.08),0.04); }
+    if(style==='spiky'&&!hat){ for(let i=0;i<9;i++){ const a=i/9*TAU+hrnd()*0.3, el=0.55+hrnd()*0.5, dx=Math.cos(a)*Math.cos(el), dy=Math.sin(el), dz=Math.sin(a)*Math.cos(el);
+        add(SDF.rcone(dx*hs*0.9,0.045+dy*hs*0.9,dz*hs*0.9-0.02,dx*hs*1.55,0.045+dy*hs*1.6,dz*hs*1.55-0.02,hs*0.2,hs*0.035),0.03); } }
+    if(style==='afro'){ for(let i=0;i<14;i++){ const a=hrnd()*TAU, el=-0.2+hrnd()*1.6, R0=hs*1.2; add(SDF.ell(Math.cos(a)*Math.cos(el)*R0,0.06+Math.sin(el)*R0,Math.sin(a)*Math.cos(el)*R0-0.04,hs*0.38,hs*0.34,hs*0.38),0.06); } }
+    const f=SDF.blend(L), faceClear=SDF.ell(0,-0.05,hs*0.6,hs*0.8,hs*0.71,hs*0.64), longish=style==='long'||style==='ponytail'||style==='afro';
+    return (x,y,z)=>{ let d=SDF.smax(f(x,y,z),-faceClear(x,y,z),0.03); if(!longish) d=SDF.smax(d,(-0.025+0.62*Math.min(0,z))-y,0.02); else d=SDF.smax(d,-hs*1.45-y,0.02); return d; }; };
+  const hairMesh=(style,m)=>{ const hk=['hair',style,hseed,hat?1:0,hs.toFixed(3)].join('|'); S(head,hk,hairField(style),[-hs*1.7,-hs*1.6,-hs*1.6],[hs*1.7,hs*1.75,hs*1.3],m,1.0); };
   switch(hst){
-    case 'short': cap(hm); if(!hat){ crown(hm); bangs(hm); } sideburns(hm); break;
-    case 'slick': cap(hmS,0.74,-0.3); if(!hat) for(let i=0;i<3;i++) P(head,'sph',hmS,hs*0.48,hs*0.2,hs*0.7,(i-1)*hs*0.34,hs*(0.86-Math.abs(i-1)*0.1),-hs*0.05,0.3,0,(i-1)*-0.4); sideburns(hmS); break;
-    case 'long': cap(hm,0.84,-0.28); if(!hat){ crown(hm,-1); bangs(hm); } P(head,'sph',hm,hs*1.02,hs*1.4,hs*0.52,0,-hs*0.6,-hs*0.66); for(const s of [-1,1]){ P(head,'sph',hm,hs*0.3,hs*0.95,hs*0.32,s*hs*0.92,-hs*0.55,-hs*0.12); P(head,'sph',hm,hs*0.22,hs*0.6,hs*0.22,s*hs*0.86,-hs*1.0,hs*0.05); } break;
-    case 'bun': cap(hm); if(!hat){ crown(hm); bangs(hm); } P(head,'sph',hm,hs*0.44,hs*0.44,hs*0.44,0,hs*0.78,-hs*0.6); P(head,'tor',hm,hs*0.3,hs*0.3,0.4,0,hs*0.62,-hs*0.46,0.9); sideburns(hm); break;
-    case 'ponytail': cap(hm); if(!hat){ crown(hm); bangs(hm); } for(let i=0;i<3;i++) P(head,'sph',hm,hs*(0.3-i*0.05),hs*0.42,hs*(0.3-i*0.05),0,-hs*(0.02+i*0.38),-hs*(1.08+i*0.08),-0.4); P(head,'tor',c('T'),hs*0.15,hs*0.15,0.5,0,hs*0.3,-hs*0.95,0.6); sideburns(hm); break;
-    case 'spiky': cap(hm,0.82,-0.4); for(let i=0;i<9;i++){ const a=i/9*TAU; P(head,'cone',hm,0.08,0.22,0.08,Math.cos(a)*hs*0.5,hs*0.78,Math.sin(a)*hs*0.5-0.03,Math.sin(a)*0.75,0,-Math.cos(a)*0.75); } P(head,'cone',hm,0.085,0.24,0.085,0,hs*0.95,0); sideburns(hm); break;
+    case 'short': case 'messy': case 'curl': case 'long': case 'bun': case 'ponytail': case 'spiky': case 'afro': hairMesh(hst,hm);
+      if(hst==='ponytail') P(head,'sphLo',c('T'),hs*0.2,hs*0.12,hs*0.2,0,hs*0.25,-hs*1.0);   // hair tie
+      break;
+    case 'slick': hairMesh('slick',hmS); break;
     case 'mohawk': for(let i=0;i<6;i++) P(head,'cone',hm,0.05,0.28,0.08,0,hs*0.98,hs*0.7-i*hs*0.3,-0.35+i*0.15); P(head,'hemi',mat(shade(skinC,0.85)),hs*1.02,hs*0.7,hs*1.0,0,0.05,-0.02); break;
-    case 'afro': P(head,'puff',hm,hs*1.32,hs*1.12,hs*1.27,0,hs*0.35,-hs*0.15); break;
-    case 'messy': cap(hm,0.76,-0.3); for(let i=0;i<10;i++){ const a=i/10*TAU; P(head,'sph',hm,0.1,0.085,0.11,Math.cos(a)*hs*0.62,hs*(0.74+0.08*Math.sin(i*2.7)),Math.sin(a)*hs*0.62-0.04,Math.sin(a)*0.5,0,-Math.cos(a)*0.5); } sideburns(hm); break;
     case 'bald': P(head,'sphLo',mat('#ffffff',{op:0.25,s:150}),hs*0.3,hs*0.12,hs*0.2,-hs*0.3,hs*0.75,hs*0.2,0.6); break;
   }
   const hatC=p.hat?p.hat[1]:'#333';
@@ -3355,8 +3394,8 @@ function buildHuman(p,tc){
   for(const f of (p.face||[])){
     const fz2=hs*0.88;
     switch(f){
-      case 'glassesRound': case 'glassesHalf': { const gm=mat('#222',{s:80}), gz=fz2+0.065; for(const s of [-1,1]){ P(head,'torThin',gm,0.074,f==='glassesHalf'?0.042:0.074,0.074,s*0.1,f==='glassesHalf'?0.0:0.03,gz); P(head,'box',gm,0.01,0.01,hs*0.78,s*0.178,0.035,gz-hs*0.4,0,s*0.12,0); P(head,'sph',mat('#dff1ff',{op:0.18,s:160}),0.066,f==='glassesHalf'?0.036:0.066,0.01,s*0.1,f==='glassesHalf'?0.0:0.03,gz).userData.noOutline=true; } P(head,'box',gm,0.06,0.012,0.012,0,0.045,gz+0.004); break; }
-      case 'shades': { const sm=mat('#111',{s:160,m:0.4}), gz=fz2+0.07; for(const s of [-1,1]){ P(head,'rbox2',sm,0.125,0.075,0.03,s*0.095,0.035,gz); P(head,'box',sm,0.012,0.012,hs*0.8,s*0.165,0.045,gz-hs*0.42,0,s*0.12,0); } P(head,'box',sm,0.08,0.015,0.02,0,0.05,gz+0.005); break; }
+      case 'glassesRound': case 'glassesHalf': { const gm=mat('#222',{s:80}), gz=fz2+0.065; for(const s of [-1,1]){ P(head,'torThin',gm,0.074,f==='glassesHalf'?0.042:0.074,0.074,s*0.1,f==='glassesHalf'?0.0:0.03,gz); templeArm(head,headF,hs,s,0.035,s*0.178,gz,gm); P(head,'sph',mat('#dff1ff',{op:0.18,s:160}),0.066,f==='glassesHalf'?0.036:0.066,0.01,s*0.1,f==='glassesHalf'?0.0:0.03,gz).userData.noOutline=true; } P(head,'box',gm,0.06,0.012,0.012,0,0.045,gz+0.004); break; }
+      case 'shades': { const sm=mat('#111',{s:160,m:0.4}), gz=fz2+0.07; for(const s of [-1,1]){ P(head,'rbox2',sm,0.125,0.075,0.03,s*0.095,0.035,gz); templeArm(head,headF,hs,s,0.045,s*0.165,gz,sm); } P(head,'box',sm,0.08,0.015,0.02,0,0.05,gz+0.005); break; }
       case 'goggles': for(const s of [-1,1]){ P(head,'cyl',mat('#ff9f1a',{s:60}),0.068,0.06,0.068,s*0.1,0.04,fz2+0.035,PI/2); P(head,'cyl',mat('#9fe6ff',{op:0.7,s:150}),0.052,0.062,0.052,s*0.1,0.04,fz2+0.04,PI/2).userData.noOutline=true;} P(head,'tor',mat('#333'),hs*1.0,hs*1.0,0.3,0,0.04,0,PI/2); break;
       case 'mustache': for(const s of [-1,1]) P(head,'sph',mat('#4a3220',{s:20}),0.07,0.03,0.035,s*0.05,-0.08,fz2+0.035,0,0,s*0.3); break;
       case 'beard': P(head,'puff',mat(colr(p.hair&&p.hair[1]&&p.hair[0]!=='bald'?p.hair[1]:'#4a3220',tc),{s:20}),hs*0.78,hs*0.58,hs*0.52,0,-hs*0.55,hs*0.45); break;
@@ -3371,22 +3410,23 @@ function buildHuman(p,tc){
     }
   }
   if(p.blackCap){ const bc=G0(); bc.position.y=hs*1.12; head.add(bc); P(bc,'rbox2',mat('#050505',{s:60}),hs*1.55,0.035,hs*1.55); P(bc,'sph',mat('#050505'),0.03,0.03,0.03,0,0.025,0); bc.visible=false; R.blackCap=bc; }
-  // arms
+  // arms: relaxed A-pose (static inner group: the sim animates the outer arm group), soft elbow bend, hands angled in
   for(const s of [-1,1]){
     const A=G0(); A.position.set(s*(tw+0.025),th*1.62,0); torso.add(A);
+    const AP=G0(); AP.rotation.set(0.05,0,s*0.15); A.add(AP);
     const aw=Math.max(1,w*0.8);
     const fore = ['tank','shirtTie','gi'].includes(ot)||OUTFIT_FORE_SKIN.includes(ot) ? skin : sleeve;
-    { const armF=SDF.blend([[SDF.ell(0,-0.005,0,0.086*aw,0.09,0.086*aw),0],[SDF.rcone(0,-0.03,0,0,-0.235,-0.008,0.075*aw,0.056*aw),0.05],[SDF.rcone(0,-0.245,-0.006,0,-0.432,0.012,0.056*aw,0.04*aw),0.035],[SDF.ell(0,-0.29,0.002,0.062*aw,0.07,0.06*aw),0.05]]),
-        bb0=[-0.11*aw,-0.47,-0.11*aw], bb1=[0.11*aw,0.11,0.11*aw], ak=aw.toFixed(3);
-      if(fore===sleeve) S(A,'arm|'+ak,SDF.cutBelow(SDF.inflate(armF,0.004),-0.428),bb0,bb1,sleeve);
-      else { S(A,'armSkin|'+ak,armF,bb0,bb1,skin); if(sleeve!==skin) S(A,'sleeve|'+ak,SDF.cutBelow(SDF.inflate(armF,0.011),-0.19,0.01),bb0,bb1,sleeve); } }
-    if(fore===sleeve&&ot!=='hazmat'&&ot!=='spacesuit') P(A,'tor',ot==='suit'?mat('#f4f4f2',{s:40}):sleeve,0.06*aw,0.06*aw,0.4,0,-0.42,0.01,PI/2);   // cuff
-    const hand=G0(); hand.position.set(0,-0.47,0.01); A.add(hand);
+    const armF=SDF.blend([[SDF.ell(0,-0.005,0,0.086*aw,0.09,0.086*aw),0],[SDF.rcone(0,-0.03,0,0,-0.232,-0.014,0.075*aw,0.056*aw),0.05],[SDF.rcone(0,-0.242,-0.012,0,-0.412,0.07,0.056*aw,0.04*aw),0.035],[SDF.ell(0,-0.29,0.012,0.062*aw,0.07,0.06*aw),0.05]]);
+    const bb0=[-0.11*aw,-0.47,-0.11*aw], bb1=[0.11*aw,0.11,0.16*aw], ak=aw.toFixed(3); ARMF=armF; ARMB=[bb0,bb1,ak];
+    if(fore===sleeve) S(AP,'armA|'+ak,SDF.cutBelow(SDF.inflate(armF,0.004),-0.405),bb0,bb1,sleeve);
+    else { S(AP,'armSkinA|'+ak,armF,bb0,bb1,skin); if(sleeve!==skin) S(AP,'sleeveA|'+ak,SDF.cutBelow(SDF.inflate(armF,0.011),-0.19,0.01),bb0,bb1,sleeve); }
+    if(fore===sleeve&&ot!=='hazmat'&&ot!=='spacesuit') band(AP,armF,'cuff|'+ak,bb0,bb1,-0.398,0.016,ot==='suit'?mat('#f4f4f2',{s:40,bump:FAB}):sleeve,0.009);   // cuff hugging the wrist
+    const hand=G0(); hand.position.set(0,-0.448,0.088); hand.rotation.set(0.25,-s*0.4,s*0.12); AP.add(hand);
     const gm=ot==='hazmat'?mat('#2a2a2a',{s:40}):ot==='spacesuit'?mat('#dddddd',{s:60}):skin;
-    { const HS=1.12, hF=SDF.blend([[SDF.ell(0,0,0,0.056*HS,0.066*HS,0.05*HS),0],[SDF.rcone(s*0.008*HS,-0.03*HS,0.004*HS,s*0.012*HS,-0.078*HS,0.03*HS,0.042*HS,0.035*HS),0.035*HS],
+    { const HS=1.14, hF=SDF.blend([[SDF.ell(0,0,0,0.056*HS,0.066*HS,0.05*HS),0],[SDF.rcone(s*0.008*HS,-0.03*HS,0.004*HS,s*0.012*HS,-0.078*HS,0.03*HS,0.042*HS,0.035*HS),0.035*HS],
         [SDF.rcone(-s*0.03*HS,0,0.03*HS,-s*0.034*HS,-0.028*HS,0.058*HS,0.022*HS,0.017*HS),0.02*HS]]);
       S(hand,'hand|'+s,hF,[-0.08*HS,-0.13*HS,-0.08*HS],[0.08*HS,0.08*HS,0.1*HS],gm); }
-    if(s>0){ R.armR=A; R.hand=hand; } else { R.armL=A; R.handL=hand; }
+    if(s>0){ R.armR=A; R.hand=hand; R.armRP=AP; } else { R.armL=A; R.handL=hand; R.armLP=AP; }
   }
   if(p.prop && p.prop!=='none'){ const pr=buildProp(p.prop,tc); R.hand.add(pr); R.prop=pr;
     if(['knives','paddles','sticks','glove','pompom','dumbbell'].includes(p.prop)) R.handL.add(buildProp(p.prop,tc)); }
@@ -3398,12 +3438,34 @@ function buildHuman(p,tc){
   }
   humanExtras(p,{head,hs,torso,th,td,skin,R,c,hips,tc});
   if(p.cape){ const cp=P(torso,'rbox2',c(p.cape),0.5*w,0.7,0.03,0,th*0.7,-td-0.02); R.cape=cp; }
+  { const big=torso.children.filter(o=>o.isMesh&&(o.geometry===geo('sph')||o.geometry===geo('sphMid'))&&Math.min(o.scale.x,o.scale.y,o.scale.z)>0.1);   // e.g. a beer belly: bands wrap it too
+    const solid=big.length?SDF.blend([[TORF,0]].concat(big.map(o=>[SDF.ell(o.position.x,o.position.y,o.position.z,o.scale.x,o.scale.y,o.scale.z),0.03]))):TORF;
+    const bk=TORB[2]+big.map(o=>[o.position.y,o.scale.x,o.scale.z].map(v=>v.toFixed(3)).join(',')).join(';'), bb0=[TORB[0][0]-0.15,TORB[0][1],TORB[0][2]-0.15], bb1=[TORB[1][0]+0.15,TORB[1][1],TORB[1][2]+0.25];
+    const segs=[{grp:torso,f:solid,key:'t'+bk,b0:bb0,b1:bb1,alt:{y0:th*1.72,f:NECKF,key:'n'+TORB[2],b0:[-tw*0.6,th*1.6,-td*0.7],b1:[tw*0.6,th*2.1+0.04,td*0.7]}}];
+    for(const L of R.legs) segs.push({grp:L,f:LEGF,key:'l'+(Math.max(1,w*0.85)).toFixed(3),b0:[-0.13,-0.4,-0.13],b1:[0.13,0.08,0.13]});
+    for(const AP of [R.armRP,R.armLP]) segs.push({grp:AP,f:ARMF,key:'a'+ARMB[2],b0:ARMB[0],b1:ARMB[1]});
+    ringsToBands(segs); }
+  // a little weight shift: one leg out, head tilted
+  R.legs[1].rotation.z=0.05; R.legs[0].rotation.z=-0.012; head.rotation.z=(fhash%2?1:-1)*0.05;
   stretchLower(R,hips,LR);
   R.height = 0.44*LR + th*2 + 0.035 + hs*1.85*HK;
   if(p.sc){ g.scale.setScalar(p.sc); R.height*=p.sc; }
   return g;
 }
 
+// A thin band hugging a body field between yc-hh and yc+hh (belts, waistbands, cuffs, collars, hems): replaces tori
+function band(parent,field,key,b0,b1,yc,hh,m,t=0.01){
+  const f=(x,y,z)=>SDF.smax(SDF.smax(field(x,y,z)-t,(yc-hh)-y,0.004),y-(yc+hh),0.004);
+  const me=S(parent,'band|'+key+'|'+yc.toFixed(3)+'|'+hh.toFixed(3)+'|'+t,f,[b0[0]-t-0.01,yc-hh-0.02,b0[2]-t-0.01],[b1[0]+t+0.01,yc+hh+0.02,b1[2]+t+0.01],m,0.8); me.userData.noOutline=true; return me; }
+// every horizontal ring on a body segment becomes a band on that segment's surface
+function ringsToBands(segs){ const rings=new Set([geo('tor'),geo('torThin'),geo('torLo'),geo('torThinLo')]);
+  for(const sg of segs) for(const ch of sg.grp.children.slice()){
+    if(!ch.isMesh||!rings.has(ch.geometry)||Math.abs(Math.abs(ch.rotation.x)-PI/2)>0.5||Math.abs(ch.rotation.z)>0.5) continue;
+    const tube=(ch.geometry===geo('tor')||ch.geometry===geo('torLo'))?0.22:0.08, hh=Math.max(0.014,Math.min(0.05,tube*Math.abs(ch.scale.z))), y=ch.position.y;
+    const use=sg.alt&&y>sg.alt.y0?sg.alt:sg; band(sg.grp,use.f,use.key,use.b0,use.b1,y,hh,ch.material,0.01); sg.grp.remove(ch); } }
+// glasses arm from the lens rim back to the ear, pushed out to sit just on the head surface
+function templeArm(head,f,hs,s,y,x0,z0,m){ const pts=[]; for(let i=0;i<=4;i++){ const t=i/4; let x=x0+(s*(hs*0.95+0.03)-x0)*t, z=z0+(-0.03-z0)*t; for(let k=0;k<30&&f(x,y,z)<0.007;k++){ const l=Math.hypot(x,z)||1; x+=x/l*0.004; z+=z/l*0.004; } pts.push([x,z]); }
+  for(let i=0;i<4;i++){ const [ax,az]=pts[i], [bx,bz]=pts[i+1], len=Math.hypot(bx-ax,bz-az); P(head,'box',m,0.01,0.01,len+0.004,(ax+bx)/2,y,(az+bz)/2,0,Math.atan2(bx-ax,bz-az),0); } }
 // Legs were modelled in a 0.44-tall frame (outfits everywhere attach socks, boots, skirts at those heights). Stretch the leg
 // groups to the new length, keep feet at their real size on the ground, and extend anything hanging below the hips.
 function stretchLower(R,hips,LR){
@@ -3693,6 +3755,7 @@ function bakeAO(root){
   for(const A of parts){
     const g0=A.o.geometry, g=g0.clone(); const pos=g.attributes.position, nor=g.attributes.normal; if(!nor) continue;   // unique vertices only (indexed): far cheaper
     nm.getNormalMatrix(A.mw);
+    if(A.o.userData.noOutline){ const col=new Float32Array(pos.count*3).fill(1); g.setAttribute('color',new THREE.BufferAttribute(col,3)); A.o.geometry=g; A.o.material=aoMat(A.o.material); continue; }
     let near=parts.filter(B=>B!==A&&B.wc.distanceTo(A.wc)<A.wr+B.wr+F); if(near.length>14){ near.forEach(B=>B.dd=B.wc.distanceTo(A.wc)-B.wr); near.sort((a,b)=>a.dd-b.dd); near=near.slice(0,14); }
     const col=new Float32Array(pos.count*3);
     for(let i=0;i<pos.count;i++){
