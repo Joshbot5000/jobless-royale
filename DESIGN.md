@@ -30,6 +30,44 @@
 
 Every arena also has a second Champion that unlocks at 🏆 1300 (Lord Chancellor, The CEO, Flight Director, FBI Director, Subject Zero, Chief of Medicine, Nonna, Hotshot Captain, Site Foreman, Pop Diva, Golden Retriever, Head Coach, Pop Artist, Movie Star, Podcast Bro, Big Cat Trainer).
 
+## Counters and balance
+The game is built around a counter web, like Clash Royale. Every arena contains:
+- tanks and tower-chasers
+- swarms, which beat heavy single-target hitters
+- splash, which beats swarms
+- flyers, which beat ground-only melee; anti-air beats flyers
+- ramping-damage "melters" (beams that grow up to 4-6x on one target), which beat tanks
+- stuns, which **reset** melters, charges and wind-ups (`src/sim.js`: any stun or freeze resets ramp, charge and attack timer)
+- heavy single-target hitters, which beat tanks and chargers
+- buildings that shoot, spawn, pump or control, and pull tower-chasers
+- spells sized for swarms (small) and support clumps (big)
+
+Players are never told what counters what. Cards show plain facts (damage/s, hit speed, single target or splash, ramping, stuns, armour, dodge, thorns) and the deck builder shows the average elixir. The AI on Normal and Hard defends with cards measured to answer each threat (`src/data_counters.js`), so players learn the web by playing.
+
+Mechanics added for variety:
+- chain lightning (`onHit.chain`)
+- thorns, dodge, pack bonus (`onHit.pack`), bounty (elixir per kill)
+- tower repair and enemy-slow auras
+- jackpot pumps
+- projectile ramping
+- spawners that start straight away
+
+**Tools:**
+- `tools/duel.js` plays every attacker-vs-defender pairing in each arena with the real engine, headless: the attacker walks at your tower and your defender drops in as it reaches the bridge.
+- `tools/duelreport.js` reports, per card, its average elixir trade on attack and defence, its answers, and what it beats.
+- `tools/tune.js` nudges HP and damage multipliers (`src/data_tune.js`, generated, 0.5-1.5x). Each card is judged within its own arena, on what it is for (attack or defence), and a real threat with fewer than 3 answers is always nerfed.
+- `tools/winrates.js` plays full AI-vs-AI matches with random sensible decks. `tools/wrtune.js` gently corrects cards far from 50%.
+- `tools/balance.sh` runs the duel/tune loop.
+- Hand-made changes (new roles, building jobs, swarm traits, mechanical fixes) live in `src/data_balance.js`.
+
+Results from the November 2026 pass:
+
+| Measure | Before | After |
+|---|---|---|
+| Real threats with fewer than 3 answers in their arena | 94 | 7 |
+| Card win-rate spread in 6,300 AI matches | 6.8% | 5.2% |
+| Cards outside 35-65% win rate | 24 | 3 |
+
 ## Arenas, decks and the Trophy Road
 - **16 arenas.** The original 11 professions plus Sports Stars, Artists, Actors, Influencers and a Zoo.
 - **Every arena has 20–23 characters and 4 spells.** The deck is 6 characters + 2 spells with at most one Champion. Each arena remembers its own deck, and Mix & Match builds a 6 + 2 deck from every unlocked card in the game.

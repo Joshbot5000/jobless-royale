@@ -57,7 +57,7 @@ B('icecream',{desc:'Throws scoops that slow air and ground. Every 4th scoop is B
 
 // ---------------------------------------------------------------- buildings: every one shoots, spawns, pumps or controls from the moment it lands
 B('witnessstand',{dmg:70,hs:1.0,range:5.5,targets:'all',atk:{k:'proj',proj:'speech'},onHit:{mark:[3,1.3]},spawner:{card:'paralegals',n:1,every:5,first:0.85},death:{spawn:['paralegals',3]},
-  desc:'The witness testifies at air and ground troops in range, and everyone they point at takes 30% more damage for 3s. A Paralegal runs out every 5s, and three more storm out when it is destroyed.'});
+  desc:'The witness testifies at air and ground troops in range, and everyone they point at takes 30% more damage for 3s. A Paralegal runs out every 6.5s, and three more storm out when it is destroyed.'});
 B('vault',{dmg:80,hs:1.0,range:5,atk:{k:'proj',proj:'coin'},thorns:0.4,desc:'Its security turret fires at ground troops in range. Anyone hitting the door up close gets a dye pack: 40% of their damage bounces back. Every enemy nearby tries to rob it, and when it is finally cracked you get 2 elixir back.'});
 B('tradingdesk',{hp:900,gen:{every:5.5,amt:1},desc:'Prints money: makes 1 elixir every 5.5s for 45s (+8 in total), as long as nobody smashes it.'});
 B('firealarm',{sp:{k:'pulse',cd:3,r:3.5,stun:0.8,dmg:45,callout:'RIIIING!'},desc:'Rings every 3s when enemies are near: 45 damage and a 0.8s stun to every enemy within 3.5 tiles.'});
@@ -128,3 +128,5 @@ B('goldenstatue',{hp:3600,dmg:220,death:{blast:[2.2,240]}});
   B('darts',{range:6.2}); B('radarscout',{range:6.5}); B('archerO',{range:7});
   if(CARDS.bartender) CARDS.bartender.atk={...CARDS.bartender.atk,ramp:4};
 })();
+(function(){ if(CARDS.witnessstand) CARDS.witnessstand.spawner={card:'paralegals',n:1,every:6.5,first:0.85};
+  if(CARDS.broker) CARDS.broker.onHit={chain:[2,3,0.5],stun:0.3}; })();

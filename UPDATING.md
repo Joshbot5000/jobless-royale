@@ -33,6 +33,16 @@ node tools/test.js <new-arena-id>
 ```
 It must print `ALL TESTS PASSED`. Fix every failure. Also render the new cards' portraits and look at them, and fix anything that looks broken.
 
+## 3b. Balance check (required)
+Every arena needs a counter web. Run the duel simulator and read the new arena's table:
+```
+python3 build.py && node tools/duel.js "" dist/duels.json && node tools/duelreport.js dist/duels.json <arenaId>
+```
+- No card may be flagged `⚠NO ANSWER` (a real threat with fewer than 3 cards in its arena that stop it) or `⚠BEATS ALL`.
+- The arena needs a tank, a tower-chaser, a swarm, splash, a flyer, anti-air, a ramping-damage "melter", a heavy single-target hitter, a stun/reset, a building that actively does something, and a small and a big spell.
+- Fix outliers in the arena file itself (its stats and mechanics), not in `data_tune.js`.
+- Then regenerate the AI's counter table: `node tools/counters.js`.
+
 ## 4. Ship
 - Add one line to the "News arenas" log at the bottom of `DESIGN.md`.
 - Commit and push to `main`. GitHub Pages redeploys the home-screen app (`index.html` at the repo root) automatically.

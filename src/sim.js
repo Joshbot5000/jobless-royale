@@ -62,6 +62,8 @@ function newGame(themeIdx,diffIdx,modeKey='classic',deck0=null,deck1=null){
   G.towers.push(mkTower(1,'princess',3.5,6.5),mkTower(1,'princess',14.5,6.5),mkTower(1,'king',9,3));
   G.towers.push(mkTower(0,'princess',3.5,25.5),mkTower(0,'princess',14.5,25.5),mkTower(0,'king',9,29));
   for(const t of G.towers){ t.obj=buildTower(th,t.kind,t.team); mergeRigid(t.rig0=t.obj.userData.rig.main); t.obj.position.set(t.x,0,t.y); t.rig=t.obj.userData.rig; dynRoot.add(t.obj); t.shadow=shadowFor(t.radius*1.5); t.shadow.position.set(t.x+0.25,0.03,t.y+0.3); }
+  // pre-build both decks' models one per frame (ui.js frame loop) so the first deploy of a card never stutters
+  G.warm=[]; decks.forEach((d,t)=>d.forEach(k=>{ const c=CARDS[k]; if(c&&c.type!=='spell'&&c.model) G.warm.push([k,t]); }));
   showBanner('FIGHT!','',1.6);
 }
 function shadowFor(r){ const m=new THREE.Mesh(geo('plane'),shadowMat); m.rotation.x=-PI/2; m.scale.set(r*2,r*2,1); m.renderOrder=1; dynRoot.add(m); return m; }
