@@ -72,7 +72,7 @@ function spawnUnit(id,team,x,y,deploy=1){
     radius:c.radius,baseR:c.radius,mass:c.mass,building:c.type==='building',life:c.life||0,armor:c.armor||0,taunt:c.taunt||0,
     cd:0.3,target:null,deploy,deployMax:Math.max(0.01,deploy),walk:Math.random()*6,atk:0,yaw:team?0:PI,yawVis:team?0:PI,kvx:0,kvy:0,
     frozen:0,stun:0,rush:0,shield:c.shield0||0,giant:0,fire:0,hits:0,retarget:0,dead:false,moving:false,scale:1,spT:(c.sp&&c.sp.k==='execute')?3:(c.sp&&c.sp.cd?c.sp.cd*0.5:0),
-    lastAtkT:-99,stealthOn:!!(c.sp&&c.sp.k==='stealth'),hitT:0,landT:0,grow:0};
+    spawnT:c.spawner?c.spawner.every*(c.spawner.first??0.8):0,lastAtkT:-99,stealthOn:!!(c.sp&&c.sp.k==='stealth'),hitT:0,landT:0,grow:0};
   G.units.push(u); return u;
 }
 
@@ -176,6 +176,7 @@ function killUnit(u,killer){
   if(killer && !killer.dead){
     const oh=killer.c.onHit||{};
     if(oh.infect && !u.building){ spawnUnit(oh.infect,killer.team,u.x,u.y,0.3); fxPuff(u.x,0.4,u.y,6,'#7dff4a',0.4); }
+    if(oh.bounty&&!u.building&&!c.hidden){ G.elixir[killer.team]=Math.min(10,G.elixir[killer.team]+oh.bounty); callout({x:u.x,y:u.y,h:1.6},'+'+oh.bounty+' 💧','#f68cff'); }
     if(oh.healOnKill){ killer.hp=Math.min(killer.maxHp,killer.hp+oh.healOnKill); fxBurst(killer.x,1,killer.y,8,'#7dff8a',2,0.18,0.6,0,true); }
     const ks=killer.c.sp;
     if(ks&&ks.k==='growOnKill'&&killer.grow<ks.max){ killer.grow++; killer.maxHp*=1+ks.f; killer.hp=Math.min(killer.maxHp,killer.hp+killer.maxHp*ks.f); callout(killer,ks.callout,'#7dff4a'); fxBurst(killer.x,1,killer.y,16,'#7dff4a',3,0.2,0.6,4,true); }
@@ -492,8 +493,8 @@ function updateUnit(u,dt){
   if(u.burnT>0){ u.burnTick=(u.burnTick||0)-dt; if(u.burnTick<=0){ u.burnTick=0.5; damage(u,u.burnD*0.5,null); } }
   if(u.c.regen&&u.hp<u.maxHp&&!u.dead){ u.hp=Math.min(u.maxHp,u.hp+u.c.regen*dt); if(Math.random()<dt*3) PSA.spawn(u.x+rnd(-0.3,0.3),1,u.y+rnd(-0.3,0.3),0,1.2,0,0.6,0.25,'#7dff8a',1,0); }
   if(u.building&&u.life){ u.hp-=u.maxHp/u.life*dt; if(u.hp<=0){ killUnit(u); return; } }
-  if(u.c.gen){ u.genT=(u.genT||0)+dt; if(u.genT>=u.c.gen.every){ u.genT=0; G.elixir[u.team]=Math.min(10,G.elixir[u.team]+u.c.gen.amt); u.atk=0.001;
-      for(let i=0;i<10;i++) PSA.spawn(u.x+rnd(-0.4,0.4),1.4,u.y+rnd(-0.4,0.4),rnd(-1,1),rnd(2,4),rnd(-1,1),0.8,0.28,'#ffd34d',1,5); callout({x:u.x,y:u.y,h:2.4},'+1 💧','#f68cff'); sfx('pop'); } }
+  if(u.c.gen){ u.genT=(u.genT||0)+dt; if(u.genT>=u.c.gen.every){ u.genT=0; const jp=u.c.gen.jackpot&&Math.random()<u.c.gen.jackpot[0]; const amt=jp?u.c.gen.jackpot[1]:u.c.gen.amt; G.elixir[u.team]=Math.min(10,G.elixir[u.team]+amt); u.atk=0.001; if(jp){ callout({x:u.x,y:u.y,h:2.8},'JACKPOT! 🎰','#ffd34d',true); fxBurst(u.x,1.5,u.y,30,'#ffd34d',5,0.25,0.7,6,true); }
+      for(let i=0;i<10;i++) PSA.spawn(u.x+rnd(-0.4,0.4),1.4,u.y+rnd(-0.4,0.4),rnd(-1,1),rnd(2,4),rnd(-1,1),0.8,0.28,'#ffd34d',1,5); if(!jp) callout({x:u.x,y:u.y,h:2.4},'+'+amt+' 💧','#f68cff'); sfx('pop'); } }
   if(u.c.spawner){ u.spawnT=(u.spawnT||0)+dt; if(u.spawnT>=u.c.spawner.every){ u.spawnT=0; const sc=u.c.spawner; for(let i=0;i<sc.n;i++){ const a=i/sc.n*TAU; let sx=u.x+Math.cos(a)*0.6, sy=u.y+Math.sin(a)*0.6; if(sy>14.8&&sy<17.2) sy=u.team===0?17.4:14.6; const m=spawnUnit(sc.card,u.team,sx,sy,0.5); m.parachute=true; } } }
   if(Math.abs(u.kvx)+Math.abs(u.kvy)>0.01){ u.x+=u.kvx*dt; u.y+=u.kvy*dt; const f=Math.exp(-6*dt); u.kvx*=f; u.kvy*=f; } else u.kvx=u.kvy=0;
   // auras
@@ -502,14 +503,19 @@ function updateUnit(u,dt){
     for(const v of G.units){ if(v.dead||dist(u,v)>au.r) continue;
       if(v.team===u.team&&!v.building){ if(au.heal&&v.hp<v.maxHp){ v.hp=Math.min(v.maxHp,v.hp+au.heal); PSA.spawn(v.x,1.2,v.y,0,1.5,0,0.6,0.3,'#7dff8a',1,0); } if(au.rush) v.rush=Math.max(v.rush,1.2); }
       else if(v.team!==u.team&&au.poison){ damage(v,au.poison,u); PSN.spawn(v.x,0.8,v.y,0,1,0,0.6,0.25,'#9a4ad8',0.8,0); } }
-    if(au.rush||au.heal) fxRing(u.x,u.y,0.3,au.r,0.5,au.rush?'#ff6bff':'#7dff8a',0.05); } }
+    if(au.repair) for(const tw of G.towers) if(tw.team===u.team&&!tw.dead&&tw.hp<tw.maxHp&&dist(u,tw)<=au.r+tw.radius){ tw.hp=Math.min(tw.maxHp,tw.hp+au.repair); PSA.spawn(tw.x+rnd(-0.6,0.6),2.6,tw.y+rnd(-0.6,0.6),0,1.5,0,0.6,0.35,'#7dff8a',1,0); }
+    if(au.slow) for(const v of G.units) if(v.team!==u.team&&!v.dead&&!v.building&&dist(u,v)<=au.r){ v.slowF=v.slowT>0?Math.min(v.slowF,au.slow):au.slow; v.slowT=Math.max(v.slowT||0,1.2); }
+    if(au.rush||au.heal||au.repair||au.slow) fxRing(u.x,u.y,0.3,au.r,0.5,au.rush?'#ff6bff':au.slow?'#9fd8ff':'#7dff8a',0.05); } }
   u.moving=false;
   if(u.floatT>0) return;
   if(u.leap){ const L=u.leap; L.t+=dt; const k=Math.min(1,L.t/L.dur); u.x=L.fx+(L.tx-L.fx)*k; u.y=L.fy+(L.ty-L.fy)*k; u.leapH=Math.sin(k*PI)*L.h;
     if(k>=1&&L.flung){ u.leap=null; u.leapH=0; u.landT=0.3; u.stun=Math.max(u.stun,L.flung.stun); damage(u,L.flung.dmg,L.flung.team,{splash:true}); fxRing(u.x,u.y,0.2,1.4,0.35,'#ffd34d'); fxPuff(u.x,0.1,u.y,12,'#e8dcc0',0.6,0.7); G.shake=Math.max(G.shake,0.2); sfx('kick'); callout(u,'💫','#ffffff'); return; }
     if(k>=1){ const s=L.tapLeap||u.c.sp; u.leap=null; u.leapH=0; u.landT=0.3; doAoe(u,u,{r:s.r,dmg:s.dmg,stun:s.stun}); fxPuff(u.x,0.1,u.y,10,'#e8dcc0',0.5,0.6); G.shake=Math.max(G.shake,0.18); sfx('kick'); }
     return; }
-  if(u.frozen>0||u.stun>0){ u.charging=false; u.chargeT=0; return; }
+  if(u.frozen>0||u.stun>0){ u.charging=false; u.chargeT=0;
+    if(!u.wasStunned){ u.wasStunned=true; if((u.ramp||1)>1.3&&!u.dead) callout(u,'reset!','#bfefff'); u.ramp=1; u.rampTarget=null; u.cd=Math.max(u.cd,u.hs*0.6); }
+    return; }
+  u.wasStunned=false;
   if(u.execBusy>0) return;
   const sp=u.c.sp;
   const swimming=u.c.swim&&u.y>15&&u.y<17&&!u.flying;
@@ -586,6 +592,7 @@ function dmgOut(u,t){
     if(oh.critChance&&Math.random()<oh.critChance[0]){ d*=oh.critChance[1]; callout(t,oh.critChance[2],'#ffcf4a'); }
     if(oh.lowBonus&&t.hp<t.maxHp*0.5) d*=oh.lowBonus;
     if(oh.bldMult&&t.building) d*=oh.bldMult;
+    if(oh.pack){ let n=0; for(const v of G.units) if(v!==u&&v.team===u.team&&!v.dead&&v.card===u.card&&Math.abs(v.x-u.x)+Math.abs(v.y-u.y)<2.4) n++; d*=1+Math.min(oh.pack[1],n*oh.pack[0]); }
     if(oh.random){ const r=oh.random[0]+Math.random()*(oh.random[1]-oh.random[0]); d*=r; if(r>4.3) callout(t,'TO THE MOON! 🚀','#ffcf4a'); else if(r<0.4) callout(t,'rugged 📉','#aaaaaa'); }
   }
   return d;
@@ -616,7 +623,14 @@ function applyOnHit(u,t,impX,impY){
   if(oh.repo&&t.building){ const foe=1-u.team; const take=Math.min(oh.repo,G.elixir[foe]); G.elixir[foe]-=take; G.elixir[u.team]=Math.min(10,G.elixir[u.team]+oh.repo); PSA.spawn(t.x,2,t.y,0,2,0,0.7,0.35,'#ff6bff',1,0); }
   if(oh.audit){ const extra=Math.min(oh.audit[1],t.hp*oh.audit[0]); damage(t,extra,u); }
 }
+function chainHit(u,t,d){ const ch=u.c.onHit.chain; const hit=new Set([t.uid]); let from=t;
+  for(let i=0;i<ch[0];i++){ let nb=null,bd=ch[1]; for(const e of G.units){ if(e.team===u.team||e.dead||hit.has(e.uid)||hidden(e)||!canHit(u,e)) continue; const dd=Math.hypot(e.x-from.x,e.y-from.y); if(dd<bd){bd=dd;nb=e;} }
+    if(!nb) break; hit.add(nb.uid); G.bolts.push({x1:from.x,h1:from.flying?1.6:0.8,y1:from.y,x2:nb.x,h2:nb.flying?1.6:0.8,y2:nb.y,life:0.25,max:0.25,col:'#bff4ff'});
+    damage(nb,d*ch[2],u); const oh=u.c.onHit; if(oh.stun) nb.stun=Math.max(nb.stun,oh.stun); if(oh.slow){ nb.slowT=oh.slow[0]; nb.slowF=oh.slow[1]; } from=nb; } }
 function hitOne(u,t,d){ const dealt=damage(t,d,u); applyOnHit(u,t);
+  if(u.c.onHit&&u.c.onHit.chain&&!t.dead) chainHit(u,t,d);
+  // thorns: hitting it up close hurts (cacti, spiky armour, hot pans)
+  if(t.c&&t.c.thorns&&!t.dead&&u.c.atk&&u.c.atk.k==='melee'&&dealt>0&&!u.dead){ damage(u,dealt*t.c.thorns,t); if(Math.random()<0.3) PSA.spawn(u.x,1,u.y,0,1,0,0.3,0.2,'#ffd34d',1,0); }
   const oh=u.c.onHit; if(oh&&oh.lifesteal&&dealt>0&&!u.dead){ u.hp=Math.min(u.maxHp,u.hp+dealt*oh.lifesteal); if(Math.random()<0.5) PSA.spawn(u.x,1,u.y,0,1.5,0,0.5,0.3,'#ff4f6a',1,0); } }
 function doAoe(u,at,o){
   const x=at.x, y=at.y;
@@ -670,6 +684,7 @@ function attack(u,t){
     sfx('hit');
     if(u.fire>0) areaDamage(u.team,t.x,t.y,0.9,u.dmg*0.3,{towers:false});
   } else if(a.k==='proj'){
+    if(a.ramp){ const r0=u.rampTarget===t?Math.min(a.ramp,(u.ramp||1)+0.35):1; u.ramp=r0; u.rampTarget=t; mult*=r0; }
     let big=false; if(a.big){ u.shotN=(u.shotN||0)+1; big=u.shotN%a.big.n===0; if(big) callout(u,'SATURN V! 🚀','#ffb02e'); }
     const h0=(u.flying?1.6:0)+(u.c.model.k==='h'?1.0:0.7)*u.scale*VS;
     G.projs.push({key:a.proj,x:u.x,y:u.y,z:h0,sx:u.x,sy:u.y,target:t,tx:t.x,ty:t.y,speed:a.speed||(a.lob?7.5:12),lob:!!a.lob,total:dist(u,t),prog:0,
@@ -728,6 +743,7 @@ function updateProj(p,dt){
       const col=(PROJ[p.key]||[])[3]||(PROJ[p.key]||[])[1]||'#ffffff';
       fxRing(p.tx,p.ty,0.2,p.splash,0.35,col); fxBurst(p.tx,0.5,p.ty,p.big?40:14,col,p.big?6:3,p.big?0.3:0.18,0.5,8,true);
       if(p.big){ G.shake=Math.max(G.shake,0.3); sfx('boom'); fxPuff(p.tx,0.4,p.ty,10,'#777',0.8,1); } else sfx('pop');
+    } else if(p.target&&!p.target.dead&&p.target.c&&p.target.c.dodge&&!p.target.stun&&!p.target.frozen&&Math.random()<p.target.c.dodge){ callout(p.target,'dodged!','#ffffff'); fxPuff(p.tx,0.3,p.ty,4,'#e8e8e8',0.25,0.3);
     } else if(p.target&&!p.target.dead){ const tg=p.target; hitOne(u,tg,dmgOut(u,tg)*p.mult); fxBurst(p.tx,tg.isTower?1.6:0.7,p.ty,5,'#ffffff',2,0.13,0.25,4,true);
       if(p.bounce>0){ const hit=p.hitSet||new Set(); hit.add(tg.uid||('t'+tg.x+tg.y)); let nb=null,bd=4;
         for(const e of G.units){ if(e.team===p.team||e.dead||hit.has(e.uid)||!canHit(u,e)) continue; const d=Math.hypot(e.x-p.tx,e.y-p.ty); if(d<bd){bd=d;nb=e;} }
