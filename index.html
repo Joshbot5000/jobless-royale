@@ -251,7 +251,7 @@ ${J}`;se.test(ee)&&(H(F),F=setTimeout(re,cs))},_e=()=>{b.iceGatheringState==="co
 </script>
 <script>
 'use strict';
-const BUILD='141beccad5';
+const BUILD='9cd525d165';
 // =====================================================================
 //  DATA — arenas (themes) and cards. Colors: 'T' team, 'D' team dark, 'L' team light.
 // =====================================================================
@@ -2899,6 +2899,68 @@ function geo(k){
   return GEO[k]=g;
 }
 
+
+// ---------------------------------------------------------------- sculpted bodies: signed-distance fields + surface nets
+// Each animated body segment (torso, head, an arm, a hand, a leg) is ONE smooth implicit surface: ellipsoids and round
+// cones blended with a polynomial smooth-min, so shoulders flow into arms, hips into thighs, cheeks into the jaw.
+// It is polygonised with surface nets; normals come from the field's gradient (no faceting, no seams). Geometry is cached
+// by shape parameters (not by card), so most cards share the same arm/leg/hand meshes and only their colours differ.
+const SDF={
+  smin(a,b,k){ if(k<=0) return Math.min(a,b); const h=Math.max(k-Math.abs(a-b),0)/k; return Math.min(a,b)-h*h*k*0.25; },
+  smax(a,b,k){ return -SDF.smin(-a,-b,k); },
+  ell(cx,cy,cz,rx,ry,rz){ return (x,y,z)=>{ const px=(x-cx)/rx, py=(y-cy)/ry, pz=(z-cz)/rz, k0=Math.sqrt(px*px+py*py+pz*pz), qx=px/rx, qy=py/ry, qz=pz/rz, k1=Math.sqrt(qx*qx+qy*qy+qz*qz); return k1<1e-9?-Math.min(rx,ry,rz):k0*(k0-1)/k1; }; },
+  // round cone between a (radius r1) and b (radius r2), after Inigo Quilez
+  rcone(ax,ay,az,bx,by,bz,r1,r2){ const bax=bx-ax, bay=by-ay, baz=bz-az, l2=bax*bax+bay*bay+baz*baz, rr=r1-r2, a2=l2-rr*rr, il2=1/l2;
+    return (x,y,z)=>{ const pax=x-ax, pay=y-ay, paz=z-az, yv=pax*bax+pay*bay+paz*baz, zv=yv-l2, qx=pax*l2-bax*yv, qy=pay*l2-bay*yv, qz=paz*l2-baz*yv;
+      const x2=qx*qx+qy*qy+qz*qz, y2=yv*yv*l2, z2=zv*zv*l2, k=Math.sign(rr)*rr*rr*x2;
+      if(Math.sign(zv)*a2*z2>k) return Math.sqrt(x2+z2)*il2-r2; if(Math.sign(yv)*a2*y2<k) return Math.sqrt(x2+y2)*il2-r1; return (Math.sqrt(x2*a2*il2)+yv*rr)*il2-r1; }; },
+  // blend a list: [[fn,k],...] (k = smoothness with everything before it); negative k subtracts
+  blend(list){ return (x,y,z)=>{ let d=list[0][0](x,y,z); for(let i=1;i<list.length;i++){ const [f,k]=list[i], v=f(x,y,z); d=k<0?SDF.smax(d,-v,-k):SDF.smin(d,v,k); } return d; }; },
+  inflate(f,t){ return (x,y,z)=>f(x,y,z)-t; },
+  cutBelow(f,yc,k=0.012){ return (x,y,z)=>SDF.smax(f(x,y,z),yc-y,k); },     // keep y >= yc
+  cutAbove(f,yc,k=0.012){ return (x,y,z)=>SDF.smax(f(x,y,z),y-yc,k); },     // keep y <= yc
+};
+let SDF_CELL=0.024;                       // battle resolution; card portraits build with a finer cell
+const SDF_CACHE=new Map();
+function sdfGeo(key,fn,bmin,bmax){
+  const cell=SDF_CELL, ck=key+'@'+cell; let g=SDF_CACHE.get(ck); if(g) return g;
+  const pad=cell*1.5, ox=bmin[0]-pad, oy=bmin[1]-pad, oz=bmin[2]-pad;
+  const nx=Math.ceil((bmax[0]-bmin[0]+2*pad)/cell)+1, ny=Math.ceil((bmax[1]-bmin[1]+2*pad)/cell)+1, nz=Math.ceil((bmax[2]-bmin[2]+2*pad)/cell)+1;
+  const V=new Float32Array(nx*ny*nz), id=(i,j,k)=>i+nx*(j+ny*k);
+  for(let k=0;k<nz;k++) for(let j=0;j<ny;j++) for(let i=0;i<nx;i++) V[id(i,j,k)]=fn(ox+i*cell,oy+j*cell,oz+k*cell);
+  const cx=nx-1, cy=ny-1, cz=nz-1, CI=new Int32Array(cx*cy*cz).fill(-1), cid=(i,j,k)=>i+cx*(j+cy*k);
+  const pos=[], E=[[0,1],[2,3],[4,5],[6,7],[0,2],[1,3],[4,6],[5,7],[0,4],[1,5],[2,6],[3,7]], C=[[0,0,0],[1,0,0],[0,1,0],[1,1,0],[0,0,1],[1,0,1],[0,1,1],[1,1,1]], cv=new Float32Array(8);
+  for(let k=0;k<cz;k++) for(let j=0;j<cy;j++) for(let i=0;i<cx;i++){
+    let neg=0; for(let c=0;c<8;c++){ cv[c]=V[id(i+C[c][0],j+C[c][1],k+C[c][2])]; if(cv[c]<0) neg++; }
+    if(neg===0||neg===8) continue;
+    let sx=0,sy=0,sz=0,n=0;
+    for(const [a,b] of E){ const va=cv[a], vb=cv[b]; if((va<0)===(vb<0)) continue; const t=va/(va-vb); sx+=C[a][0]+(C[b][0]-C[a][0])*t; sy+=C[a][1]+(C[b][1]-C[a][1])*t; sz+=C[a][2]+(C[b][2]-C[a][2])*t; n++; }
+    CI[cid(i,j,k)]=pos.length/3; pos.push(ox+(i+sx/n)*cell, oy+(j+sy/n)*cell, oz+(k+sz/n)*cell);
+  }
+  const idx=[], quad=(a,b,c,d)=>{ if(a<0||b<0||c<0||d<0) return; idx.push(a,b,c,a,c,d); };
+  for(let k=1;k<nz-1;k++) for(let j=1;j<ny-1;j++) for(let i=1;i<nx-1;i++){
+    const v0=V[id(i,j,k)]<0;
+    if(i<cx&&(V[id(i+1,j,k)]<0)!==v0){ const q=[CI[cid(i,j-1,k-1)],CI[cid(i,j,k-1)],CI[cid(i,j,k)],CI[cid(i,j-1,k)]]; v0?quad(q[0],q[1],q[2],q[3]):quad(q[3],q[2],q[1],q[0]); }
+    if(j<cy&&(V[id(i,j+1,k)]<0)!==v0){ const q=[CI[cid(i-1,j,k-1)],CI[cid(i-1,j,k)],CI[cid(i,j,k)],CI[cid(i,j,k-1)]]; v0?quad(q[0],q[1],q[2],q[3]):quad(q[3],q[2],q[1],q[0]); }
+    if(k<cz&&(V[id(i,j,k+1)]<0)!==v0){ const q=[CI[cid(i-1,j-1,k)],CI[cid(i,j-1,k)],CI[cid(i,j,k)],CI[cid(i-1,j,k)]]; v0?quad(q[0],q[1],q[2],q[3]):quad(q[3],q[2],q[1],q[0]); }
+  }
+  // smooth normals from the field gradient; fix any triangle wound against it; cylindrical UVs for fabric / fur detail maps
+  const nv=pos.length/3, nor=new Float32Array(nv*3), uv=new Float32Array(nv*2), e=cell*0.5;
+  const mx=(bmin[0]+bmax[0])/2, mz=(bmin[2]+bmax[2])/2, h=Math.max(1e-3,bmax[1]-bmin[1]);
+  for(let v=0;v<nv;v++){ const x=pos[v*3], y=pos[v*3+1], z=pos[v*3+2];
+    let gx=fn(x+e,y,z)-fn(x-e,y,z), gy=fn(x,y+e,z)-fn(x,y-e,z), gz=fn(x,y,z+e)-fn(x,y,z-e); const l=Math.hypot(gx,gy,gz)||1;
+    nor[v*3]=gx/l; nor[v*3+1]=gy/l; nor[v*3+2]=gz/l; uv[v*2]=Math.atan2(x-mx,z-mz)/(2*Math.PI)+0.5; uv[v*2+1]=(y-bmin[1])/h; }
+  for(let t=0;t<idx.length;t+=3){ const a=idx[t]*3, b=idx[t+1]*3, c=idx[t+2]*3;
+    const ux=pos[b]-pos[a], uy=pos[b+1]-pos[a+1], uz=pos[b+2]-pos[a+2], wx=pos[c]-pos[a], wy=pos[c+1]-pos[a+1], wz=pos[c+2]-pos[a+2];
+    const fx=uy*wz-uz*wy, fy=uz*wx-ux*wz, fz=ux*wy-uy*wx; if(fx*(nor[a]+nor[b]+nor[c])+fy*(nor[a+1]+nor[b+1]+nor[c+1])+fz*(nor[a+2]+nor[b+2]+nor[c+2])<0){ const s=idx[t+1]; idx[t+1]=idx[t+2]; idx[t+2]=s; } }
+  g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setAttribute('normal',new THREE.BufferAttribute(nor,3)); g.setAttribute('uv',new THREE.BufferAttribute(uv,2));
+  g.setIndex(nv>65535?new THREE.Uint32BufferAttribute(idx,1):new THREE.Uint16BufferAttribute(idx,1)); g.computeBoundingSphere(); g.userData.sdf=true;
+  SDF_CACHE.set(ck,g); return g; }
+// add a cached SDF mesh to a rig segment
+function S(parent,key,fn,bmin,bmax,m){ const me=new THREE.Mesh(sdfGeo(key,fn,bmin,bmax),m); parent.add(me); return me; }
+// surface z of a field along a ray from the front (used to seat eyes, brows and mouths on the sculpted face)
+function sdfFrontZ(fn,x,y,z0,z1){ let z=z0; for(let i=0;i<40&&z>z1;i++){ const d=fn(x,y,z); if(d<0.0008) return z; z-=Math.max(0.002,d*0.9); } return z; }
+
 // ---------------------------------------------------------------- materials
 const MATS = {};
 // Soft studio environment as a plain canvas cube map: works in every WebGL context (battle and card portraits) without PMREM.
@@ -2959,7 +3021,7 @@ const QUALITY = { outlines:true, shadows:true };
 function outlineMat(color){
   if(OUTLINE_MATS[color]) return OUTLINE_MATS[color];
   return OUTLINE_MATS[color]=new THREE.ShaderMaterial({
-    uniforms:{col:{value:new THREE.Color(color)},thick:{value:0.024}},
+    uniforms:{col:{value:new THREE.Color(color).lerp(new THREE.Color('#3a3f55'),0.25)},thick:{value:0.019}},
     vertexShader:'uniform float thick; void main(){ vec3 n=normalize(normalMatrix*normal); vec4 mv=modelViewMatrix*vec4(position,1.0); mv.xyz+=n*clamp(thick*(-mv.z)/42.0,0.005,thick); gl_Position=projectionMatrix*mv; }',
     fragmentShader:'uniform vec3 col; void main(){ gl_FragColor=vec4(col,1.0); }',
     side:THREE.BackSide });
@@ -3130,7 +3192,7 @@ function buildHuman(p,tc){
   const shoe=mat(ot==='hazmat'?'#2a2a2a':ot==='spacesuit'?'#e2e2e2':'#3a2a22',{s:60});
   const sleeve = ot==='tank' ? skin : main;
   const root=G0(); g.add(root); R.root=root;
-  const LR=1.36, HK=0.66;                       // leg stretch and head scale: ~1:4.2 head-to-body, stylised-realistic
+  const LR=1.36, HK=0.72;                       // leg stretch and head scale: ~1:4.2 head-to-body, stylised-realistic
   const lift=G0(); lift.position.y=0.44*(LR-1); root.add(lift);
   const hips=G0(); hips.position.y=0.44; lift.add(hips); R.hips=hips;
   // legs
@@ -3138,9 +3200,9 @@ function buildHuman(p,tc){
   for(const s of [-1,1]){
     const L=G0(); L.position.set(s*0.11*w,0,0); hips.add(L);
     const lw=Math.max(1,w*0.85), fw=Math.max(1,w*0.8);
-    P(L,'limb',pants,0.215*lw,0.12,0.21*lw,0,-0.1,0);                 // thigh
-    P(L,'sphLo',pants,0.088*lw,0.06,0.09*lw,0,-0.205,0.012).userData.noOutline=true;   // knee
-    P(L,'limb',pants,0.17*lw,0.12,0.175*lw,0,-0.285,0.004);           // shin, tapering to the ankle
+    { const legF=SDF.cutBelow(SDF.blend([[SDF.ell(0,-0.01,0,0.104*lw,0.07,0.1*lw),0],[SDF.rcone(0,-0.03,0.002,0,-0.2,0.014,0.1*lw,0.068*lw),0.05],[SDF.ell(0,-0.205,0.024,0.058*lw,0.048,0.05*lw),0.03],
+        [SDF.rcone(0,-0.215,0.008,0,-0.37,0,0.066*lw,0.047*lw),0.04],[SDF.ell(0,-0.262,-0.016,0.068*lw,0.062,0.066*lw),0.05]]),-0.378);
+      S(L,'leg|'+lw.toFixed(3),legF,[-0.13*lw,-0.4,-0.13*lw],[0.13*lw,0.08,0.13*lw],pants); }
     if(!longWear&&!suitLegs) P(L,'rbox2',mat(shade(colr(pantsC,tc),1.18),{s:35}),0.012,0.36,0.012,0,-0.2,0.102*lw).userData.noOutline=true;   // trouser crease
     if(!longWear){ P(L,'torLo',pants,0.085*lw,0.085*lw,0.25,0,-0.355,0.005,PI/2); }   // trouser hem
     P(L,'shoeS',shoe,0.1*fw,0.07,0.155,0,-0.39,0.05);
@@ -3152,7 +3214,9 @@ function buildHuman(p,tc){
   // torso
   const torso=G0(); hips.add(torso); R.torso=torso;
   const tw=0.27*w, th=0.29*h, td=0.205*Math.max(1,w*0.85);
-  P(torso,'torso',main,tw,th,td,0,th,0);
+  { const aw0=Math.max(1,w*0.8), torF=SDF.blend([[SDF.ell(0,th*0.28,-td*0.05,tw*0.9,th*0.36,td*1.0),0],[SDF.ell(0,th*0.82,0,tw*0.74,th*0.42,td*0.88),0.1],[SDF.ell(0,th*1.32,td*0.02,tw*0.96,th*0.47,td*0.98),0.11],
+      [SDF.ell(0,th*1.74,-td*0.06,tw*0.72,th*0.22,td*0.72),0.08],[SDF.ell(-(tw*0.84),th*1.6,0,0.086*aw0,0.084,0.086*aw0),0.07],[SDF.ell(tw*0.84,th*1.6,0,0.086*aw0,0.084,0.086*aw0),0.07]]);
+    S(torso,'torso|'+[tw,th,td,aw0].map(v=>v.toFixed(3)).join(','),torF,[-tw-0.12*aw0,-th*0.15,-td*1.15],[tw+0.12*aw0,th*2.02,td*1.15],main); }
   const fz=td*0.94;
   const front=(m,sx,sy,x,y,z=0)=>P(torso,'rbox2',m,sx,sy,0.03,x,y,fz+z);
   const button=(y,m=gold())=>P(torso,'sphLo',m,0.022,0.022,0.012,0,y,fz+0.012);
@@ -3215,32 +3279,34 @@ function buildHuman(p,tc){
   if(!longWear && !['vest','firecoat','gi','trench','apron','chef','uniform','overalls'].includes(ot) && !OUTFIT_NO_BELT.includes(ot)){ P(torso,'torThin',mat('#3a2a20',{s:70}),tw*0.93,td*0.96,0.42,0,th*0.14,0,PI/2); P(torso,'rbox2',gold(),0.06,0.05,0.02,0,th*0.14,fz+0.02); P(torso,'rbox2',mat('#3a2a20',{s:70}),0.036,0.028,0.022,0,th*0.14,fz+0.024).userData.noOutline=true; }
   // neck + head
   const hs=(p.head||1)*0.3;
-  P(torso,'limb',skin,0.13,0.07,0.12,0,th*1.98,0); P(torso,'sphLo',skinD,0.065,0.028,0.055,0,th*1.92,0.006).userData.noOutline=true;
+  S(torso,'neck|'+[tw,th,td].map(v=>v.toFixed(3)).join(','),SDF.blend([[SDF.rcone(0,th*1.7,-0.012,0,th*2.06+0.02,0.004,0.068,0.056),0],[SDF.ell(0,th*1.76,-0.02,tw*0.52,0.05,td*0.52),0.06]]),[-tw*0.6,th*1.6,-td*0.7],[tw*0.6,th*2.1+0.04,td*0.7],skin);
   const head=G0(); head.position.y=th*2+0.035+hs*0.92*HK; head.scale.setScalar(HK); torso.add(head); R.head=head;
-  P(head,'face',skin,hs,hs*0.98,hs*0.95);
-  for(const s of [-1,1]){ P(head,'sph',skin,0.05,0.078,0.034,s*hs*0.93,-0.015,-0.02,0,s*0.35,s*0.08); P(head,'sphLo',skinD,0.028,0.05,0.016,s*hs*0.965,-0.015,-0.004,0,s*0.35,s*0.08).userData.noOutline=true; }
+  const headF=SDF.blend([[SDF.ell(0,0.012,-0.012,hs*0.98,hs*0.97,hs*0.98),0],[SDF.ell(0,-hs*0.42,hs*0.16,hs*0.66,hs*0.5,hs*0.68),0.09],[SDF.ell(0,-hs*0.72,hs*0.5,hs*0.26,hs*0.2,hs*0.25),0.07],
+    [SDF.ell(-hs*0.46,-hs*0.27,hs*0.55,hs*0.35,hs*0.27,hs*0.34),0.06],[SDF.ell(hs*0.46,-hs*0.27,hs*0.55,hs*0.35,hs*0.27,hs*0.34),0.06],
+    [SDF.rcone(0,0.022,hs*0.86,0,-0.045,hs*0.99,0.011,0.023),0.022],[SDF.ell(-0.024,-0.056,hs*0.95,0.016,0.012,0.014),0.012],[SDF.ell(0.024,-0.056,hs*0.95,0.016,0.012,0.014),0.012],
+    [SDF.ell(-hs*0.95,-0.015,-0.02,0.024,0.074,0.05),0.03],[SDF.ell(hs*0.95,-0.015,-0.02,0.024,0.074,0.05),0.03]]);
+  S(head,'head|'+hs.toFixed(3),headF,[-hs*1.12,-hs*1.0,-hs*1.1],[hs*1.12,hs*1.05,hs*1.16],skin);
+  for(const s of [-1,1]) P(head,'sphLo',skinD,0.01,0.045,0.03,s*(hs*0.95+0.02),-0.015,0.004,0,s*0.3,0).userData.noOutline=true;   // inner ear
   const browC = p.hair&&p.hair[0]!=='bald' ? colr(p.hair[1],tc) : '#3a2414';
   const angry=(p.face||[]).includes('angry'), sleepy=(p.face||[]).includes('sleepy');
   if(p.statue) for(const s of [-1,1]) P(head,'sph',skin,0.06,0.07,0.04,s*0.1,0.03,hs*0.8); else faceEyes(head,0,0.03,hs*0.8,0.1,0.065,{iris:p.iris,lid:skin,open:angry?0.48:sleepy?0.3:0.66,tilt:angry?-0.25:0});
-  const onFace=(x,y,lift=0.004)=>hs*0.95*Math.sqrt(Math.max(0.05,1-(x/hs)**2-(y/(hs*0.98))**2))+lift;   // z of the face surface
+  const onFace=(x,y,lift=0.004)=>sdfFrontZ(headF,x,y,hs*1.45,0)+lift;   // z of the sculpted face surface
   for(const s of [-1,1]){ const bm=mat(browC,{s:20}); for(const [bx,by,ba,bl] of [[0.068,0.098+(angry?-0.012:0),angry?0.5:-0.05,0.05],[0.122,0.101+(angry?0.008:0),angry?0.3:-0.38,0.04]])
     P(head,'capsLo',bm,0.022,bl,0.016,s*bx,by,onFace(s*bx,by,0.006),-0.1,0,PI/2+s*ba).userData.noOutline=true; }
-  P(head,'noseG',mat(shade(skinC,0.95),{s:30,skin:1}),0.034,0.062,0.042,0,-0.035,onFace(0,-0.035,-0.012)).userData.noOutline=true;
   const lipC=new THREE.Color(skinC).lerp(new THREE.Color('#b8455a'),0.45).getStyle(), lipM=mat(lipC,{s:60,skin:1}), mline=mat('#4a1818',{s:40});
   const my=angry?-0.128:-0.118, mz=onFace(0,my,0.002);
   const mouth=P(head,'smile',mline,sleepy?0.04:0.052,angry?0.03:0.038,0.035,0,my,mz,0,0,angry?PI*0.1:PI*1.1); mouth.userData.noOutline=true;
-  P(head,'sphLo',lipM,0.034,0.01,0.012,0,my+(angry?0.04:0.004),mz+0.002).userData.noOutline=true;                          // upper lip
+  P(head,'sphLo',lipM,0.026,0.006,0.008,0,my+(angry?0.036:0.006),mz-0.001).userData.noOutline=true;                          // upper lip
   P(head,'sphLo',lipM,0.028,0.011,0.012,0,my+(angry?-0.004:-0.046),mz-0.002).userData.noOutline=true;                       // lower lip
-  for(const s of [-1,1]) P(head,'sphLo',mline,0.008,0.008,0.008,s*0.05,my+(angry?0.006:0.006),onFace(s*0.05,my,-0.002)).userData.noOutline=true;   // mouth corners
   { const blush=mat(new THREE.Color(skinC).lerp(new THREE.Color('#ff4a62'),0.6).getStyle(),{s:20,map:blushTex(),op:0.55}), n=new THREE.Vector3(), Z=new THREE.Vector3(0,0,1);
-    for(const s of [-1,1]){ n.set(s*0.5,-0.22,0.84).normalize(); const d=P(head,'disc',blush,0.055,0.04,1,n.x*hs*1.0,n.y*hs*0.98,n.z*hs*0.95+0.006); d.quaternion.setFromUnitVectors(Z,n); d.userData.noOutline=true; d.renderOrder=2; } }
+    for(const s of [-1,1]){ const bx=s*0.15, by=-0.07, bz=onFace(bx,by,0), e=0.004; n.set(headF(bx+e,by,bz)-headF(bx-e,by,bz),headF(bx,by+e,bz)-headF(bx,by-e,bz),headF(bx,by,bz+e)-headF(bx,by,bz-e)).normalize(); const d=P(head,'disc',blush,0.055,0.04,1,bx+n.x*0.004,by+n.y*0.004,bz+n.z*0.004); d.quaternion.setFromUnitVectors(Z,n); d.userData.noOutline=true; d.renderOrder=2; } }
   // hair
   const hat = p.hat ? p.hat[0] : null;
   const [hst,hc='#3a2414'] = p.hair || (hat?['none']:['short','#3a2414']);
   const HT=hairTex(), hm=mat(colr(hc,tc),{s:45,map:HT,bump:HT,bs:0.02}), hmS=mat(colr(hc,tc),{s:110,map:HT,bump:HT,bs:0.015});
   const cap=(m,sy=0.8,tilt=-0.4)=>{ P(head,'hemi',m,hs*1.07,hs*sy,hs*1.06,0,0.03,-0.02,tilt); P(head,'sph',m,hs*0.9,hs*0.5,hs*0.45,0,-hs*0.18,-hs*0.68); };   // hairline above the brows, full at the nape
   const crown=(m,part=1)=>{ for(let i=0;i<5;i++){ const t=i/4-0.5, x=(t*1.3+0.12*part)*hs; P(head,'sph',m,hs*0.42,hs*0.26,hs*0.62,x,hs*(0.8-Math.abs(t)*0.32),hs*0.06,0.25,0,-t*0.9); } };   // volume lobes, side parting
-  const sideburns=(m)=>{ for(const s of [-1,1]) P(head,'capsLo',m,hs*0.13,hs*0.17,hs*0.11,s*hs*0.9,-hs*0.02,hs*0.26,0,0,s*0.1); };
+  const sideburns=()=>{};   // the hair cap now meets the sculpted ears cleanly
   const bangs=(m)=>{ if(hat) return; for(let i=0;i<4;i++){ const a=-0.6+i*0.38; P(head,'sph',m,hs*0.32,hs*0.2,hs*0.26,Math.sin(a)*hs*0.74,hs*0.66,Math.cos(a)*hs*0.66,0.65,0,-a*0.6); } };
   switch(hst){
     case 'short': cap(hm); if(!hat){ crown(hm); bangs(hm); } sideburns(hm); break;
@@ -3309,18 +3375,17 @@ function buildHuman(p,tc){
   for(const s of [-1,1]){
     const A=G0(); A.position.set(s*(tw+0.025),th*1.62,0); torso.add(A);
     const aw=Math.max(1,w*0.8);
-    P(A,'sph',sleeve,0.09*aw,0.092,0.09*aw,0,0,0);                                  // shoulder
-    P(A,'limb',sleeve,0.16*aw,0.12,0.155*aw,0,-0.125,0);                             // upper arm
     const fore = ['tank','shirtTie','gi'].includes(ot)||OUTFIT_FORE_SKIN.includes(ot) ? skin : sleeve;
-    P(A,'sphLo',fore,0.064*aw,0.06,0.064*aw,0,-0.245,-0.008).userData.noOutline=true;   // elbow
-    P(A,'limb',fore,0.13*aw,0.115,0.125*aw,0,-0.33,0.01);                            // forearm, tapering to the wrist
+    { const armF=SDF.blend([[SDF.ell(0,-0.005,0,0.086*aw,0.09,0.086*aw),0],[SDF.rcone(0,-0.03,0,0,-0.235,-0.008,0.075*aw,0.056*aw),0.05],[SDF.rcone(0,-0.245,-0.006,0,-0.432,0.012,0.056*aw,0.04*aw),0.035],[SDF.ell(0,-0.29,0.002,0.062*aw,0.07,0.06*aw),0.05]]),
+        bb0=[-0.11*aw,-0.47,-0.11*aw], bb1=[0.11*aw,0.11,0.11*aw], ak=aw.toFixed(3);
+      if(fore===sleeve) S(A,'arm|'+ak,SDF.cutBelow(SDF.inflate(armF,0.004),-0.428),bb0,bb1,sleeve);
+      else { S(A,'armSkin|'+ak,armF,bb0,bb1,skin); if(sleeve!==skin) S(A,'sleeve|'+ak,SDF.cutBelow(SDF.inflate(armF,0.011),-0.19,0.01),bb0,bb1,sleeve); } }
     if(fore===sleeve&&ot!=='hazmat'&&ot!=='spacesuit') P(A,'tor',ot==='suit'?mat('#f4f4f2',{s:40}):sleeve,0.06*aw,0.06*aw,0.4,0,-0.42,0.01,PI/2);   // cuff
     const hand=G0(); hand.position.set(0,-0.47,0.01); A.add(hand);
     const gm=ot==='hazmat'?mat('#2a2a2a',{s:40}):ot==='spacesuit'?mat('#dddddd',{s:60}):skin;
-    P(hand,'sph',gm,0.06,0.07,0.056);                                                     // palm
-    P(hand,'capsLo',gm,0.052,0.05,0.06,s*0.012,-0.056,0.012,0.45,0,0);                   // fingers (mitten), curled forward
-    for(let i=0;i<3;i++) P(hand,'sphLo',gm,0.012,0.01,0.008,s*0.04,-0.06-i*0.002,-0.012+i*0.02).userData.noOutline=true;   // finger grooves
-    P(hand,'capsLo',gm,0.026,0.036,0.026,-s*0.034,-0.005,0.045,0.6,0,s*0.5);            // thumb
+    { const HS=1.12, hF=SDF.blend([[SDF.ell(0,0,0,0.056*HS,0.066*HS,0.05*HS),0],[SDF.rcone(s*0.008*HS,-0.03*HS,0.004*HS,s*0.012*HS,-0.078*HS,0.03*HS,0.042*HS,0.035*HS),0.035*HS],
+        [SDF.rcone(-s*0.03*HS,0,0.03*HS,-s*0.034*HS,-0.028*HS,0.058*HS,0.022*HS,0.017*HS),0.02*HS]]);
+      S(hand,'hand|'+s,hF,[-0.08*HS,-0.13*HS,-0.08*HS],[0.08*HS,0.08*HS,0.1*HS],gm); }
     if(s>0){ R.armR=A; R.hand=hand; } else { R.armL=A; R.handL=hand; }
   }
   if(p.prop && p.prop!=='none'){ const pr=buildProp(p.prop,tc); R.hand.add(pr); R.prop=pr;
@@ -3355,11 +3420,10 @@ function buildQuad(p,tc){
   const L=p.len||1, LL=p.legLen??0.22, ch=p.chunky?1.2:1;
   const root=G0(); g.add(root); R.root=root;
   const body=G0(); body.position.y=LL+0.2; root.add(body); R.body=body;
-  R.bodyMesh=P(body,'sph',coat,0.2*ch,0.18*ch,0.24*L);
-  P(body,'sph',coat,0.22*ch,0.2*ch,0.17,0,0.02,0.15*L);            // chest
-  P(body,'sph',coat,0.2*ch,0.22*ch,0.17,0,-0.04,0.22*L);           // deep chest, lower in front
-  for(const s of [-1,1]){ P(body,'sph',coat,0.11*ch,0.15*ch,0.15,s*0.11*ch,0.0,0.2*L); P(body,'sph',coat,0.12*ch,0.17*ch,0.17,s*0.1*ch,0.02,-0.2*L); }   // shoulders and haunches
-  P(body,'sph',coat,0.2*ch,0.185*ch,0.16,0,0.0,-0.15*L);           // hips
+  { const bl=[[SDF.ell(0,0,0,0.19*ch,0.17*ch,0.26*L),0],[SDF.ell(0,-0.02,0.18*L,0.21*ch,0.21*ch,0.17),0.08],[SDF.ell(0,0.0,-0.17*L,0.2*ch,0.19*ch,0.17),0.08],[SDF.ell(0,-0.07,0.03,0.15*ch,0.12,0.22*L),0.06],
+      [SDF.rcone(0,0.05,0.24*L+0.02,0,0.17,0.24*L+0.11,0.11*ch,0.085*ch),0.07]];
+    for(const s of [-1,1]) bl.push([SDF.ell(s*0.11*ch,0,0.2*L,0.1*ch,0.15*ch,0.14),0.06],[SDF.ell(s*0.1*ch,0.02,-0.2*L,0.115*ch,0.17*ch,0.16),0.06]);   // shoulders and haunches
+    R.bodyMesh=S(body,'qbody|'+[ch,L].map(v=>v.toFixed(3)).join(','),SDF.blend(bl),[-0.3*ch,-0.27*ch,-0.42*L-0.06],[0.3*ch,0.3,0.42*L+0.2],coat); }
   P(body,'sph',coat2,0.16*ch,0.12,0.24*L,0,-0.08,0.03);
   if(p.patches){ P(body,'sph',coat2,0.17,0.12,0.17,0.04,0.12,-0.08*L); P(body,'sph',coat2,0.13,0.1,0.13,-0.06,0.11,0.14*L); }
   if(p.spots){ const r=seeded(7); for(let i=0;i<16;i++){ const a=r()*TAU, zz=(r()-0.5)*0.55*L; const m=P(body,'sphLo',mat('#111',{s:14}),0.036,0.036,0.018,Math.cos(a)*0.205,Math.sin(a)*0.19,zz); m.lookAt(Math.cos(a)*2,Math.sin(a)*2,zz); m.userData.noOutline=true; } }
@@ -3368,15 +3432,15 @@ function buildQuad(p,tc){
   const front=G0(); front.position.z=0.24*L; body.add(front); R.front=front;
   const back=G0(); back.position.z=-0.24*L; body.add(back); R.back=back;
   // neck + head
-  P(front,'sph',coat,0.12*ch,0.15,0.12,0,0.11,0.07,-0.5);
   const head=G0(); head.position.set(0,0.19,0.14); front.add(head); R.head=head;
   const hr = p.breed==='bulldog'?0.22:0.17;
-  P(head,'face',coat,hr,hr*0.95,hr*0.95);
   const sn=p.snout??0.18;
   const muzzle=p.tan||p.collie||p.patches?coat2:coat;
-  P(head,'limb',muzzle,0.21,0.05+sn*0.5,0.17,0,-0.045,hr*0.62+sn*0.42,-PI/2);                         // muzzle tapering to the nose
-  for(const s of [-1,1]) P(head,'sphLo',coat,0.045,0.024,0.04,s*0.075,0.1,hr*0.72,0,0,s*-0.2);      // brow ridges
-  for(const s of [-1,1]) P(head,'sph',muzzle,0.055,0.05,0.05,s*0.045,-0.07,hr*0.75+sn*0.6);
+  { const sk=[[SDF.ell(0,0,-0.01,hr,hr*0.92,hr*0.95),0],[SDF.ell(-0.075,0.1,hr*0.72,0.045,0.024,0.04),0.03],[SDF.ell(0.075,0.1,hr*0.72,0.045,0.024,0.04),0.03],[SDF.ell(0,-0.06,hr*0.3,hr*0.75,hr*0.55,hr*0.7),0.06]],
+      mz=[[SDF.rcone(0,-0.035,hr*0.5,0,-0.05,hr*0.7+sn*0.85,0.085,0.058),0],[SDF.ell(-0.045,-0.07,hr*0.75+sn*0.6,0.052,0.048,0.05),0.03],[SDF.ell(0.045,-0.07,hr*0.75+sn*0.6,0.052,0.048,0.05),0.03]],
+      key=[hr,sn].map(v=>v.toFixed(3)).join(','), b0=[-hr*1.15,-hr*1.05,-hr*1.1], b1=[hr*1.15,hr*1.0,hr+sn+0.12];
+    if(muzzle===coat) S(head,'qhead|'+key,SDF.blend(sk.concat(mz.map(([f],i)=>[f,i?0.03:0.07]))),b0,b1,coat);
+    else { S(head,'qskull|'+key,SDF.blend(sk),b0,b1,coat); S(head,'qmuzzle|'+key,SDF.inflate(SDF.blend(mz),0.004),b0,b1,muzzle); } }
   P(head,'sph',mat(p.nose||'#151515',{s:140}),0.045,0.035,0.032,0,-0.015,hr*0.7+sn*0.95+0.04);
   const jaw=G0(); jaw.position.set(0,-0.09,hr*0.5); head.add(jaw); R.jaw=jaw;
   P(jaw,'sph',coat2,0.075,0.035,0.05+sn*0.35,0,0,sn*0.4);
@@ -3407,8 +3471,8 @@ function buildQuad(p,tc){
   for(const [grp,zs] of [[front,1],[back,-1]]) for(const s of [-1,1]){
     const lg=G0(); lg.position.set(s*0.12*ch,-0.06,zs*0.02); grp.add(lg);
     const ll=LL+0.1;
-    P(lg,'limb',coat,0.15*ch,ll*0.3,0.16*ch,0,-ll*0.25,zs<0?-0.02:0.01);                              // upper leg
-    P(lg,'limb',coat,0.095*ch,ll*0.33,0.1*ch,0,-ll*0.66,zs<0?-0.025:0.02);                             // lower leg
+    { const kz=zs<0?-0.03:0.015, legF=SDF.blend([[SDF.rcone(0,0,0,0,-ll*0.5,kz,(zs<0?0.085:0.078)*ch,0.05*ch),0],[SDF.rcone(0,-ll*0.5,kz,0,-ll+0.03,0.02,0.05*ch,0.042*ch),0.03]]);
+      S(lg,'qleg|'+[ll,ch,zs].map(v=>(+v).toFixed(3)).join(','),legF,[-0.1*ch,-ll,-0.1*ch],[0.1*ch,0.09*ch,0.1*ch],coat); }
     P(lg,'sph',legm,0.065*ch,0.045,0.08*ch,0,-ll+0.01,0.025);
     for(let t=-1;t<=1;t++) P(lg,'sphLo',legm,0.026*ch,0.026,0.03*ch,t*0.034*ch,-ll+0.0,0.085).userData.noOutline=true;   // toes
     R.legs.push(lg);
@@ -3676,7 +3740,7 @@ function getModel(m,team,opts={}){
   const ink = opts.ink || TEAMC[team].ink;
   const key=JSON.stringify(m)+'|'+team+'|'+(QUALITY.outlines?ink:'')+'|'+QUALITY.shadows;
   let tpl=MODEL_CACHE[key];
-  if(!tpl){ tpl=buildModel(m,team); tagRig(tpl); TPL_RIG.set(tpl,tpl.userData.rig); tpl.userData={};
+  if(!tpl){ const cell0=SDF_CELL; if(opts.temp) SDF_CELL=0.012; try{ tpl=buildModel(m,team); } finally{ SDF_CELL=cell0; } tagRig(tpl); TPL_RIG.set(tpl,tpl.userData.rig); tpl.userData={};
     // nested models (riders, patients, statues) keep their own rig object full of three.js references; Object3D.clone() JSON-copies
     // userData, which made every spawn of those cards take up to a second. Their rigs are never used on clones, so drop them.
     tpl.traverse(o=>{ if(o!==tpl&&o.userData&&o.userData.rig) delete o.userData.rig; });

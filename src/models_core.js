@@ -113,6 +113,68 @@ function geo(k){
   return GEO[k]=g;
 }
 
+
+// ---------------------------------------------------------------- sculpted bodies: signed-distance fields + surface nets
+// Each animated body segment (torso, head, an arm, a hand, a leg) is ONE smooth implicit surface: ellipsoids and round
+// cones blended with a polynomial smooth-min, so shoulders flow into arms, hips into thighs, cheeks into the jaw.
+// It is polygonised with surface nets; normals come from the field's gradient (no faceting, no seams). Geometry is cached
+// by shape parameters (not by card), so most cards share the same arm/leg/hand meshes and only their colours differ.
+const SDF={
+  smin(a,b,k){ if(k<=0) return Math.min(a,b); const h=Math.max(k-Math.abs(a-b),0)/k; return Math.min(a,b)-h*h*k*0.25; },
+  smax(a,b,k){ return -SDF.smin(-a,-b,k); },
+  ell(cx,cy,cz,rx,ry,rz){ return (x,y,z)=>{ const px=(x-cx)/rx, py=(y-cy)/ry, pz=(z-cz)/rz, k0=Math.sqrt(px*px+py*py+pz*pz), qx=px/rx, qy=py/ry, qz=pz/rz, k1=Math.sqrt(qx*qx+qy*qy+qz*qz); return k1<1e-9?-Math.min(rx,ry,rz):k0*(k0-1)/k1; }; },
+  // round cone between a (radius r1) and b (radius r2), after Inigo Quilez
+  rcone(ax,ay,az,bx,by,bz,r1,r2){ const bax=bx-ax, bay=by-ay, baz=bz-az, l2=bax*bax+bay*bay+baz*baz, rr=r1-r2, a2=l2-rr*rr, il2=1/l2;
+    return (x,y,z)=>{ const pax=x-ax, pay=y-ay, paz=z-az, yv=pax*bax+pay*bay+paz*baz, zv=yv-l2, qx=pax*l2-bax*yv, qy=pay*l2-bay*yv, qz=paz*l2-baz*yv;
+      const x2=qx*qx+qy*qy+qz*qz, y2=yv*yv*l2, z2=zv*zv*l2, k=Math.sign(rr)*rr*rr*x2;
+      if(Math.sign(zv)*a2*z2>k) return Math.sqrt(x2+z2)*il2-r2; if(Math.sign(yv)*a2*y2<k) return Math.sqrt(x2+y2)*il2-r1; return (Math.sqrt(x2*a2*il2)+yv*rr)*il2-r1; }; },
+  // blend a list: [[fn,k],...] (k = smoothness with everything before it); negative k subtracts
+  blend(list){ return (x,y,z)=>{ let d=list[0][0](x,y,z); for(let i=1;i<list.length;i++){ const [f,k]=list[i], v=f(x,y,z); d=k<0?SDF.smax(d,-v,-k):SDF.smin(d,v,k); } return d; }; },
+  inflate(f,t){ return (x,y,z)=>f(x,y,z)-t; },
+  cutBelow(f,yc,k=0.012){ return (x,y,z)=>SDF.smax(f(x,y,z),yc-y,k); },     // keep y >= yc
+  cutAbove(f,yc,k=0.012){ return (x,y,z)=>SDF.smax(f(x,y,z),y-yc,k); },     // keep y <= yc
+};
+let SDF_CELL=0.024;                       // battle resolution; card portraits build with a finer cell
+const SDF_CACHE=new Map();
+function sdfGeo(key,fn,bmin,bmax){
+  const cell=SDF_CELL, ck=key+'@'+cell; let g=SDF_CACHE.get(ck); if(g) return g;
+  const pad=cell*1.5, ox=bmin[0]-pad, oy=bmin[1]-pad, oz=bmin[2]-pad;
+  const nx=Math.ceil((bmax[0]-bmin[0]+2*pad)/cell)+1, ny=Math.ceil((bmax[1]-bmin[1]+2*pad)/cell)+1, nz=Math.ceil((bmax[2]-bmin[2]+2*pad)/cell)+1;
+  const V=new Float32Array(nx*ny*nz), id=(i,j,k)=>i+nx*(j+ny*k);
+  for(let k=0;k<nz;k++) for(let j=0;j<ny;j++) for(let i=0;i<nx;i++) V[id(i,j,k)]=fn(ox+i*cell,oy+j*cell,oz+k*cell);
+  const cx=nx-1, cy=ny-1, cz=nz-1, CI=new Int32Array(cx*cy*cz).fill(-1), cid=(i,j,k)=>i+cx*(j+cy*k);
+  const pos=[], E=[[0,1],[2,3],[4,5],[6,7],[0,2],[1,3],[4,6],[5,7],[0,4],[1,5],[2,6],[3,7]], C=[[0,0,0],[1,0,0],[0,1,0],[1,1,0],[0,0,1],[1,0,1],[0,1,1],[1,1,1]], cv=new Float32Array(8);
+  for(let k=0;k<cz;k++) for(let j=0;j<cy;j++) for(let i=0;i<cx;i++){
+    let neg=0; for(let c=0;c<8;c++){ cv[c]=V[id(i+C[c][0],j+C[c][1],k+C[c][2])]; if(cv[c]<0) neg++; }
+    if(neg===0||neg===8) continue;
+    let sx=0,sy=0,sz=0,n=0;
+    for(const [a,b] of E){ const va=cv[a], vb=cv[b]; if((va<0)===(vb<0)) continue; const t=va/(va-vb); sx+=C[a][0]+(C[b][0]-C[a][0])*t; sy+=C[a][1]+(C[b][1]-C[a][1])*t; sz+=C[a][2]+(C[b][2]-C[a][2])*t; n++; }
+    CI[cid(i,j,k)]=pos.length/3; pos.push(ox+(i+sx/n)*cell, oy+(j+sy/n)*cell, oz+(k+sz/n)*cell);
+  }
+  const idx=[], quad=(a,b,c,d)=>{ if(a<0||b<0||c<0||d<0) return; idx.push(a,b,c,a,c,d); };
+  for(let k=1;k<nz-1;k++) for(let j=1;j<ny-1;j++) for(let i=1;i<nx-1;i++){
+    const v0=V[id(i,j,k)]<0;
+    if(i<cx&&(V[id(i+1,j,k)]<0)!==v0){ const q=[CI[cid(i,j-1,k-1)],CI[cid(i,j,k-1)],CI[cid(i,j,k)],CI[cid(i,j-1,k)]]; v0?quad(q[0],q[1],q[2],q[3]):quad(q[3],q[2],q[1],q[0]); }
+    if(j<cy&&(V[id(i,j+1,k)]<0)!==v0){ const q=[CI[cid(i-1,j,k-1)],CI[cid(i-1,j,k)],CI[cid(i,j,k)],CI[cid(i,j,k-1)]]; v0?quad(q[0],q[1],q[2],q[3]):quad(q[3],q[2],q[1],q[0]); }
+    if(k<cz&&(V[id(i,j,k+1)]<0)!==v0){ const q=[CI[cid(i-1,j-1,k)],CI[cid(i,j-1,k)],CI[cid(i,j,k)],CI[cid(i-1,j,k)]]; v0?quad(q[0],q[1],q[2],q[3]):quad(q[3],q[2],q[1],q[0]); }
+  }
+  // smooth normals from the field gradient; fix any triangle wound against it; cylindrical UVs for fabric / fur detail maps
+  const nv=pos.length/3, nor=new Float32Array(nv*3), uv=new Float32Array(nv*2), e=cell*0.5;
+  const mx=(bmin[0]+bmax[0])/2, mz=(bmin[2]+bmax[2])/2, h=Math.max(1e-3,bmax[1]-bmin[1]);
+  for(let v=0;v<nv;v++){ const x=pos[v*3], y=pos[v*3+1], z=pos[v*3+2];
+    let gx=fn(x+e,y,z)-fn(x-e,y,z), gy=fn(x,y+e,z)-fn(x,y-e,z), gz=fn(x,y,z+e)-fn(x,y,z-e); const l=Math.hypot(gx,gy,gz)||1;
+    nor[v*3]=gx/l; nor[v*3+1]=gy/l; nor[v*3+2]=gz/l; uv[v*2]=Math.atan2(x-mx,z-mz)/(2*Math.PI)+0.5; uv[v*2+1]=(y-bmin[1])/h; }
+  for(let t=0;t<idx.length;t+=3){ const a=idx[t]*3, b=idx[t+1]*3, c=idx[t+2]*3;
+    const ux=pos[b]-pos[a], uy=pos[b+1]-pos[a+1], uz=pos[b+2]-pos[a+2], wx=pos[c]-pos[a], wy=pos[c+1]-pos[a+1], wz=pos[c+2]-pos[a+2];
+    const fx=uy*wz-uz*wy, fy=uz*wx-ux*wz, fz=ux*wy-uy*wx; if(fx*(nor[a]+nor[b]+nor[c])+fy*(nor[a+1]+nor[b+1]+nor[c+1])+fz*(nor[a+2]+nor[b+2]+nor[c+2])<0){ const s=idx[t+1]; idx[t+1]=idx[t+2]; idx[t+2]=s; } }
+  g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setAttribute('normal',new THREE.BufferAttribute(nor,3)); g.setAttribute('uv',new THREE.BufferAttribute(uv,2));
+  g.setIndex(nv>65535?new THREE.Uint32BufferAttribute(idx,1):new THREE.Uint16BufferAttribute(idx,1)); g.computeBoundingSphere(); g.userData.sdf=true;
+  SDF_CACHE.set(ck,g); return g; }
+// add a cached SDF mesh to a rig segment
+function S(parent,key,fn,bmin,bmax,m){ const me=new THREE.Mesh(sdfGeo(key,fn,bmin,bmax),m); parent.add(me); return me; }
+// surface z of a field along a ray from the front (used to seat eyes, brows and mouths on the sculpted face)
+function sdfFrontZ(fn,x,y,z0,z1){ let z=z0; for(let i=0;i<40&&z>z1;i++){ const d=fn(x,y,z); if(d<0.0008) return z; z-=Math.max(0.002,d*0.9); } return z; }
+
 // ---------------------------------------------------------------- materials
 const MATS = {};
 // Soft studio environment as a plain canvas cube map: works in every WebGL context (battle and card portraits) without PMREM.
@@ -173,7 +235,7 @@ const QUALITY = { outlines:true, shadows:true };
 function outlineMat(color){
   if(OUTLINE_MATS[color]) return OUTLINE_MATS[color];
   return OUTLINE_MATS[color]=new THREE.ShaderMaterial({
-    uniforms:{col:{value:new THREE.Color(color)},thick:{value:0.024}},
+    uniforms:{col:{value:new THREE.Color(color).lerp(new THREE.Color('#3a3f55'),0.25)},thick:{value:0.019}},
     vertexShader:'uniform float thick; void main(){ vec3 n=normalize(normalMatrix*normal); vec4 mv=modelViewMatrix*vec4(position,1.0); mv.xyz+=n*clamp(thick*(-mv.z)/42.0,0.005,thick); gl_Position=projectionMatrix*mv; }',
     fragmentShader:'uniform vec3 col; void main(){ gl_FragColor=vec4(col,1.0); }',
     side:THREE.BackSide });
