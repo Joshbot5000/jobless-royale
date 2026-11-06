@@ -29,8 +29,9 @@ async function runArenas(b,ids){
         while(t<38){ t+=dt;
           if(!placed){ const lead=G.units.filter(u=>u.team===1&&!u.dead).sort((x,y)=>y.y-x.y)[0];
             if(!lead){ placed=true; }
-            else if(lead.y>(CARDS[B].type==='spell'?19.5:17.2)||t>14){ placed=true; const c=CARDS[B];
-              let x=4.5,y=22.5; if(c.type==='building'){ x=6.5; y=21.5; } if(c.type==='spell'){ const us=G.units.filter(u=>u.team===1&&!u.dead); x=us.reduce((s,u)=>s+u.x,0)/us.length; y=us.reduce((s,u)=>s+u.y,0)/us.length; }
+            else if(lead.y>(CARDS[B].type==='spell'?19.5:15.2)||t>14){ placed=true; const c=CARDS[B];
+              // like a real player: troops dropped right in the attacker's path as it reaches the bridge, buildings in the middle to pull it
+              let x=3.8,y=21.5; if(c.type==='building'){ x=6.2; y=21.2; } if(c.type==='spell'){ const us=G.units.filter(u=>u.team===1&&!u.dead); x=us.reduce((s,u)=>s+u.x,0)/us.length; y=us.reduce((s,u)=>s+u.y,0)/us.length; }
               G.elixir[0]=99; playCard(0,0,x,y); b0=Math.max(1,teamHp(0)); } }
           update(dt); G.over=false; G.time=999;
           if(placed&&t>3&&!G.units.some(u=>u.team===1&&!u.dead&&u.origTeam===undefined)&&!G.spells.length&&!G.barrage.length) break; }
