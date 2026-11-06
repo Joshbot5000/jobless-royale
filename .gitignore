@@ -2,3 +2,4 @@ dist/
 node_modules/
 __pycache__/
 zz_test_*
+.claude/worktrees/

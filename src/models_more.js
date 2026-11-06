@@ -116,15 +116,15 @@ function outfitMore(ot,x){
       for(const s of [-1,1]) P(torso,'sph',skin,0.11,0.07,0.04,s*0.08,th*1.45,fz-0.01); break;
     case 'sumo': P(torso,'sph',skin,tw*1.05,th*0.75,td*1.1,0,th*0.7,0.04); P(hips,'cyl',acc,0.28*w,0.12,0.24,0,0.04,0); P(hips,'rbox2',acc,0.12,0.24,0.03,0,-0.12,0.23); break;
     case 'swim': P(hips,'cyl',acc,0.26*w,0.1,0.21,0,0.0,0); shortsLegs(x,null,null); break;
-    case 'smock': P(hips,'bell',main,0.38*w,0.36,0.32*Math.max(1,w*0.8),0,-0.12,0); P(torso,'sph',acc,0.06,0.04,0.03,-0.04,th*1.75,fz+0.01); P(torso,'sph',acc,0.06,0.04,0.03,0.04,th*1.75,fz+0.01);
+    case 'smock': P(hips,'skirt',main,0.38*w,0.36,0.32*Math.max(1,w*0.8),0,-0.12,0); P(torso,'sph',acc,0.06,0.04,0.03,-0.04,th*1.75,fz+0.01); P(torso,'sph',acc,0.06,0.04,0.03,0.04,th*1.75,fz+0.01);
       for(let i=0;i<6;i++) P(torso,'sphLo',mat(['#e5302a','#ffd34d','#3a7bd5','#39d353','#ff3dce','#ff8a1f'][i],{s:60}),0.03,0.03,0.012,Math.sin(i*2.1)*0.12,th*(0.5+i*0.18),fz+0.008); break;
-    case 'toga': P(hips,'bell',main,0.42*w,0.56,0.38*Math.max(1,w*0.8),0,-0.22,0); P(torso,'tor',acc,tw*0.78,td*0.8,0.5,0,th*1.0,0,PI/2,0,0.6); P(torso,'sph',main,0.13,0.1,0.14,-tw*0.75,th*1.75,0); break;
+    case 'toga': P(hips,'skirt',main,0.42*w,0.56,0.38*Math.max(1,w*0.8),0,-0.22,0); P(torso,'tor',acc,tw*0.78,td*0.8,0.5,0,th*1.0,0,PI/2,0,0.6); P(torso,'sph',main,0.13,0.1,0.14,-tw*0.75,th*1.75,0); break;
     case 'tutu': for(let i=0;i<3;i++) P(hips,'cyl',i%2?acc:main,0.46-i*0.05,0.04,0.42-i*0.05,0,0.02+i*0.035,0); P(torso,'torThin',acc,tw*0.96,td*0.96,0.3,0,th*1.5,0,PI/2); break;
     case 'stripes': for(let i=0;i<5;i++) P(torso,'torThin',acc,tw*1.0,td*1.0,0.75,0,th*(0.4+i*0.3),0,PI/2); break;
     case 'superhero': P(torso,'oct',acc,0.1,0.1,0.03,0,th*1.25,fz); P(torso,'oct',main,0.06,0.06,0.035,0,th*1.25,fz+0.01); P(torso,'torThin',acc,tw*0.96,td*0.97,0.5,0,th*0.15,0,PI/2);
       for(const L of R.legs) P(L,'caps',acc,0.21,0.08,0.21,0,-0.35,0.01); break;
     case 'cowboy': P(torso,'torso',acc,tw*1.04,th*0.8,td*1.05,0,th*0.95,0); front(main,0.07,0.3,0,th*1.0); P(torso,'cone4',mat('#e5302a',{s:30}),0.09,0.1,0.03,0,th*1.72,fz,PI); for(const L of R.legs) P(L,'caps',mat('#6b4423',{s:20}),0.215,0.15,0.215,0,-0.15,0); break;
-    case 'pirate': P(hips,'bell',main,0.38*w,0.42,0.32*Math.max(1,w*0.8),0,-0.14,0); front(wh,0.1,0.28,0,th*1.25); P(torso,'tor',acc,tw*0.98,td*1.0,0.35,0,th*0.3,0,PI/2); for(let i=0;i<3;i++) for(const s of [-1,1]) P(torso,'sphLo',gold(),0.02,0.02,0.012,s*0.08,th*(0.7+i*0.3),fz+0.01); break;
+    case 'pirate': P(hips,'skirt',main,0.38*w,0.42,0.32*Math.max(1,w*0.8),0,-0.14,0); front(wh,0.1,0.28,0,th*1.25); P(torso,'tor',acc,tw*0.98,td*1.0,0.35,0,th*0.3,0,PI/2); for(let i=0;i<3;i++) for(const s of [-1,1]) P(torso,'sphLo',gold(),0.02,0.02,0.012,s*0.08,th*(0.7+i*0.3),fz+0.01); break;
     case 'safari': for(const s of [-1,1]) P(torso,'rbox2',mat(shade(colr(x.oc,x.tc),0.85)),0.08,0.07,0.02,s*0.09,th*1.35,fz+0.003); front(acc,0.02,0.4,0,th*1.0); P(torso,'tor',main,0.1,0.09,0.55,0,th*1.85,0,PI/2); break;
     case 'fur': P(torso,'sph',acc,tw*0.7,th*0.75,0.06,0,th*0.95,fz-0.04); for(const s of [-1,1]) P(torso,'puff',main,0.13,0.12,0.13,s*tw*0.82,th*1.7,0); break;
     case 'ringmaster': front(wh,0.11,0.3,0,th*1.25); P(torso,'sphLo',bk,0.04,0.03,0.02,0,th*1.65,fz+0.02); for(let i=0;i<3;i++) for(const s of [-1,1]) P(torso,'sphLo',gold(),0.02,0.02,0.012,s*0.085,th*(0.65+i*0.28),fz+0.01);
