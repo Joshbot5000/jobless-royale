@@ -26,7 +26,7 @@ B('villain',{atk:{k:'beam',col:'#7dff4a',ramp:5},dmg:28,hs:0.3,range:5,desc:'Poi
 B('podcast',{atk:atk('podcast',{ramp:4}),desc:'The rant escalates: a cone of hot takes that ramps up to 4x on the same target. TAP – HOT TAKE (1 elixir): blasts a burning hot take that throws the target back.'});
 B('croc',{atk:{k:'melee',ramp:4},onHit:{crit:[3,2,'DEATH ROLL!']},desc:'Clamps on and rolls: every bite on the same target hits harder, up to 4x, and every 3rd is a DEATH ROLL for double. Swims across the river anywhere. A stun makes it let go.'});
 B('sunking',{atk:{k:'beam',col:'#ffd34d',ramp:5},dmg:26,hs:0.3,desc:'Focuses the sun: a golden beam that ramps up to 5x on one target, while his radiance heals friendly troops nearby. Hits air and ground.'});
-B('bartender',{atk:{k:'beam',col:'#f2b632',ramp:5},dmg:26,hs:0.3,range:5,desc:'Keeps pouring: a beer jet that ramps up to 5x on the same target. Hits air and ground. A stun spills the pint and resets it.'});
+B('bartender',{atk:{k:'beam',col:'#f2b632',ramp:5},dmg:26,hs:0.3,range:5,desc:'Keeps pouring: a beer jet that ramps up to 4x on the same target. Hits air and ground. A stun spills the pint and resets it.'});
 B('pundit',{atk:atk('pundit',{ramp:5}),desc:'The rant escalates on live TV: a cone of hot air that ramps up to 5x on the same target and sets it burning. A stun cuts to an ad break and resets it.'});
 B('ghosthunter',{atk:{k:'beam',col:'#9aff4a',ramp:6},dmg:26,hs:0.3,desc:'Locks a proton stream onto one target and does not let go: damage ramps up to 6x. Sees invisible enemies within 6 tiles. A stun breaks the stream.'});
 B('closer',{desc:'The ninth-inning specialist: a fastball stream that ramps up to 6x on the same target. Hits air and ground. A stun or a new target resets it.'});
@@ -122,4 +122,9 @@ B('scarecrow',{taunt:4,thorns:0.3,desc:'Stuffed with straw and spikes. Enemy tro
 // ---------------------------------------------------------------- overpowered or pointless outliers (values then fine-tuned in data_tune.js)
 B('stuntcar',{hp:1550,dmg:180,sp:{k:'charge',after:1.4,spd:1.6,mult:1.8,push:1.2,callout:'STUNT JUMP!'},death:{blast:[1.6,150]},desc:'Races at buildings. After a run-up it jumps in for 1.8x damage. A stun stops the jump. When it is wrecked it explodes in a Hollywood fireball.'});
 B('goldenstatue',{hp:3600,dmg:220,death:{blast:[2.2,240]}});
+})();
+// mechanical fixes for cards that stayed far above 50% in AI-vs-AI matches whatever their stats
+(function(){ const B=(k,o)=>{ if(CARDS[k]) Object.assign(CARDS[k],o); };
+  B('darts',{range:6.2}); B('radarscout',{range:6.5}); B('archerO',{range:7});
+  if(CARDS.bartender) CARDS.bartender.atk={...CARDS.bartender.atk,ramp:4};
 })();

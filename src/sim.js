@@ -824,6 +824,14 @@ function aiAct(team){
       const need = c.role==='sdmg'?4:c.role==='sutil'?5:c.role==='sroll'?2.5:3.5;
       if(v>=need&&inR>=2||(D.smart>1&&v>=need-0.5)){ playCard(team,sp,cx,cy+(team===1?-0.8:0.8)); return; } }
     if(th.targets==='buildings'){ const b=pick((id,c)=>c.type==='building')[0]; if(b!==undefined){ play(b,9,my(th.y)<12?my(th.y)-3.5:10.5); return; } }
+    // Normal/Hard: answer with a card that is known to counter this threat in this arena (measured by tools/duel.js)
+    if(D.smart>0&&typeof COUNTERS!=='undefined'){ const known=(COUNTERS[G.th.id]||{})[th.card]||[];
+      for(const k of known){ const i=afford.find(j=>hand[j]===k); if(i===undefined) continue; const cd=CARDS[k];
+        if(cd.type==='spell'){ playCard(team,i,cx,cy+(team===1?-0.8:0.8)); return; }
+        if(cd.type==='building'){ play(i,9,my(th.y)<12?my(th.y)-3.5:10.5); return; }
+        const ty=my(th.y); let px=clamp(th.x+rnd(-0.6,0.6),1,17), py=ty>16?(cd.range>2?11:13.8):(cd.range>2?Math.max(1.5,ty-4.5):Math.max(1.5,ty-1.6));
+        if(cd.range>2) px=th.x<9?clamp(th.x+2,1,8):clamp(th.x-2,10,17);
+        play(i,px,py); return; } }
     let cands=pick((id,c)=>c.type==='troop'&&c.role!=='tank'&&c.role!=='support'&&(!air||c.targets==='all'));
     if(!cands.length) cands=pick((id,c)=>c.type!=='spell'&&(!air||c.targets==='all'));
     if(!cands.length) return;

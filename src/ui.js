@@ -428,6 +428,9 @@ function randomDeck(pool){
     if(d.length!==DECK_CHARS+DECK_SPELLS) continue;
     if(!cs.some(c=>c.type!=='spell'&&c.targets==='buildings')) continue;
     if(!cs.some(c=>c.type!=='spell'&&c.targets==='all')) continue;
+    // a deck people would actually build: affordable on average, and something that handles a crowd
+    const avg=cs.reduce((t,c)=>t+c.cost,0)/cs.length; if(tries<250&&(avg>4.3||avg<2.8)) continue;
+    if(tries<200&&!cs.some(c=>c.type==='spell'&&c.sp&&(c.sp.r||0)>=2.5||c.atk&&(c.atk.splash||c.atk.cone||c.atk.pierce)||c.sp&&['pulse','everyN'].includes(c.sp.k))) continue;
     return d;
   }
   return null;
@@ -503,9 +506,23 @@ function arenaTile(i){
   b.onclick=()=>{ arenaIdx=i; store.set('arena',i); arenaDeck=loadDeck(th); swapPick=null; renderMenu(); startPreview(); };
   return b;
 }
+// plain facts about how a card fights (what it does, never what it is good against: players work that out)
+function cardTraits(d){ const t=[], a=d.atk||{}, oh=d.onHit||{}, sp=d.sp||{};
+  if(d.type==='spell'){ if(sp.r) t.push('Radius '+sp.r); if(sp.dmg) t.push(sp.dmg+' damage'); if(sp.stun||sp.k==='stun') t.push('Stuns'); if(sp.k==='freeze') t.push('Freezes'); if(sp.launch) t.push('From your King Tower'); return t; }
+  if(d.hp&&d.dmg&&d.hs) t.push(Math.round(d.dmg/d.hs*(d.count||1))+' damage/s'+((d.count||1)>1?' (all)':''));
+  if(d.hs&&d.dmg) t.push('Hit speed '+d.hs+'s');
+  if(a.splash||a.cone||a.pierce||sp.k==='pulse'||sp.k==='everyN') t.push(a.pierce?'Pierces a line':a.cone?'Cone':'Splash'); else if(d.dmg) t.push('Single target');
+  if(a.ramp) t.push('Damage ramps up to '+a.ramp+'x');
+  if(oh.stun||oh.chain||sp.stun||sp.frozen||sp.k==='zap') t.push(oh.chain?'Chains':'Stuns');
+  if(sp.k==='charge') t.push('Charges'); if(sp.k==='leap') t.push('Leaps'); if(d.swim) t.push('Swims the river'); if(d.anywhere||d.deployAnywhere) t.push('Deploy anywhere');
+  if(d.armor) t.push('Splash armour '+Math.round(d.armor*100)+'%'); if(d.shield0) t.push('Shield '+d.shield0); if(d.dodge) t.push('Dodges '+Math.round(d.dodge*100)+'%'); if(d.thorns) t.push('Thorns '+Math.round(d.thorns*100)+'%');
+  if(d.taunt) t.push('Draws enemies'); if(d.spawner) t.push('Spawns '+(CARDS[d.spawner.card]||{}).name); if(d.gen) t.push('Makes elixir'); if(d.life) t.push('Lasts '+d.life+'s');
+  if(d.regen) t.push('Heals itself'); if(d.aura&&(d.aura.heal||d.aura.repair)) t.push('Heals allies'); if(d.aura&&d.aura.rush) t.push('Speeds allies'); if(d.aura&&d.aura.slow) t.push('Slows enemies');
+  if(d.death) t.push('Death effect');
+  return t; }
 function cardInfo(id){ const d=CARDS[id]; const kind=d.type==='spell'?'Spell':d.type==='building'?'Building':d.champ?'Champion':'Troop';
   const lock=!unlocked(id)?`<br><span class="lockline">🔒 Unlocks at 🏆 ${d.unlock}</span>`:'';
-  $('#info').innerHTML=`<b>${d.name}</b> · ${d.cost} elixir · ${kind}<br>${d.desc}`+(d.hp?`<br><span class="dim">HP ${d.hp}${d.count>1?' ×'+d.count:''} · ${d.targets==='buildings'?'Targets buildings':d.targets==='all'?'Hits air & ground':'Hits ground'}${d.flying?' · Flying':''}${d.range>1.5?' · Range '+d.range:''}</span>`:'')+lock; }
+  $('#info').innerHTML=`<b>${d.name}</b> · ${d.cost} elixir · ${kind}<br>${d.desc}`+(d.hp?`<br><span class="dim">HP ${d.hp}${d.count>1?' ×'+d.count:''} · ${d.targets==='buildings'?'Targets buildings':d.targets==='all'?'Hits air & ground':'Hits ground'}${d.flying?' · Flying':''}${d.range>1.5?' · Range '+d.range:''}</span>`:'')+(cardTraits(d).length?`<br><span class="traits">${cardTraits(d).map(x=>`<i>${x}</i>`).join('')}</span>`:'')+lock; }
 function cardTile(id,onTap,extra=''){
   const b=document.createElement('button'); b.type='button'; b.className='cardtile '+extra; b.id='card-'+id+(extra?'-'+extra.split(' ')[0]:''); const lk=!unlocked(id);
   b.setAttribute('aria-label',CARDS[id].name+', '+CARDS[id].cost+' elixir'+(lk?', locked until '+CARDS[id].unlock+' trophies':''));
@@ -564,7 +581,8 @@ function renderMenu(){
   $('#modeDesc').textContent=MODES[modeKey].desc;
   const th=THEMES[arenaIdx], mix=modeKey==='mix', deck=curDeck();
   const chars=deck.filter(k=>!isSpell(k)), spells=deck.filter(isSpell), ok=deckValid(deck);
-  $('#deckHead').textContent = mix ? `🃏 MIX DECK · ${chars.length}/6 + ${spells.length}/2` : `${th.emoji} YOUR ${th.name.toUpperCase()} DECK · ${chars.length}/6 + ${spells.length}/2`;
+  const avgEl=deck.length?(deck.reduce((t,k)=>t+CARDS[k].cost,0)/deck.length).toFixed(1):'–';
+  $('#deckHead').textContent = (mix ? `🃏 MIX DECK · ${chars.length}/6 + ${spells.length}/2` : `${th.emoji} YOUR ${th.name.toUpperCase()} DECK · ${chars.length}/6 + ${spells.length}/2`)+` · ⌀ ${avgEl} 💧`;
   const dk=$('#deck'); dk.innerHTML='';
   for(let i=0;i<DECK_CHARS;i++){ const id=chars[i]; if(id){ requestPortrait(id); dk.appendChild(cardTile(id,deckTap,'in')); } else dk.appendChild(emptySlot('Character')); }
   for(let i=0;i<DECK_SPELLS;i++){ const id=spells[i]; if(id) dk.appendChild(cardTile(id,deckTap,'in spell')); else dk.appendChild(emptySlot('Spell')); }
