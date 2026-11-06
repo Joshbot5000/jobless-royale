@@ -40,8 +40,26 @@ function faceGeo(){ const g=new THREE.SphereGeometry(1,30,24), p=g.attributes.po
     if(y>0.15) z*=1-0.04*front*(y-0.15);                                 // slightly flatter brow
     p.setXYZ(i,x,y,z); }
   return smoothNormals(g); }
-function shoeGeo(){ const g=new THREE.SphereGeometry(1,16,10), p=g.attributes.position;   // rounded toe, flat sole, heel
-  for(let i=0;i<p.count;i++){ let x=p.getX(i), y=p.getY(i), z=p.getZ(i); if(y<-0.35) y=-0.35-(y+0.35)*0.15; if(z>0){ y-=0.18*z*z*(y>0?1:0); x*=1-0.08*z; } else x*=1-0.12*(-z); p.setXYZ(i,x,y,z); }
+function shoeGeo(){ const g=new THREE.SphereGeometry(1,16,10), p=g.attributes.position;   // rounded toe with toe spring, flat sole, heel
+  for(let i=0;i<p.count;i++){ let x=p.getX(i), y=p.getY(i), z=p.getZ(i); if(y<-0.35) y=-0.35-(y+0.35)*0.15; if(z>0){ y-=0.18*z*z*(y>0?1:0); x*=1-0.08*z; if(z>0.55) y+=0.22*(z-0.55)*(1-y)*0.5; } else x*=1-0.12*(-z); p.setXYZ(i,x,y,z); }
+  return smoothNormals(g); }
+// torso: hips, narrow waist, full chest, square rounded shoulders; flatter back, chest forward
+function torsoGeo(){ const g=lathe([[0.0001,-1],[0.62,-0.985],[0.86,-0.88],[0.93,-0.7],[0.88,-0.48],[0.8,-0.26],[0.83,-0.02],[0.93,0.28],[1.0,0.52],[1.01,0.7],[0.92,0.84],[0.66,0.95],[0.36,1.0],[0.0001,1.0]],30), p=g.attributes.position;
+  for(let i=0;i<p.count;i++){ let x=p.getX(i), y=p.getY(i), z=p.getZ(i);
+    const chest=Math.exp(-Math.pow((y-0.38)/0.26,2)); if(z>0) z*=1+0.1*chest; else z*=0.9;
+    if(y>0.5){ const k=Math.min(1,(y-0.5)/0.3); x*=1+0.08*k*Math.abs(x); }                          // squarer shoulders
+    if(y<-0.6&&z<0) z*=1.06;                                                                          // seat
+    p.setXYZ(i,x,y,z); }
+  return smoothNormals(g); }
+function skirtGeo(){ const g=lathe([[0.0001,0.5],[0.6,0.5],[0.68,0.32],[0.8,0.05],[0.93,-0.3],[1.04,-0.46],[1.0,-0.5],[0.0001,-0.5]].reverse(),64), p=g.attributes.position;
+  for(let i=0;i<p.count;i++){ const x=p.getX(i), y=p.getY(i), z=p.getZ(i), r=Math.hypot(x,z); if(r<1e-3) continue; const a=Math.atan2(z,x), t=Math.min(1,Math.max(0,(0.45-y)/0.95));
+    const f=1+t*t*(0.075*Math.sin(a*9)+0.035*Math.sin(a*17+1.3))+t*0.04; p.setXYZ(i,x*f,y-(t>0.95?0.02*Math.sin(a*9):0),z*f); }
+  return smoothNormals(g); }
+function noseGeo(){ const g=new THREE.SphereGeometry(1,14,12), p=g.attributes.position;
+  for(let i=0;i<p.count;i++){ let x=p.getX(i), y=p.getY(i), z=p.getZ(i);
+    if(y>-0.25){ const k=(y+0.25)/1.25; x*=0.55-0.25*k; z=z*(0.7-0.3*k)-0.28*k; }               // narrow bridge running back between the eyes
+    else { x*=1.0+0.15*(-y-0.25); }                                                                  // rounded tip with nostril wings
+    p.setXYZ(i,x,y,z); }
   return smoothNormals(g); }
 function geo(k){
   if(GEO[k]) return GEO[k];
@@ -71,7 +89,7 @@ function geo(k){
     case 'oct': g=new THREE.OctahedronGeometry(1,0); break;
     case 'ico': g=new THREE.IcosahedronGeometry(1,1); break;
     case 'caps': g=lathe(capsulePts(8),18); break;                       // height 2, radius 0.5
-    case 'torso': g=lathe([[0.0001,-1],[0.7,-0.97],[0.93,-0.72],[1.0,-0.32],[0.97,0.08],[1.0,0.42],[0.93,0.74],[0.62,0.95],[0.0001,1.0]],26); break;
+    case 'torso': g=torsoGeo(); break;
     case 'bell': g=lathe([[0.0001,0.5],[0.6,0.5],[0.68,0.32],[0.8,0.05],[0.93,-0.3],[1.02,-0.46],[0.97,-0.5],[0.0001,-0.5]].reverse(),28); break;
     case 'shoe': g=lathe([[0.0001,-0.5],[0.85,-0.5],[1.0,-0.3],[0.95,0.1],[0.7,0.4],[0.0001,0.5]],16); break;
     case 'roof': g=lathe([[0.0001,1],[0.25,0.82],[0.55,0.45],[0.85,0.1],[1.08,-0.02],[1.0,-0.06],[0.0001,-0.06]].reverse(),24); break;
@@ -87,6 +105,9 @@ function geo(k){
     case 'lid': g=new THREE.SphereGeometry(1,14,6,0,TAU,0,PI*0.42); break;   // eyelid cap
     case 'limb': g=lathe([[0.0001,-1],[0.36,-0.97],[0.47,-0.85],[0.44,-0.5],[0.42,-0.05],[0.47,0.45],[0.5,0.8],[0.38,0.97],[0.0001,1]],14); break; // tapered limb, fuller at top
     case 'shoeS': g=shoeGeo(); break;
+    case 'skirt': g=skirtGeo(); break;                                 // flared, folded hem for robes, dresses and coats
+    case 'noseG': g=noseGeo(); break;                                  // bridge + rounded tip
+    case 'disc': g=new THREE.CircleGeometry(1,20); break;
     case 'banner': g=new THREE.PlaneGeometry(1,1.45,6,8); break;
   }
   return GEO[k]=g;
@@ -168,6 +189,7 @@ function setShadows(root,cast,receive){ root.traverse(o=>{ if(o.isMesh && !o.use
 function texCanvas(w,h,draw,rep){ const c=document.createElement('canvas'); c.width=w; c.height=h; draw(c.getContext('2d'),w,h); const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; if(rep) t.repeat.set(rep[0],rep[1]); t.anisotropy=4; return t; }
 const TEX={};
 // fine fabric weave (bump), hair strands (colour + bump), wood grain, brushed metal, tyre tread: tiny tiling canvases shared by every model
+function blushTex(){ return TEX.blush||(TEX.blush=(()=>{ const t=texCanvas(64,64,(x,w,h)=>{ const g=x.createRadialGradient(32,32,2,32,32,31); g.addColorStop(0,'rgba(255,255,255,0.9)'); g.addColorStop(0.5,'rgba(255,255,255,0.45)'); g.addColorStop(1,'rgba(255,255,255,0)'); x.fillStyle=g; x.fillRect(0,0,w,h); }); t.wrapS=t.wrapT=THREE.ClampToEdgeWrapping; return t; })()); }
 function fabricTex(){ return TEX.fabric||(TEX.fabric=texCanvas(64,64,(x,w,h)=>{ const r=seeded(11); x.fillStyle='#808080'; x.fillRect(0,0,w,h);
   for(let j=0;j<h;j+=2) for(let i=0;i<w;i+=2){ const v=((i+j)>>1)%2?150:105; const n=v+(r()*24-12)|0; x.fillStyle=`rgb(${n},${n},${n})`; x.fillRect(i,j,2,2); } },[10,10])); }
 function hairTex(){ return TEX.hair||(TEX.hair=texCanvas(128,64,(x,w,h)=>{ const r=seeded(23); x.fillStyle='#d8d8d8'; x.fillRect(0,0,w,h);
