@@ -13,7 +13,7 @@ root = Path(__file__).parent
 src = root / 'src'
 arenas = sorted(p.name for p in src.glob('data_arena_*.js'))
 news = sorted(p.name for p in src.glob('data_news_*.js'))
-tune = [f for f in ('data_tune.js', 'data_counters.js') if (src / f).exists()]
+tune = [f for f in ('data_tune.js', 'data_counters.js', 'data_user.js') if (src / f).exists()]
 files = ['data.js', 'data_more1.js', 'data_more2.js', 'data_more3.js'] + arenas + news + ['data_balance.js'] + tune + [
     'models_core.js', 'models_kit.js', 'models_chars.js', 'models_more.js', 'models_world.js', 'engine.js', 'sim.js', 'ui.js', 'net.js']
 game = '\n'.join((src / f).read_text() for f in files)
