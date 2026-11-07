@@ -64,7 +64,7 @@ def shade_mat(name, image=None):
     aom = N.new('ShaderNodeMapRange'); aom.inputs[3].default_value = 0.5; aom.inputs[4].default_value = 1.0; L.new(ao.outputs['AO'], aom.inputs[0])
     xyz = N.new('ShaderNodeSeparateXYZ'); L.new(geo.outputs['Normal'], xyz.inputs[0])
     gm = N.new('ShaderNodeMapRange'); gm.inputs[1].default_value = -1; gm.inputs[2].default_value = 1; gm.inputs[3].default_value = 0.86; gm.inputs[4].default_value = 1.0; L.new(xyz.outputs['Z'], gm.inputs[0])   # top-lit softness
-    cv = N.new('ShaderNodeMapRange'); cv.inputs[1].default_value = 0.5; cv.inputs[2].default_value = 0.56; cv.inputs[3].default_value = 1.0; cv.inputs[4].default_value = 1.14; L.new(geo.outputs['Pointiness'], cv.inputs[0])
+    cv = N.new('ShaderNodeMapRange'); cv.inputs[1].default_value = 0.5; cv.inputs[2].default_value = 0.56; cv.inputs[3].default_value = 1.0; cv.inputs[4].default_value = 1.05; L.new(geo.outputs['Pointiness'], cv.inputs[0])
     m1 = N.new('ShaderNodeMath'); m1.operation = 'MULTIPLY'; L.new(aom.outputs[0], m1.inputs[0]); L.new(gm.outputs[0], m1.inputs[1])
     m2 = N.new('ShaderNodeMath'); m2.operation = 'MULTIPLY'; m2.use_clamp = True; L.new(m1.outputs[0], m2.inputs[0]); L.new(cv.outputs[0], m2.inputs[1])
     L.new(m2.outputs[0], em.inputs[0])
@@ -99,34 +99,17 @@ def skin_to(o, rig, auto=True, group=None):
         vg = o.vertex_groups.new(name=group); vg.add(list(range(len(o.data.vertices))), 1.0, 'REPLACE')
         md = o.modifiers.new('arm', 'ARMATURE'); md.object = rig; o.parent = rig
 
-# ------------------------------------------------------------------ bodies: Skin modifier skeleton + subdivision, big mitten hands, chunky shoes
+# ------------------------------------------------------------------ bodies: ONE continuous surface built from the game's own body fields (dump_sdf.js), so every outfit
+# detail buildHuman places sits on it; regions come per vertex from the nearest body part; chunky rounded shoes with toe spring
 def body(tag, w, belly=0.0):
-    J = joints(w); tw = 0.27 * w; SK = {}; E = []
-    def V(n, p, r): SK[n] = (p, r)
-    hy = J['Hips'].y
-    V('pelvis', J['Hips'] + Vector((0, 0.05, -0.01)), (tw * 0.86, 0.2))
-    V('waist', J['Hips'] + Vector((0, 0.2, 0.0 + belly * 0.05)), (tw * (0.74 + belly * 0.4), 0.17 + belly * 0.12))
-    V('chest', J['Spine1'] + Vector((0, 0.13, 0.01)), (tw * 0.95, 0.2))
-    V('neck', J['Neck'] + Vector((0, 0.02, -0.01)), (0.075, 0.07)); V('neckT', J['Head'] + Vector((0, -0.14, 0.0)), (0.066, 0.062))
-    E += [('pelvis', 'waist'), ('waist', 'chest'), ('chest', 'neck'), ('neck', 'neckT')]
-    HS = 1.55   # big, appealing hands
-    for side, s in (('Left', 1), ('Right', -1)):
-        V('sh' + side, J[side + 'Arm'] + Vector((-s * 0.02, 0, 0)), (0.1, 0.096)); V('el' + side, J[side + 'ForeArm'], (0.075, 0.072)); V('wr' + side, J[side + 'Wrist'], (0.056, 0.053))
-        HR = J[side + 'HandRot']; P = J[side + 'Hand']
-        def hp(x, y, z): return P + HR @ (Vector((x, y, z)) * HS)
-        V('pa' + side, hp(0, 0.0, 0), (0.062 * HS, 0.046 * HS))
-        for i in range(4):
-            fx = s * (-0.03 + i * 0.02); V('fb%d%s' % (i, side), hp(fx, -0.045, 0.008), (0.02 * HS, 0.02 * HS)); V('ft%d%s' % (i, side), hp(fx * 1.05, -0.08, 0.03), (0.018 * HS, 0.018 * HS))
-        V('th' + side, hp(-s * 0.045, -0.005, 0.03), (0.023 * HS, 0.023 * HS)); V('tt' + side, hp(-s * 0.05, -0.04, 0.06), (0.02 * HS, 0.02 * HS))
-        V('hip' + side, J[side + 'UpLeg'] + Vector((0, -0.02, 0)), (0.11 * max(1, w * 0.85), 0.11)); V('kn' + side, J[side + 'Leg'], (0.085, 0.085)); V('ca' + side, (J[side + 'Leg'] + J[side + 'Foot']) / 2 + Vector((0, 0, -0.012)), (0.08, 0.08)); V('an' + side, J[side + 'Foot'] + Vector((0, 0.02, 0)), (0.06, 0.06))
-        E += [('chest', 'sh' + side), ('sh' + side, 'el' + side), ('el' + side, 'wr' + side), ('wr' + side, 'pa' + side), ('pa' + side, 'th' + side), ('th' + side, 'tt' + side), ('pelvis', 'hip' + side), ('hip' + side, 'kn' + side), ('kn' + side, 'ca' + side), ('ca' + side, 'an' + side)]
-        for i in range(4): E += [('pa' + side, 'fb%d%s' % (i, side)), ('fb%d%s' % (i, side), 'ft%d%s' % (i, side))]
-    names = list(SK); idx = {n: i for i, n in enumerate(names)}
-    me = bpy.data.meshes.new('b'); me.from_pydata([B(SK[n][0]) for n in names], [(idx[a], idx[b]) for a, b in E], [])
-    o = link(bpy.data.objects.new('body_' + tag, me)); sk = o.modifiers.new('skin', 'SKIN'); sk.branch_smoothing = 0.7
-    for n in names: o.data.skin_vertices[0].data[idx[n]].radius = SK[n][1]
-    o.data.skin_vertices[0].data[idx['pelvis']].use_root = True
-    sb = o.modifiers.new('sub', 'SUBSURF'); sb.levels = 2; apply_mods(o)
+    import json
+    J = joints(w); hy = J['Hips'].y
+    d = json.load(open(os.path.join(SDF_DIR, 'body_' + tag + '.json'))); P = d['pos']; I = d['idx']; RG = d['reg']
+    me = bpy.data.meshes.new('b'); me.from_pydata([B((P[i], P[i + 1], P[i + 2])) for i in range(0, len(P), 3)], [], [tuple(I[i:i + 3]) for i in range(0, len(I), 3)])
+    o = link(bpy.data.objects.new('body_' + tag, me)); smooth(o)
+    for r in REGIONS: o.data.materials.append(mat(r))
+    for f in o.data.polygons:
+        vs = [RG[v] for v in f.vertices]; f.material_index = max(set(vs), key=vs.count)
     # shoes: chunky rounded, toe spring, separate sole; joined into the body
     parts = [o]
     for side, s in (('Left', 1), ('Right', -1)):
@@ -137,23 +120,12 @@ def body(tag, w, belly=0.0):
             g = Vector((v.co.x, v.co.z, -v.co.y)); fwd = g.z - 0.045
             if fwd > 0.06: v.co.z += 0.12 * (fwd - 0.06) ** 1.5 if v.co.z < 0.05 else 0    # toe spring
             if fwd > 0.0 and v.co.z > 0.09: v.co.z -= (v.co.z - 0.09) * min(1, fwd * 5) * 0.6   # low toe box
-        sh.data.materials.append(mat('K_SHOES')); parts.append(sh)
-        bpy.ops.mesh.primitive_cube_add(size=1); so = bpy.context.object; so.scale = (0.186, 0.32, 0.045); so.location = B(Vector((a.x, 0.02, 0.05)))
-        m = so.modifiers.new('b', 'BEVEL'); m.width = 0.016; m.segments = 3; apply_mods(so); apply_xf(so); so.data.materials.append(mat('K_SOLE')); parts.append(so)
-    for r in REGIONS: o.data.materials.append(mat(r))
-    def seg_t(p, a, b): d = b - a; return max(0, min(1, (p - a).dot(d) / d.length_squared)), (a + d * max(0, min(1, (p - a).dot(d) / d.length_squared)) - p).length
-    for f in o.data.polygons:
-        c = Vector(f.center); g = Vector((c.x, c.z, -c.y)); reg = 'K_TORSO'
-        if g.y < hy - 0.02: reg = 'K_LEGS'
-        elif g.y > J['Neck'].y - 0.01 and abs(g.x) < 0.1: reg = 'K_NECK'
-        for side in ('Left', 'Right'):
-            tu, du = seg_t(g, J[side + 'Arm'], J[side + 'ForeArm']); tf, df = seg_t(g, J[side + 'ForeArm'], J[side + 'Wrist'])
-            if (g - J[side + 'Hand']).length < 0.14 or (g - J[side + 'Wrist']).length < 0.035: reg = 'K_HANDS'
-            elif df < 0.09 and tf > 0.02: reg = 'K_FOREARM'
-            elif du < 0.11 and tu > 0.18: reg = 'K_UPARM'
-        f.material_index = REGIONS.index(reg)
+            if v.co.z < 0.03: v.co.z = 0.012 + (v.co.z - 0.012) * 0.25                         # flat, slightly rounded sole
+        sh.data.materials.append(mat('K_SHOES')); sh.data.materials.append(mat('K_SOLE'))
+        for f in sh.data.polygons: f.material_index = 1 if f.center.z < 0.032 else 0             # the sole is the shoe's own underside
+        parts.append(sh)
     activate(o, parts[1:]); bpy.ops.object.join(); o = bpy.context.object; o.name = 'body_' + tag
-    decimate(o, {'v0': 2600, 'v1': 2700, 'v2': 2800}[tag]); return o, J
+    decimate(o, {'v0': 3600, 'v1': 3700, 'v2': 3800}[tag]); return o, J
 
 # ------------------------------------------------------------------ heads: metaball sculpts in head-local units (radius 0.3), scaled by HK at the head joint
 def meta(name, elems, res=0.014, thr=0.6):
@@ -225,7 +197,9 @@ activate(bake[0], bake[1:]); bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.
 for m in bpy.data.materials:
     t = m.node_tree.nodes.new('ShaderNodeTexImage'); t.image = ATL; m.node_tree.nodes.active = t
 sc.render.engine = 'CYCLES'; sc.cycles.device = 'CPU'; sc.cycles.samples = 48; sc.render.bake.margin = 6
+for i, o in enumerate(bake): o.location.x += (i + 1) * 4.0          # bake each part alone: overlapping heads / hair / bodies must not occlude each other
 activate(bake[0], bake[1:]); bpy.ops.object.bake(type='EMIT')
+for i, o in enumerate(bake): o.location.x -= (i + 1) * 4.0
 ATL.filepath_raw = os.path.join(OUT, 'kit_shading.png'); ATL.file_format = 'PNG'; ATL.save(); ATL.pack()
 # export materials: region names kept; every textured slot points at the one atlas (stored once in the GLB)
 for m in bpy.data.materials:

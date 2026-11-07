@@ -91,7 +91,8 @@ function buildHuman(p,tc){
   const skinC=p.skin||'#f7c9a0', skin=mat(skinC,{s:25,skin:1}), skinD=mat(shade(skinC,0.86),{s:25,skin:1});
   const [ot,oc='#888',oa='T'] = p.outfit||['tshirt','#888','T'];
   const main=c(oc), acc=c(oa);
-  const w=p.w||1, h=p.h||1;
+  const KM=!!(KIT&&KIT.parts.body_v0)&&!p.noKit, KV=KM?((p.w||1)>=1.4?2:(p.w||1)>=1.15?1:0):0;   // character kit: snap to its nearest build
+  const w=KM?KIT_W[KV]:(p.w||1), h=KM?1:(p.h||1); R.kit=KM;
   const longWear=['robe','gown','dress','monk','toga'].includes(ot);
   const suitLegs=['spacesuit','hazmat','jumpsuit','scrubs','firecoat','uniform','armor','tactical','overalls','gi','chef','tracksuit','superhero','ringmaster'].includes(ot);
   const pantsC = p.pants || (suitLegs?oc : ot==='suit'?shade(colr(oc,tc),0.85) : ot==='leather'?'#222' : ['tshirt','tank','hawaii','hoodie'].includes(ot)?'#2f4a7a' : '#34394a');
@@ -99,7 +100,7 @@ function buildHuman(p,tc){
   const shoe=mat(ot==='hazmat'?'#2a2a2a':ot==='spacesuit'?'#e2e2e2':'#3a2a22',{s:60});
   const sleeve = ot==='tank' ? skin : main;
   const root=G0(); g.add(root); R.root=root;
-  const LR=1.36, HK=0.72; let TORF=null, NECKF=null, LEGF=null, ARMF=null, ARMB=null, TORB=null;
+  const LR=1.36, HK=KM?KIT_HK*(p.head||1):0.72; let TORF=null, NECKF=null, LEGF=null, ARMF=null, ARMB=null, TORB=null;
   // face variety: round, long, square or classic, from a stable hash of the look (the cast stops sharing one face)
   const fhash=[...JSON.stringify([p.outfit,p.hat,p.hair,p.face,p.skin])].reduce((a,ch)=>(a*33+ch.charCodeAt(0))>>>0,5), FV=fhash%4;                       // leg stretch and head scale: ~1:4.2 head-to-body, stylised-realistic
   const lift=G0(); lift.position.y=0.44*(LR-1); root.add(lift);
@@ -111,13 +112,13 @@ function buildHuman(p,tc){
     const lw=Math.max(1,w*0.85), fw=Math.max(1,w*0.8);
     { const legF=LEGF=SDF.cutBelow(SDF.blend([[SDF.ell(0,-0.01,0,0.104*lw,0.07,0.1*lw),0],[SDF.rcone(0,-0.03,0.002,0,-0.2,0.014,0.1*lw,0.068*lw),0.05],[SDF.ell(0,-0.205,0.024,0.058*lw,0.048,0.05*lw),0.03],
         [SDF.rcone(0,-0.215,0.008,0,-0.37,0,0.066*lw,0.047*lw),0.04],[SDF.ell(0,-0.262,-0.016,0.068*lw,0.062,0.066*lw),0.05]]),-0.378);
-      S(L,'leg|'+lw.toFixed(3),legF,[-0.13*lw,-0.4,-0.13*lw],[0.13*lw,0.08,0.13*lw],pants); }
+      if(!KM) S(L,'leg|'+lw.toFixed(3),legF,[-0.13*lw,-0.4,-0.13*lw],[0.13*lw,0.08,0.13*lw],pants); }
     if(!longWear&&!suitLegs) P(L,'rbox2',mat(shade(colr(pantsC,tc),1.18),{s:35}),0.012,0.36,0.012,0,-0.2,0.102*lw).userData.noOutline=true;   // trouser crease
     if(!longWear){ P(L,'torLo',pants,0.085*lw,0.085*lw,0.25,0,-0.355,0.005,PI/2); }   // trouser hem
-    P(L,'shoeS',shoe,0.1*fw,0.07,0.155,0,-0.39,0.05);
+    if(!KM){ P(L,'shoeS',shoe,0.1*fw,0.07,0.155,0,-0.39,0.05);
     P(L,'rbox2',mat('#1d1a18',{s:20}),0.19*fw,0.03,0.31,0,-0.435,0.05);   // sole
-    P(L,'rbox2',mat('#1d1a18',{s:20}),0.17*fw,0.04,0.08,0,-0.42,-0.06);   // heel
-    if(ot!=='hazmat'&&ot!=='spacesuit'&&!longWear){ const lace=mat(shade(colr(ot==='suit'?'#3a2a22':'#f2efe8',tc),1),{s:30}); for(let i=0;i<3;i++) P(L,'rbox2',lace,0.07*fw,0.012,0.016,0,-0.345-i*0.012,0.11+i*0.035,-0.5).userData.noOutline=true; }
+    P(L,'rbox2',mat('#1d1a18',{s:20}),0.17*fw,0.04,0.08,0,-0.42,-0.06); }   // heel
+    if(!KM&&ot!=='hazmat'&&ot!=='spacesuit'&&!longWear){ const lace=mat(shade(colr(ot==='suit'?'#3a2a22':'#f2efe8',tc),1),{s:30}); for(let i=0;i<3;i++) P(L,'rbox2',lace,0.07*fw,0.012,0.016,0,-0.345-i*0.012,0.11+i*0.035,-0.5).userData.noOutline=true; }
     R.legs.push(L);
   }
   // torso
@@ -126,7 +127,7 @@ function buildHuman(p,tc){
   { const aw0=Math.max(1,w*0.8), torF=SDF.blend([[SDF.ell(0,th*0.28,-td*0.05,tw*0.9,th*0.36,td*1.0),0],[SDF.ell(0,th*0.82,0,tw*0.74,th*0.42,td*0.88),0.1],[SDF.ell(0,th*1.32,td*0.02,tw*0.96,th*0.47,td*0.98),0.11],
       [SDF.ell(0,th*1.74,-td*0.06,tw*0.72,th*0.22,td*0.72),0.08],[SDF.ell(-(tw*0.84),th*1.6,0,0.086*aw0,0.084,0.086*aw0),0.07],[SDF.ell(tw*0.84,th*1.6,0,0.086*aw0,0.084,0.086*aw0),0.07]]);
     TORF=torF; TORB=[[-tw-0.12*aw0,-th*0.15,-td*1.15],[tw+0.12*aw0,th*2.02,td*1.15],[tw,th,td,aw0].map(v=>v.toFixed(3)).join(',')];
-    S(torso,'torso|'+TORB[2],torF,TORB[0],TORB[1],main); }
+    if(!KM) S(torso,'torso|'+TORB[2],torF,TORB[0],TORB[1],main); }
   const fz=td*0.94;
   const front=(m,sx,sy,x,y,z=0)=>P(torso,'rbox2',m,sx,sy,0.03,x,y,fz+z);
   const button=(y,m=gold())=>P(torso,'sphLo',m,0.022,0.022,0.012,0,y,fz+0.012);
@@ -188,9 +189,9 @@ function buildHuman(p,tc){
   }
   if(!longWear && !['vest','firecoat','gi','trench','apron','chef','uniform','overalls'].includes(ot) && !OUTFIT_NO_BELT.includes(ot)){ P(torso,'torThin',mat('#3a2a20',{s:70}),tw*0.93,td*0.96,0.42,0,th*0.14,0,PI/2); P(torso,'rbox2',gold(),0.06,0.05,0.02,0,th*0.14,fz+0.02); P(torso,'rbox2',mat('#3a2a20',{s:70}),0.036,0.028,0.022,0,th*0.14,fz+0.024).userData.noOutline=true; }
   // neck + head
-  const hs=(p.head||1)*0.3;
+  const hs=KM?0.3:(p.head||1)*0.3;
   NECKF=SDF.blend([[SDF.rcone(0,th*1.7,-0.012,0,th*2.06+0.02,0.004,0.068,0.056),0],[SDF.ell(0,th*1.76,-0.02,tw*0.52,0.05,td*0.52),0.06]]);
-  S(torso,'neck|'+[tw,th,td].map(v=>v.toFixed(3)).join(','),NECKF,[-tw*0.6,th*1.6,-td*0.7],[tw*0.6,th*2.1+0.04,td*0.7],skin);
+  if(!KM) S(torso,'neck|'+[tw,th,td].map(v=>v.toFixed(3)).join(','),NECKF,[-tw*0.6,th*1.6,-td*0.7],[tw*0.6,th*2.1+0.04,td*0.7],skin);
   const head=G0(); head.position.y=th*2+0.035+hs*0.92*HK; head.scale.setScalar(HK); torso.add(head); R.head=head;
   const [crY,jW,jY,chW,chY]=[[0.95,0.72,0.5,0.22,0.7],[1.03,0.62,0.56,0.24,0.78],[0.97,0.76,0.46,0.34,0.7],[0.97,0.66,0.5,0.26,0.72]][FV];
   const headF0=SDF.blend([[SDF.ell(0,0.012,-0.012,hs*0.98,hs*crY,hs*0.98),0],[SDF.ell(0,-hs*0.42,hs*0.16,hs*jW,hs*jY,hs*0.68),0.09],[SDF.ell(0,-hs*chY,hs*0.5,hs*chW,hs*0.2,hs*0.25),0.07],
@@ -200,11 +201,16 @@ function buildHuman(p,tc){
   // eye sockets: the whites sit inside a soft recess, so nothing pokes through the face beside the lids
   const ER=0.074, EX=0.105, EZ=sdfFrontZ(headF0,EX,0.03,hs*1.4,0)-ER*0.42, sock=(x,y,z)=>Math.min(SDF.ell(-EX,0.03,EZ,ER*0.8,ER*1.0,ER*0.58)(x,y,z),SDF.ell(EX,0.03,EZ,ER*0.8,ER*1.0,ER*0.58)(x,y,z));
   const headF=headF0;
-  S(head,'head|'+hs.toFixed(3)+'|'+FV+(p.statue?'s':''),headF,[-hs*1.12,-hs*1.0,-hs*1.1],[hs*1.12,hs*1.05,hs*1.16],skin);
+  const KF=['round','long','square','classic'][FV];
+  if(KM){ const hm0=new THREE.Mesh(kitRigid('head_'+KF,'K_SKIN',kitHeadInv()),kitMat(skin)); hm0.userData.kit=true; head.add(hm0); }
+  else S(head,'head|'+hs.toFixed(3)+'|'+FV+(p.statue?'s':''),headF,[-hs*1.12,-hs*1.0,-hs*1.1],[hs*1.12,hs*1.05,hs*1.16],skin);
   for(const s of [-1,1]) P(head,'sphLo',skinD,0.01,0.045,0.03,s*(hs*0.95+0.02),-0.015,0.004,0,s*0.3,0).userData.noOutline=true;   // inner ear
   const browC = p.hair&&p.hair[0]!=='bald' ? colr(p.hair[1],tc) : '#3a2414';
   const angry=(p.face||[]).includes('angry'), sleepy=(p.face||[]).includes('sleepy');
-  if(p.statue) for(const s of [-1,1]) P(head,'sph',skin,0.06,0.07,0.04,s*0.1,0.03,hs*0.8); else faceEyes(head,0,0.03,EZ,EX,ER,{clip:headF0,clipKey:'h'+hs.toFixed(3)+FV,iris:p.iris,lid:skin,open:angry?0.48:sleepy?0.3:0.7,tilt:angry?-0.25:0});
+  if(p.statue) for(const s of [-1,1]) P(head,'sph',skin,0.06,0.07,0.04,s*0.1,0.03,hs*0.8);
+  else if(KM){ const ex=angry?'angry':sleepy?'sleepy':['happy','neutral','happy','surprised','neutral','happy'][fhash%6];
+    const fm=new THREE.Mesh(kitRigid('face_'+KF,'K_FACE',kitHeadInv()),kitFaceMat({expr:ex,iris:p.iris||'#4a2e1a',brow:browC,skin:skinC})); fm.userData.kit=true; fm.userData.noOutline=true; fm.renderOrder=2; head.add(fm); }
+  if(!KM&&!p.statue){ faceEyes(head,0,0.03,EZ,EX,ER,{clip:headF0,clipKey:'h'+hs.toFixed(3)+FV,iris:p.iris,lid:skin,open:angry?0.48:sleepy?0.3:0.7,tilt:angry?-0.25:0});
   const onFace=(x,y,lift=0.004)=>sdfFrontZ(headF,x,y,hs*1.45,0)+lift;   // z of the sculpted face surface
   for(const s of [-1,1]){ const bm=mat(browC,{s:20}); for(const [bx,by,ba,bl] of [[0.07,0.136+(angry?-0.012:0),angry?0.5:-0.05,0.05],[0.128,0.139+(angry?0.008:0),angry?0.3:-0.38,0.04]])
     P(head,'capsLo',bm,0.022,bl,0.016,s*bx,by,onFace(s*bx,by,0.006),-0.1,0,PI/2+s*ba).userData.noOutline=true; }
@@ -214,7 +220,7 @@ function buildHuman(p,tc){
   P(head,'sphLo',lipM,0.026,0.006,0.008,0,my+(angry?0.036:0.006),mz-0.001).userData.noOutline=true;                          // upper lip
   P(head,'sphLo',lipM,0.028,0.011,0.012,0,my+(angry?-0.004:-0.046),mz-0.002).userData.noOutline=true;                       // lower lip
   { const blush=mat(new THREE.Color(skinC).lerp(new THREE.Color('#ff4a62'),0.6).getStyle(),{s:20,map:blushTex(),op:0.55}), n=new THREE.Vector3(), Z=new THREE.Vector3(0,0,1);
-    for(const s of [-1,1]){ const bx=s*0.15, by=-0.07, bz=onFace(bx,by,0), e=0.004; n.set(headF(bx+e,by,bz)-headF(bx-e,by,bz),headF(bx,by+e,bz)-headF(bx,by-e,bz),headF(bx,by,bz+e)-headF(bx,by,bz-e)).normalize(); const d=P(head,'disc',blush,0.055,0.04,1,bx+n.x*0.004,by+n.y*0.004,bz+n.z*0.004); d.quaternion.setFromUnitVectors(Z,n); d.userData.noOutline=true; d.renderOrder=2; } }
+    for(const s of [-1,1]){ const bx=s*0.15, by=-0.07, bz=onFace(bx,by,0), e=0.004; n.set(headF(bx+e,by,bz)-headF(bx-e,by,bz),headF(bx,by+e,bz)-headF(bx,by-e,bz),headF(bx,by,bz+e)-headF(bx,by,bz-e)).normalize(); const d=P(head,'disc',blush,0.055,0.04,1,bx+n.x*0.004,by+n.y*0.004,bz+n.z*0.004); d.quaternion.setFromUnitVectors(Z,n); d.userData.noOutline=true; d.renderOrder=2; } } }
   // hair
   const hat = p.hat ? p.hat[0] : null;
   const [hst,hc='#3a2414'] = p.hair || (hat?['none']:['short','#3a2414']);
@@ -244,7 +250,10 @@ function buildHuman(p,tc){
     const f=SDF.blend(L), faceClear=SDF.ell(0,-0.05,hs*0.6,hs*0.8,hs*0.71,hs*0.64), longish=style==='long'||style==='ponytail'||style==='afro';
     return (x,y,z)=>{ let d=SDF.smax(f(x,y,z),-faceClear(x,y,z),0.03); if(!longish) d=SDF.smax(d,(-0.025+0.62*Math.min(0,z))-y,0.02); else d=SDF.smax(d,-hs*1.45-y,0.02); return d; }; };
   const hairMesh=(style,m)=>{ const hk=['hair',style,hseed,hat?1:0,hs.toFixed(3)].join('|'); S(head,hk,hairField(style),[-hs*1.7,-hs*1.6,-hs*1.6],[hs*1.7,hs*1.75,hs*1.3],m,1.0); };
-  switch(hst){
+  const KHS=['short','messy','curl','long','bun','ponytail','spiky','afro','slick'];
+  if(KM&&KHS.includes(hst)){ const ks=hat&&!['long','ponytail'].includes(hst)?'cap':hst, hk=new THREE.Mesh(kitRigid('hair_'+ks,'K_HAIR',kitHeadInv()),kitMat(hst==='slick'?hmS:hm)); hk.userData.kit=true; head.add(hk);
+    if(hst==='ponytail') P(head,'sphLo',c('T'),hs*0.2,hs*0.12,hs*0.2,0,hs*0.25,-hs*1.0); }
+  else switch(hst){
     case 'short': case 'messy': case 'curl': case 'long': case 'bun': case 'ponytail': case 'spiky': case 'afro': hairMesh(hst,hm);
       if(hst==='ponytail') P(head,'sphLo',c('T'),hs*0.2,hs*0.12,hs*0.2,0,hs*0.25,-hs*1.0);   // hair tie
       break;
@@ -303,20 +312,22 @@ function buildHuman(p,tc){
     }
   }
   if(p.blackCap){ const bc=G0(); bc.position.y=hs*1.12; head.add(bc); P(bc,'rbox2',mat('#050505',{s:60}),hs*1.55,0.035,hs*1.55); P(bc,'sph',mat('#050505'),0.03,0.03,0.03,0,0.025,0); bc.visible=false; R.blackCap=bc; }
+  let foreM=sleeve, gloveM=skin;
   // arms: relaxed A-pose (static inner group: the sim animates the outer arm group), soft elbow bend, hands angled in
   for(const s of [-1,1]){
     const A=G0(); A.position.set(s*(tw+0.025),th*1.62,0); torso.add(A);
     const AP=G0(); AP.rotation.set(0.05,0,s*0.15); A.add(AP);
     const aw=Math.max(1,w*0.8);
-    const fore = ['tank','shirtTie','gi'].includes(ot)||OUTFIT_FORE_SKIN.includes(ot) ? skin : sleeve;
+    const fore = ['tank','shirtTie','gi'].includes(ot)||OUTFIT_FORE_SKIN.includes(ot) ? skin : sleeve; foreM=fore;
     const armF=SDF.blend([[SDF.ell(0,-0.005,0,0.086*aw,0.09,0.086*aw),0],[SDF.rcone(0,-0.03,0,0,-0.232,-0.014,0.075*aw,0.056*aw),0.05],[SDF.rcone(0,-0.242,-0.012,0,-0.412,0.07,0.056*aw,0.04*aw),0.035],[SDF.ell(0,-0.29,0.012,0.062*aw,0.07,0.06*aw),0.05]]);
     const bb0=[-0.11*aw,-0.47,-0.11*aw], bb1=[0.11*aw,0.11,0.16*aw], ak=aw.toFixed(3); ARMF=armF; ARMB=[bb0,bb1,ak];
-    if(fore===sleeve) S(AP,'armA|'+ak,SDF.cutBelow(SDF.inflate(armF,0.004),-0.405),bb0,bb1,sleeve);
+    if(KM){ if(['robe','gown'].includes(ot)){ const bl=new THREE.Mesh(kitRigid('sleeve_bell_'+(s>0?'Left':'Right'),'K_TORSO',kitAPInv(s)),kitMat(main)); bl.userData.kit=true; AP.add(bl); } }
+    else if(fore===sleeve) S(AP,'armA|'+ak,SDF.cutBelow(SDF.inflate(armF,0.004),-0.405),bb0,bb1,sleeve);
     else { S(AP,'armSkinA|'+ak,armF,bb0,bb1,skin); if(sleeve!==skin) S(AP,'sleeveA|'+ak,SDF.cutBelow(SDF.inflate(armF,0.011),-0.19,0.01),bb0,bb1,sleeve); }
     if(fore===sleeve&&ot!=='hazmat'&&ot!=='spacesuit') band(AP,armF,'cuff|'+ak,bb0,bb1,-0.398,0.016,ot==='suit'?mat('#f4f4f2',{s:40,bump:FAB}):sleeve,0.009);   // cuff hugging the wrist
     const hand=G0(); hand.position.set(0,-0.448,0.088); hand.rotation.set(0.25,-s*0.4,s*0.12); AP.add(hand);
-    const gm=ot==='hazmat'?mat('#2a2a2a',{s:40}):ot==='spacesuit'?mat('#dddddd',{s:60}):skin;
-    { const HS=1.14, hF=SDF.blend([[SDF.ell(0,0,0,0.056*HS,0.066*HS,0.05*HS),0],[SDF.rcone(s*0.008*HS,-0.03*HS,0.004*HS,s*0.012*HS,-0.078*HS,0.03*HS,0.042*HS,0.035*HS),0.035*HS],
+    const gm=ot==='hazmat'?mat('#2a2a2a',{s:40}):ot==='spacesuit'?mat('#dddddd',{s:60}):skin; gloveM=gm===skin&&KM?mat(shade(skinC,0.88),{s:25,skin:1}):gm;
+    if(!KM){ const HS=1.14, hF=SDF.blend([[SDF.ell(0,0,0,0.056*HS,0.066*HS,0.05*HS),0],[SDF.rcone(s*0.008*HS,-0.03*HS,0.004*HS,s*0.012*HS,-0.078*HS,0.03*HS,0.042*HS,0.035*HS),0.035*HS],
         [SDF.rcone(-s*0.03*HS,0,0.03*HS,-s*0.034*HS,-0.028*HS,0.058*HS,0.022*HS,0.017*HS),0.02*HS]]);
       S(hand,'hand|'+s,hF,[-0.08*HS,-0.13*HS,-0.08*HS],[0.08*HS,0.08*HS,0.1*HS],gm); }
     if(s>0){ R.armR=A; R.hand=hand; R.armRP=AP; } else { R.armL=A; R.handL=hand; R.armLP=AP; }
@@ -339,8 +350,10 @@ function buildHuman(p,tc){
     for(const AP of [R.armRP,R.armLP]) segs.push({grp:AP,f:ARMF,key:'a'+ARMB[2],b0:ARMB[0],b1:ARMB[1]});
     ringsToBands(segs); }
   // a little weight shift: one leg out, head tilted
+  if(KM){ stretchLower(R,hips,LR);   // bind the kit body to the rig at rest: the groups are its bones
+    kitBindBody(root,KV,[skin,main,sleeve,foreM,gloveM,R.shorts?skin:pants,shoe,mat('#1d1a18',{s:20})],{hips,torso,head,legL:R.legs[1],legR:R.legs[0],apL:R.armRP,apR:R.armLP,handL:R.hand,handR:R.handL}); }
   R.legs[1].rotation.z=0.05; R.legs[0].rotation.z=-0.012; head.rotation.z=(fhash%2?1:-1)*0.05;
-  stretchLower(R,hips,LR);
+  if(!KM) stretchLower(R,hips,LR);
   R.height = 0.44*LR + th*2 + 0.035 + hs*1.85*HK;
   if(p.sc){ g.scale.setScalar(p.sc); R.height*=p.sc; }
   return g;
@@ -637,7 +650,7 @@ function aoMat(m){ let v=AO_MATS.get(m); if(!v){ v=m.clone(); v.vertexColors=tru
 function bakeAO(root){
   root.updateMatrixWorld(true);
   const parts=[], inv=new THREE.Matrix4(), box=new THREE.Box3(); const all=new THREE.Box3();
-  root.traverse(o=>{ if(!o.isMesh||o.userData.isOutline) return; const m=o.material; if(!m||m.transparent||m.type!=='MeshStandardMaterial') return;
+  root.traverse(o=>{ if(!o.isMesh||o.userData.isOutline||o.isSkinnedMesh) return; const m=o.material; if(!m||m.transparent||m.type!=='MeshStandardMaterial') return;
     const g=o.geometry; if(!g.boundingBox) g.computeBoundingBox(); const bb=g.boundingBox;
     const c=bb.getCenter(new THREE.Vector3()), semi=bb.getSize(new THREE.Vector3()).multiplyScalar(0.5); if(semi.x<1e-4||semi.y<1e-4||semi.z<1e-4) return;
     const mw=o.matrixWorld.clone(), wc=c.clone().applyMatrix4(mw), sc=new THREE.Vector3().setFromMatrixScale(mw), wr=Math.max(semi.x*sc.x,semi.y*sc.y,semi.z*sc.z), avg=(semi.x*sc.x+semi.y*sc.y+semi.z*sc.z)/3;
@@ -646,6 +659,7 @@ function bakeAO(root){
   const H=Math.max(0.3,all.max.y-all.min.y), y0=all.min.y, F=0.075*Math.min(1.6,H), gF=0.09*H;
   const p=new THREE.Vector3(), n=new THREE.Vector3(), q=new THREE.Vector3(), d=new THREE.Vector3(), nm=new THREE.Matrix3();
   for(const A of parts){
+    if(A.o.userData.kit) continue;   // kit parts carry painted shading; they still occlude their neighbours
     const g0=A.o.geometry, g=g0.clone(); const pos=g.attributes.position, nor=g.attributes.normal; if(!nor) continue;   // unique vertices only (indexed): far cheaper
     nm.getNormalMatrix(A.mw);
     if(A.o.userData.noOutline){ const col=new Float32Array(pos.count*3).fill(1); g.setAttribute('color',new THREE.BufferAttribute(col,3)); A.o.geometry=g; A.o.material=aoMat(A.o.material); continue; }
@@ -670,16 +684,16 @@ function bakeAO(root){
 }
 
 // ---------------------------------------------------------------- model cache: build once per (model, team), merge rigid parts, add outlines, clone per spawn
-const MODEL_CACHE={}, TPL_RIG=new Map(); let MODEL_GEN=0;
-const SHARED_GEO=()=>new Set(Object.values(GEO));
+const MODEL_CACHE={}, TPL_RIG=new Map(), TPL_SKIN=new Map(); let MODEL_GEN=0;
+const SHARED_GEO=()=>{ const s=new Set(Object.values(GEO)); if(KIT) for(const g of KIT.shared) s.add(g); return s; };
 // free a model's own GPU buffers (merged parts, custom shapes); shared primitives stay
-function freeModel(root,shared=SHARED_GEO()){ const seen=new Set(); root.traverse(o=>{ if(o.isMesh&&!shared.has(o.geometry)&&!seen.has(o.geometry)){ seen.add(o.geometry); o.geometry.dispose(); } }); }
+function freeModel(root,shared=SHARED_GEO()){ const seen=new Set(); root.traverse(o=>{ if(o.isSkinnedMesh&&o.skeleton) o.skeleton.dispose(); if(o.isMesh&&!shared.has(o.geometry)&&!seen.has(o.geometry)){ seen.add(o.geometry); o.geometry.dispose(); } }); }
 // called at the start of each match: drop models not used this match or last, so memory stays flat however many arenas you visit
-function pruneModels(){ MODEL_GEN++; const sh=SHARED_GEO(); for(const k in MODEL_CACHE){ const t=MODEL_CACHE[k]; if((t.userData.used||0)<MODEL_GEN-2){ freeModel(t,sh); TPL_RIG.delete(t); delete MODEL_CACHE[k]; } } }
+function pruneModels(){ MODEL_GEN++; const sh=SHARED_GEO(); for(const k in MODEL_CACHE){ const t=MODEL_CACHE[k]; if((t.userData.used||0)<MODEL_GEN-2){ freeModel(t,sh); TPL_RIG.delete(t); TPL_SKIN.delete(t); delete MODEL_CACHE[k]; } } }
 function mergeRigid(node){
   for(const ch of node.children.slice()) if(ch.children.length) mergeRigid(ch);
   const groups=new Map();
-  for(const ch of node.children){ if(!ch.isMesh||ch.children.length||ch.name.startsWith('rig:')) continue; const k=ch.material.uuid+(ch.userData.noOutline?'n':''); if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(ch); }
+  for(const ch of node.children){ if(!ch.isMesh||ch.isSkinnedMesh||ch.userData.kit||ch.children.length||ch.name.startsWith('rig:')) continue; const k=ch.material.uuid+(ch.userData.noOutline?'n':''); if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(ch); }
   for(const list of groups.values()){
     if(list.length<2) continue;
     const hasUV=list.every(m=>m.geometry.attributes.uv), hasCol=list.every(m=>m.geometry.attributes.color);
@@ -702,11 +716,11 @@ function getModel(m,team,opts={}){
     tpl.traverse(o=>{ if(o!==tpl&&o.userData&&o.userData.rig) delete o.userData.rig; });
     bakeAO(tpl); mergeRigid(tpl); if(QUALITY.outlines) addOutlines(tpl,ink); setShadows(tpl,QUALITY.shadows,false);
     if(opts.temp){ const R=TPL_RIG.get(tpl); TPL_RIG.delete(tpl); tpl.userData={rig:R,temp:true}; return tpl; }   // one-off (card portraits): not cached, caller frees it
-    MODEL_CACHE[key]=tpl; }
+    MODEL_CACHE[key]=tpl; TPL_SKIN.set(tpl,kitSkinMap(tpl)); }
   tpl.userData.used=MODEL_GEN;
-  const c=tpl.clone(), R0=TPL_RIG.get(tpl), R={};
+  const c=tpl.clone(), R0=TPL_RIG.get(tpl), R={}; kitRebind(c,TPL_SKIN.get(tpl));
   for(const k in R0){ const v=R0[k]; if(!(v&&v.isObject3D)&&!(Array.isArray(v)&&v[0]&&v[0].isObject3D)) R[k]=v; }
   c.traverse(o=>{ if(o.name&&o.name.startsWith('rig:')){ const [,k,i]=o.name.split(':'); if(i!==undefined) (R[k]=R[k]||[])[+i]=o; else R[k]=o; } });
   c.userData={rig:R}; return c;
 }
-function clearModelCache(){ for(const k in MODEL_CACHE) delete MODEL_CACHE[k]; TPL_RIG.clear(); }
+function clearModelCache(){ for(const k in MODEL_CACHE) delete MODEL_CACHE[k]; TPL_RIG.clear(); TPL_SKIN.clear(); }

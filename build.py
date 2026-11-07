@@ -15,10 +15,13 @@ arenas = sorted(p.name for p in src.glob('data_arena_*.js'))
 news = sorted(p.name for p in src.glob('data_news_*.js'))
 tune = [f for f in ('data_tune.js', 'data_counters.js') if (src / f).exists()]
 files = ['data.js', 'data_more1.js', 'data_more2.js', 'data_more3.js'] + arenas + news + ['data_balance.js'] + tune + [
-    'models_core.js', 'models_chars.js', 'models_more.js', 'models_world.js', 'engine.js', 'sim.js', 'ui.js', 'net.js']
+    'models_core.js', 'models_kit.js', 'models_chars.js', 'models_more.js', 'models_world.js', 'engine.js', 'sim.js', 'ui.js', 'net.js']
 game = '\n'.join((src / f).read_text() for f in files)
 build_id = hashlib.sha1(game.encode()).hexdigest()[:10]
 game = "const BUILD='" + build_id + "';\n" + game
+# the character kit (tools/blender_kit -> vendor/kit.glb), parsed once at boot by src/models_kit.js
+import base64
+game = "const KIT_B64='" + base64.b64encode((root / 'vendor' / 'kit.glb').read_bytes()).decode() + "';\n" + game
 shell = (src / 'shell.html').read_text()
 three = (root / 'vendor' / 'three.min.js').read_text()
 

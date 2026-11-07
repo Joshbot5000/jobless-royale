@@ -251,7 +251,7 @@ function outlineMat(color){
 function addOutlines(root,color,minR=0.045){
   const om=outlineMat(color), list=[];
   root.traverse(o=>{ if(o.isMesh && !o.userData.noOutline && !o.material.transparent && o.material.type!=='ShaderMaterial'){ if(!o.geometry.boundingSphere) o.geometry.computeBoundingSphere(); const s=Math.max(o.scale.x,o.scale.y,o.scale.z); if(o.geometry.boundingSphere.radius*s>minR) list.push(o); } });
-  for(const o of list){ const ol=new THREE.Mesh(o.geometry,om); ol.userData.isOutline=true; ol.userData.noOutline=true; ol.castShadow=false; o.add(ol); }
+  for(const o of list){ let ol; if(o.isSkinnedMesh){ ol=new THREE.SkinnedMesh(o.geometry,kitOutlineMat(color)); ol.bind(o.skeleton,o.bindMatrix); } else ol=new THREE.Mesh(o.geometry,om); ol.userData.isOutline=true; ol.userData.noOutline=true; ol.castShadow=false; o.add(ol); }
 }
 function setShadows(root,cast,receive){ root.traverse(o=>{ if(o.isMesh && !o.userData.isOutline && !o.material.transparent){ o.castShadow=cast; o.receiveShadow=receive; } }); }
 

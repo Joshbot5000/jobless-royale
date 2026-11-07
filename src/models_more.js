@@ -95,7 +95,7 @@ function propMore(name,g,tc){
 
 // ---------------------------------------------------------------- outfits (torso decorations; ctx from buildHuman)
 function shortsLegs(x,sockM,bootM){
-  for(const L of x.R.legs){ P(L,'caps',x.skin,0.208,0.115,0.208,0,-0.27,0); if(sockM) P(L,'cyl',sockM,0.106,0.09,0.106,0,-0.33,0); if(bootM) P(L,'sph',bootM,0.11,0.08,0.155,0,-0.385,0.045); }
+  x.R.shorts=true; for(const L of x.R.legs){ if(!x.R.kit) P(L,'caps',x.skin,0.208,0.115,0.208,0,-0.27,0); if(sockM) P(L,'cyl',sockM,0.106,0.09,0.106,0,-0.33,0); if(bootM) P(L,'sph',bootM,0.11,0.08,0.155,0,-0.385,0.045); }
 }
 function outfitMore(ot,x){
   const {torso,hips,R,main,acc,skin,tw,th,td,fz,front,button,c,w}=x;
