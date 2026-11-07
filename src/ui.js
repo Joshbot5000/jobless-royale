@@ -3,7 +3,7 @@
 // =====================================================================
 const $=s=>document.querySelector(s);
 const glc=$('#gl'), hud=$('#hud'), hx=hud.getContext('2d'), wrap=$('#wrap');
-const FONT="'Lilita One','Arial Rounded MT Bold','Trebuchet MS',system-ui,sans-serif";
+const FONT="'Lilita One','Arial Rounded MT Bold','Trebuchet MS',system-ui,sans-serif,'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji'";
 const RAR={common:['#9fb4e0','#4a5f94'],rare:['#ffbf5e','#d0721a'],epic:['#d27cf5','#7a2fb4'],legendary:['#8ff3e4','#2c9ad8'],champion:['#ffe58a','#c98a0b']};
 let SAT=0,SAB=0,TBH=0,W=0,H=0,DPR=1,TOPH=0,PANH=0,PANY=0,cardRects=[],nextRect,elixRect,pauseRect,emoteRect,tapRect,emoteOpen=false,emoteRects=[];
 
@@ -167,6 +167,11 @@ function cardFace(id,w,h){
   const ready=drawCardFace(c.getContext('2d'),id,w,h,DPR);
   if(ready) faceCache[key]=c; return c;
 }
+// emoji drawn once into its own canvas with the colour-emoji fonts named explicitly and no shadow
+// (iPhone Safari can draw nothing when an emoji is filled straight onto a canvas in a non-emoji font with a shadow)
+const EMOJI_FONT='"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Twemoji Mozilla",sans-serif', emojiCache={};
+function emojiImg(ch){ if(emojiCache[ch]) return emojiCache[ch]; const S=128, cv=document.createElement('canvas'); cv.width=cv.height=S; const x=cv.getContext('2d');
+  x.font=`${Math.round(S*0.8)}px ${EMOJI_FONT}`; x.textAlign='center'; x.textBaseline='middle'; x.fillText(ch,S/2,S*0.54); return emojiCache[ch]=cv; }
 function rrp(c,x,y,w,h,r){ r=Math.max(0,Math.min(r,w/2,h/2)); c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
 function drawCardFace(c,id,w,h,dpr){
   const d=CARDS[id]; c.save(); c.scale(dpr,dpr);
@@ -175,7 +180,7 @@ function drawCardFace(c,id,w,h,dpr){
   const g2=c.createRadialGradient(w/2,h*0.42,w*0.05,w/2,h*0.45,w*0.75); g2.addColorStop(0,'rgba(255,255,255,.6)'); g2.addColorStop(1,'rgba(255,255,255,0)'); c.fillStyle=g2; c.fillRect(0,0,w,h);
   let ready=true;
   c.save(); rrp(c,0,0,w,h,w*0.1); c.clip();
-  if(d.type==='spell'){ c.font=`${w*0.58}px ${FONT}`; c.textAlign='center'; c.textBaseline='middle'; c.shadowColor='rgba(0,0,0,.35)'; c.shadowBlur=w*0.06; c.shadowOffsetY=w*0.03; c.fillText(d.icon||'✨',w/2,h*0.42); c.shadowColor='transparent'; }
+  if(d.type==='spell'){ const em=emojiImg(d.icon||'✨'); const sz=w*0.66; c.shadowColor='rgba(0,0,0,.35)'; c.shadowBlur=w*0.06; c.shadowOffsetY=w*0.03; c.drawImage(em,w/2-sz/2,h*0.42-sz/2,sz,sz); c.shadowColor='transparent'; }
   else { const pc=portraitCache[id]; if(pc){ const ph=h*0.92, pw=ph*0.8; c.drawImage(pc,(w-pw)/2,-h*0.01,pw,ph); } else { requestPortrait(id); ready=false; } }
   c.restore();
   c.strokeStyle=d.champ?'#fff3b0':'#14161c'; c.lineWidth=Math.max(2,w*(d.champ?0.06:0.045)); rrp(c,1,1,w-2,h-2,w*0.1); c.stroke();
@@ -529,9 +534,28 @@ function cardTile(id,onTap,extra=''){
   b.dataset.card=id; const c=document.createElement('canvas'); drawTileFace(c,id);
   b.appendChild(c);
   if(swapPick===id) b.classList.add('pick');
-  b.onclick=()=>{ cardInfo(id); if(onTap) onTap(id); };
+  // hold to flip the card over like a flashcard; let go to flip it back (a quick tap still selects it)
+  let holdT=null, held=false;
+  const flip=on=>{ if(on&&!b.querySelector('.cardback')) b.appendChild(cardBack(id)); b.classList.toggle('flipped',on); };
+  b.addEventListener('pointerdown',()=>{ held=false; clearTimeout(holdT); holdT=setTimeout(()=>{ held=true; flip(true); buzz(8); },260); });
+  const end=()=>{ clearTimeout(holdT); if(held) flip(false); };
+  b.addEventListener('pointerup',end); b.addEventListener('pointerleave',end); b.addEventListener('pointercancel',end);
+  b.addEventListener('contextmenu',e=>e.preventDefault());
+  b.onclick=e=>{ if(held){ held=false; e.preventDefault(); return; } cardInfo(id); if(onTap) onTap(id); };
   return b;
 }
+// the back of a card: the three numbers that matter and one short line on how it plays
+function cardBack(id){ const d=CARDS[id], n=d.count||1, sp=d.sp||{};
+  let dmg='–', hp='–', dl='Damage', hl='Health';
+  if(d.type==='spell'){ hl='Radius'; hp=sp.r?'r'+sp.r:'–';
+    if(sp.k==='barrage') dmg=(sp.n||1)+'×'+sp.dmg; else if(sp.k==='cloud'&&sp.dps) dmg=sp.dps+'/s'; else if(sp.dmg) dmg=sp.dmg;
+    else if(sp.k==='stun'||sp.k==='freeze'){ dl=sp.k==='freeze'?'Freeze':'Stun'; dmg=sp.t+'s'; } else if(sp.t){ dl='Lasts'; dmg=sp.t+'s'; } else if(sp.amt){ dl='Heal'; dmg=sp.amt; } }
+  else { hp=n>1?d.hp+'×'+n:d.hp; if(d.dmg) dmg=n>1?d.dmg+'×'+n:d.dmg; else if(sp.dmg) dmg=sp.dmg; else if(d.gen){ dl='Elixir'; dmg='+'+d.gen.amt+'/'+d.gen.every+'s'; } else if(d.spawner){ dl='Spawns'; dmg=(d.spawner.n||1)+'/'+d.spawner.every+'s'; } }
+  let line=(d.desc||'').replace(/^LEGENDARY\.\s*/,'').split(/(?<=[.!?])\s/)[0]; if(line.length>78) line=line.slice(0,75).replace(/\s\S*$/,'')+'…';
+  const tap=d.tap?`<div class="cbtap">👆 ${d.tap.name}</div>`:'';
+  const el=document.createElement('div'); el.className='cardback rar-'+(d.rar||'common');
+  el.innerHTML=`<div class="cbname">${d.short||d.name}</div><div class="cbstats"><div><i>💧</i><b>${d.cost}</b><span>Elixir</span></div><div><i>⚔️</i><b>${dmg}</b><span>${dl}</span></div><div><i>${d.type==='spell'?'🎯':'❤️'}</i><b>${hp}</b><span>${hl}</span></div></div><div class="cbline">${line}</div>${tap}`;
+  return el; }
 function drawTileFace(c,id){ const w=88,h=110, lk=!unlocked(id); c.width=w*2; c.height=h*2; const x=c.getContext('2d'); drawCardFace(x,id,w,h,2);
   if(lk){ x.save(); x.scale(2,2); x.fillStyle='rgba(12,16,34,.72)'; rrp(x,0,0,w,h,w*0.1); x.fill(); x.font=`${w*0.34}px ${FONT}`; x.textAlign='center'; x.textBaseline='middle'; x.fillText('🔒',w/2,h*0.36);
     x.font=`${w*0.17}px ${FONT}`; x.lineWidth=3; x.strokeStyle='#14161c'; x.strokeText('🏆'+CARDS[id].unlock,w/2,h*0.62); x.fillStyle='#ffd34d'; x.fillText('🏆'+CARDS[id].unlock,w/2,h*0.62); x.restore(); }

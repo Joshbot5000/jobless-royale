@@ -434,9 +434,16 @@ function buildQuad(p,tc){
   }
   if(p.ring) P(head,'torThin',gold(),0.04,0.04,0.04,0,-0.07,hr*0.7+sn*0.95+0.05,PI/2);
   if(p.crown){ const gm=gold(); P(head,'cyl',gm,hr*0.56,0.085,hr*0.56,0,hr*0.98,-0.01); for(let i=0;i<5;i++){ const a=i/5*TAU; P(head,'cone',gm,0.03,0.1,0.03,Math.cos(a)*hr*0.49,hr*1.1,Math.sin(a)*hr*0.49-0.01); P(head,'sphLo',gm,0.016,0.016,0.016,Math.cos(a)*hr*0.49,hr*1.16,Math.sin(a)*hr*0.49-0.01);} P(head,'sph',mat('#e5443f',{s:150}),0.03,0.03,0.015,0,hr*1.0,hr*0.56); }
-  // collar
-  P(front,'tor',mat(tc.main,{s:50}),0.14,0.12,0.55,0,0.07,0.06,PI/2-0.5);
-  P(front,'sph',gold(),0.032,0.032,0.016,0,-0.05,0.18);
+  // collar (not on horses: they get a long neck, a mane and a bridle instead)
+  if(!p.horse){ P(front,'tor',mat(tc.main,{s:50}),0.14,0.12,0.55,0,0.07,0.06,PI/2-0.5);
+    P(front,'sph',gold(),0.032,0.032,0.016,0,-0.05,0.18); }
+  else { head.position.set(0,0.47,0.27); head.rotation.x=0.42;
+    const mane=c(p.mane||'#2a1a10');
+    P(front,'caps',coat,0.13*ch,0.36,0.11*ch,0,0.27,0.15,-0.62);                        // long arched neck up to the head
+    for(let i=0;i<6;i++) P(front,'puff',mane,0.055,0.085,0.07,0,0.2+i*0.055,0.02+i*0.04,0.3).userData.noOutline=i>0;   // mane along the crest
+    P(head,'puff',mane,0.06,0.06,0.07,0,hr*0.95,0.02);                                   // forelock
+    P(head,'torThin',mat(tc.main,{s:50}),hr*0.62,hr*0.62,0.5,0,-0.04,hr*0.55,PI/2);       // bridle in team colour
+    for(const s2 of [-1,1]) P(head,'sph',gold(),0.02,0.02,0.02,s2*hr*0.6,-0.04,hr*0.7); }
   // legs
   R.legs=[];
   const legm = p.tan ? coat2 : p.collie ? mat('#ffffff',{s:14}) : coat;
@@ -445,8 +452,9 @@ function buildQuad(p,tc){
     const ll=LL+0.1;
     { const kz=zs<0?-0.03:0.015, legF=SDF.blend([[SDF.rcone(0,0,0,0,-ll*0.5,kz,(zs<0?0.085:0.078)*ch,0.05*ch),0],[SDF.rcone(0,-ll*0.5,kz,0,-ll+0.03,0.02,0.05*ch,0.042*ch),0.03]]);
       S(lg,'qleg|'+[ll,ch,zs].map(v=>(+v).toFixed(3)).join(','),legF,[-0.1*ch,-ll,-0.1*ch],[0.1*ch,0.09*ch,0.1*ch],coat); }
-    P(lg,'sph',legm,0.065*ch,0.045,0.08*ch,0,-ll+0.01,0.025);
-    for(let t=-1;t<=1;t++) P(lg,'sphLo',legm,0.026*ch,0.026,0.03*ch,t*0.034*ch,-ll+0.0,0.085).userData.noOutline=true;   // toes
+    if(p.horse){ P(lg,'cyl',mat('#2a1e16',{s:60}),0.058*ch,0.07,0.062*ch,0,-ll+0.035,0.02); P(lg,'puff',c(p.mane||'#2a1a10'),0.05*ch,0.035,0.05*ch,0,-ll+0.085,0.02).userData.noOutline=true; }   // hooves and fetlock feathering
+    else { P(lg,'sph',legm,0.065*ch,0.045,0.08*ch,0,-ll+0.01,0.025);
+    for(let t=-1;t<=1;t++) P(lg,'sphLo',legm,0.026*ch,0.026,0.03*ch,t*0.034*ch,-ll+0.0,0.085).userData.noOutline=true; }   // toes
     R.legs.push(lg);
   }
   // tail
@@ -459,6 +467,7 @@ function buildQuad(p,tc){
     case 'thin': P(tail,'cone',coat,0.028,0.28,0.028,0,0.06,-0.1,-0.7); break;
     case 'plume': for(let i=0;i<3;i++) P(tail,'puff',coat2,0.06-i*0.005,0.08,0.06,0,0.06+i*0.07,-0.06-i*0.04); break;
     case 'rat': P(tail,'cyl',mat('#ffb6c8'),0.013,0.52,0.013,0,-0.08,-0.22,1.2); break;
+    case 'horse': { const mn=c(p.mane||'#2a1a10'); for(let i=0;i<5;i++) P(tail,'puff',mn,0.06-i*0.006,0.09,0.055,0,0.04-i*0.075,-0.05-i*0.03,0.25); break; }
     case 'bushy': for(let i=0;i<4;i++) P(tail,'puff',coat,0.13-i*0.01,0.12,0.12,0,0.08+i*0.12,-0.1+Math.sin(i*0.9)*0.05); break;
   }
   if(p.cape) P(body,'rbox2',c(p.cape),0.42,0.03,0.52*L,0,0.2*ch,-0.02);

@@ -14,6 +14,9 @@ B('witnessstand',{range:7,hp:750,desc:'The witness testifies at air and ground t
 B('bailiff',{cost:4,hp:4300,dmg:180,desc:'Marches straight at the nearest building with enormous health, physically escorting every enemy troop out of its way.'});
 B('orderincourt',{cost:2}); B('summons',{cost:2});
 
+// ---------------------------------------------------------------- Palace: the Consul Horse is a proper horse now
+if(CARDS.horse&&CARDS.horse.model){ CARDS.horse.model={...CARDS.horse.model,horse:true,tail:'horse',snout:0.46,size:1.3,len:1.25,legLen:0.5,ears:'pointy'}; }
+
 // ---------------------------------------------------------------- Wall Street
 B('whale',{targets:'ground',hp:2700,dmg:560,hs:1.8,speed:0.7,desc:'A gigantic flying whale that floats over the river and crushes whatever is beneath it, troops or buildings, with one enormous slam at a time. Splashes down when defeated.'});
 B('loanshark',{onHit:{lifesteal:0.75},desc:'A flying shark in a suit. Bites air and ground and heals 75% of the damage it deals.'});
@@ -124,3 +127,20 @@ if(CARDS.defib) CARDS.defib.desc=CARDS.defib.desc.replace('for 1s','for 0.5s');
 B('orderincourt',{desc:'A colossal gavel slams down: 90 damage, and every enemy troop and tower in the area is stunned for 1s.'});
 B('summons',{desc:'A legal summons drags every enemy in the area into the middle for 1.4s, dealing damage while they are held.'});
 })();
+// follow-up after the duel check: keep the owner's changes, trim what they made too strong (or too weak)
+(function(){ const B=(k,o)=>{ if(CARDS[k]) Object.assign(CARDS[k],o); }; const m=(k,f)=>{ const c=CARDS[k]; if(c){ if(c.hp) c.hp=Math.round(c.hp*f); if(c.dmg) c.dmg=Math.round(c.dmg*f); } };
+  B('witnessstand',{hp:550,spawner:{card:'paralegals',n:1,every:8.5,first:0.85}}); if(CARDS.witnessstand) CARDS.witnessstand.desc=CARDS.witnessstand.desc.replace('every 6.5s','every 8.5s');
+  B('butcher',{dmg:250});
+  B('poolshark',{hp:520,atk:{...CARDS.poolshark.atk,bounce:1}}); if(CARDS.poolshark) CARDS.poolshark.desc='Pots everything at close range: heavy pool balls that hit three times as hard as before and bounce on to one more target. Hits air and ground.';
+  B('motorcade',{hp:2000,dmg:190}); B('meatball',{hp:2900}); B('whale',{dmg:480}); B('horse',{hp:2200});
+  B('sniper',{dmg:300});
+  m('mothership',0.85); m('laddertruck',0.85); m('dumptruck',0.9); m('hosecrew',0.92);
+  B('mysterybox',{death:{random:2}}); if(CARDS.mysterybox) CARDS.mysterybox.desc=(CARDS.mysterybox.desc||'').replace(/three|3 /,m0=>m0==='three'?'two':'2 ');
+})();
+(function(){ const m=(k,f)=>{ const c=CARDS[k]; if(c){ if(c.hp) c.hp=Math.round(c.hp*f); if(c.dmg) c.dmg=Math.round(c.dmg*f); } };
+  if(CARDS.motorcade){ CARDS.motorcade.hp=1750; CARDS.motorcade.dmg=175; CARDS.motorcade.sp={...CARDS.motorcade.sp,after:1.2}; }
+  if(CARDS.sniper) CARDS.sniper.hs=2.5;
+  m('mothership',0.9); m('dumptruck',0.9); m('justices',0.9); })();
+(function(){ // random side effects are too strong on a splash attack: give them to single hits only
+  if(CARDS.virologist){ CARDS.virologist.onHit={cloud:[1.6,55,3]}; CARDS.virologist.desc='Lobs flasks that burst in a splash and leave a lingering toxic cloud that eats away at anything inside.'; }
+  if(CARDS.pharmacist){ CARDS.pharmacist.onHit={slow:[1.5,0.7]}; CARDS.pharmacist.desc='Lobs pill bottles that heal friendly troops in the splash, while enemies hit get drowsy and slow down.'; } })();

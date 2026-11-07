@@ -394,7 +394,7 @@ function vehicleMore(p,R,root,x){
     case 'scooter': P(root,'rboxS',body,0.4,0.35,1.0,0,0.45,0); P(root,'rbox2',mat('#151515'),0.36,0.08,0.4,0,0.7,-0.15); P(root,'cyl',chrome,0.03,0.5,0.03,0,0.85,0.4,-0.3); P(root,'rbox2',chrome,0.5,0.03,0.03,0,1.08,0.48);
       P(root,'rboxS',mat('#ffffff',{s:30}),0.45,0.35,0.45,0,0.85,-0.45); P(root,'box',mat('#ffffff',{map:labelTex('PIZZA','#e5302a','#ffffff'),basic:1}),0.46,0.2,0.46,0,0.85,-0.45);
       { const rd=buildHuman({skin:'#e8b48a',hair:['short','#3a2414'],hat:['cap','#e5302a'],outfit:['tshirt','#e5302a','#ffffff']},x.tc); rd.scale.setScalar(0.85); rd.position.set(0,0.35,0.0); root.add(rd); }
-      wheel(0,0.45,0.2); wheel(0,-0.4,0.2); R.wheels.forEach(w=>w.scale.x=0.6); R.height=1.4; break;
+      wheel(0,0.45,0.2); wheel(0,-0.4,0.2); R.wheels.forEach(w=>w.scale.y*=0.6); R.height=1.4; break;
     case 'digger': for(const s2 of [-1,1]){ P(root,'rboxS',tire,0.3,0.36,1.5,s2*0.55,0.2,0); }
       { const up=G0(); up.position.y=0.45; root.add(up); P(up,'rboxS',body,1.0,0.5,1.0,0,0.25,-0.1); P(up,'rbox2',glass,0.5,0.4,0.5,-0.2,0.7,0.1); P(up,'rbox2',body,0.55,0.12,0.55,-0.2,0.95,0.1);
         const arm=G0(); arm.position.set(0.25,0.45,0.35); up.add(arm); R.ladder=arm; P(arm,'rbox2',body,0.15,0.15,1.1,0,0.3,0.45,-0.5); P(arm,'rbox2',body,0.14,0.14,0.8,0,0.5,1.05,0.7); P(arm,'rboxS',mat('#555',{s:60}),0.5,0.35,0.35,0,0.1,1.35); } R.height=1.6; break;

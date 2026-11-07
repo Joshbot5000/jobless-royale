@@ -68,6 +68,18 @@ Results from the November 2026 pass:
 | Card win-rate spread in 6,300 AI matches | 6.8% | 5.2% |
 | Cards outside 35-65% win rate | 24 | 3 |
 
+## Pace, spells and tower troops (owner's rules, November 2026)
+- **Elixir:** 1 every 2.2s at 1x (`ELIXIR_SECS` in `src/sim.js`). Clash Royale uses 2.8s; this keeps battles moving.
+- **Spells follow Clash Royale's cost-to-power curve,** scaled to this game's 1500-HP towers. `src/data_user.js` enforces it on every spell, including future news arenas:
+  - 2 elixir: about 200 damage, or a 1s stun.
+  - 3 elixir: about 340 damage, or a 1.8s stun.
+  - 4 elixir: about 520 damage (Fireball tier).
+  - 6 elixir: about 1,150-1,230 in a small area (Rocket tier). Five arenas have one: IPO Rocket, Asteroid Strike, Drone Strike, Hollywood Explosion, Backdraft.
+  - Barrages, clouds, pulls and rage durations follow the same tiers. Cheaper stuns are shorter.
+- **Tower troops** have an arena-specific shot: `towerFx` per theme, for example poison darts in Bio Lab, splash bricks on the Construction Site, sedative pills in the hospital, burning rockets on Bonfire Night. The FIGHT banner names it.
+- **The owner's explicit card changes** live in `src/data_user.js`. It loads after the generated tuning, so the auto-tuner never overrides them.
+- **Card backs:** hold any card in the deck builder and it flips like a flashcard, showing elixir, damage, health (radius for spells), a one-line summary and the Champion ability.
+
 ## Arenas, decks and the Trophy Road
 - **16 arenas.** The original 11 professions plus Sports Stars, Artists, Actors, Influencers and a Zoo.
 - **Every arena has 20–23 characters and 4 spells.** The deck is 6 characters + 2 spells with at most one Champion. Each arena remembers its own deck, and Mix & Match builds a 6 + 2 deck from every unlocked card in the game.

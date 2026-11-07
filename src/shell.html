@@ -4,7 +4,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#14213d">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;800&display=swap">
 <style>
 /* Layout: one portrait game column; WebGL arena + 2D HUD canvas stacked, DOM screens overlay them. */
 :root{
@@ -50,7 +50,26 @@ h2{margin:6px 0 -4px;font-size:18px;letter-spacing:1px;align-self:flex-start;tex
 .aking{position:absolute;right:-6px;bottom:-4px;width:64px;height:80px;pointer-events:none;filter:drop-shadow(0 3px 3px rgba(0,0,0,.4))}
 .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:100%}
 .cardtile{position:relative;border:0;border-radius:10px;aspect-ratio:.8;cursor:pointer;padding:0;background:none;overflow:hidden;max-width:100%}
-.cardtile canvas{width:100%;height:100%;display:block}
+.cardtile canvas{width:100%;height:100%;display:block;backface-visibility:hidden;transition:transform .22s ease}
+.cardtile{perspective:600px;overflow:visible;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+.cardtile.flipped canvas{transform:rotateY(180deg)}
+.cardback{position:absolute;inset:0;border-radius:10px;padding:7cqw 6cqw;display:flex;flex-direction:column;gap:4cqw;align-items:stretch;justify-content:flex-start;overflow:hidden;
+  background:radial-gradient(120% 80% at 50% 0%,rgba(255,255,255,.22),rgba(255,255,255,0) 60%),linear-gradient(160deg,#2b3a6b,#1a2244);border:2px solid #14161c;color:#fff;font-family:'Nunito',system-ui,sans-serif;text-align:center;
+  transform:rotateY(-180deg);backface-visibility:hidden;transition:transform .22s ease;box-shadow:0 6px 16px rgba(0,0,0,.35);z-index:3;pointer-events:none}
+.cardtile{container-type:inline-size}
+.cardtile.flipped .cardback{transform:rotateY(0deg)}
+.cardback.rar-rare{background:radial-gradient(120% 80% at 50% 0%,rgba(255,255,255,.25),rgba(255,255,255,0) 60%),linear-gradient(160deg,#e08a1e,#9a4a10)}
+.cardback.rar-epic{background:radial-gradient(120% 80% at 50% 0%,rgba(255,255,255,.25),rgba(255,255,255,0) 60%),linear-gradient(160deg,#9b4fe0,#55208f)}
+.cardback.rar-legendary{background:radial-gradient(120% 80% at 50% 0%,rgba(255,255,255,.25),rgba(255,255,255,0) 60%),linear-gradient(160deg,#25c2d8,#1d5fa8)}
+.cardback.rar-champion{background:radial-gradient(120% 80% at 50% 0%,rgba(255,255,255,.35),rgba(255,255,255,0) 60%),linear-gradient(160deg,#ffcf4a,#c27a12);color:#2a1a00}
+.cbname{font-family:'Lilita One',system-ui,sans-serif;font-size:13cqw;line-height:1.05;text-shadow:0 1px 0 rgba(0,0,0,.3)}
+.cbstats{display:flex;gap:3cqw;justify-content:space-between}
+.cbstats div{flex:1;display:flex;flex-direction:column;align-items:center;background:rgba(0,0,0,.22);border-radius:9cqw;padding:3cqw 1cqw;min-width:0}
+.cbstats i{font-style:normal;font-size:11cqw;line-height:1}
+.cbstats b{font-family:'Lilita One',system-ui,sans-serif;font-weight:400;font-size:12.5cqw;line-height:1.1;white-space:nowrap;letter-spacing:-.02em}
+.cbstats span{font-size:7.5cqw;font-weight:800;opacity:.85;line-height:1}
+.cbline{font-size:9.5cqw;font-weight:700;line-height:1.22;opacity:.96;flex:1;overflow:hidden}
+.cbtap{font-size:8.5cqw;font-weight:800;background:rgba(255,255,255,.22);border-radius:6cqw;padding:2cqw 3cqw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #info{width:100%;box-sizing:border-box;background:rgba(0,0,0,.35);border:2px solid rgba(255,255,255,.12);border-radius:12px;padding:10px 12px;
   font-family:system-ui,sans-serif;font-size:14px;line-height:1.42;min-height:64px}
 #info b{font-family:var(--display);font-weight:400;font-size:17px;color:var(--gold);letter-spacing:.5px}
