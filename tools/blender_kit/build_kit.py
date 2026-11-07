@@ -40,7 +40,7 @@ def apply_xf(o):
 # ------------------------------------------------------------------ joints (game space), mirroring buildHuman
 def R3(rx, ry, rz):   # three.js Euler 'XYZ' = Rx * Ry * Rz
     return Matrix.Rotation(rx, 3, 'X') @ Matrix.Rotation(ry, 3, 'Y') @ Matrix.Rotation(rz, 3, 'Z')
-LR, HK = 1.36, 0.72
+LR, HK = 1.36, 0.8
 def joints(w):
     tw, th = 0.27 * w, 0.29
     J = {}; hy = 0.44 * (LR - 1) + 0.44
@@ -107,18 +107,18 @@ def body(tag, w, belly=0.0):
     V('pelvis', J['Hips'] + Vector((0, 0.05, -0.01)), (tw * 0.86, 0.2))
     V('waist', J['Hips'] + Vector((0, 0.2, 0.0 + belly * 0.05)), (tw * (0.74 + belly * 0.4), 0.17 + belly * 0.12))
     V('chest', J['Spine1'] + Vector((0, 0.13, 0.01)), (tw * 0.95, 0.2))
-    V('neck', J['Neck'] + Vector((0, 0.02, -0.01)), (0.06, 0.055)); V('neckT', J['Head'] + Vector((0, -0.13, 0.0)), (0.052, 0.05))
+    V('neck', J['Neck'] + Vector((0, 0.02, -0.01)), (0.075, 0.07)); V('neckT', J['Head'] + Vector((0, -0.14, 0.0)), (0.066, 0.062))
     E += [('pelvis', 'waist'), ('waist', 'chest'), ('chest', 'neck'), ('neck', 'neckT')]
-    HS = 1.3   # big, appealing hands
+    HS = 1.55   # big, appealing hands
     for side, s in (('Left', 1), ('Right', -1)):
-        V('sh' + side, J[side + 'Arm'] + Vector((-s * 0.02, 0, 0)), (0.085, 0.082)); V('el' + side, J[side + 'ForeArm'], (0.06, 0.058)); V('wr' + side, J[side + 'Wrist'], (0.046, 0.044))
+        V('sh' + side, J[side + 'Arm'] + Vector((-s * 0.02, 0, 0)), (0.1, 0.096)); V('el' + side, J[side + 'ForeArm'], (0.075, 0.072)); V('wr' + side, J[side + 'Wrist'], (0.056, 0.053))
         HR = J[side + 'HandRot']; P = J[side + 'Hand']
         def hp(x, y, z): return P + HR @ (Vector((x, y, z)) * HS)
-        V('pa' + side, hp(0, 0.0, 0), (0.06 * HS, 0.042 * HS))
+        V('pa' + side, hp(0, 0.0, 0), (0.062 * HS, 0.046 * HS))
         for i in range(4):
-            fx = s * (-0.03 + i * 0.02); V('fb%d%s' % (i, side), hp(fx, -0.045, 0.008), (0.018 * HS, 0.018 * HS)); V('ft%d%s' % (i, side), hp(fx * 1.05, -0.08, 0.03), (0.016 * HS, 0.016 * HS))
-        V('th' + side, hp(-s * 0.045, -0.005, 0.03), (0.02 * HS, 0.02 * HS)); V('tt' + side, hp(-s * 0.05, -0.04, 0.06), (0.017 * HS, 0.017 * HS))
-        V('hip' + side, J[side + 'UpLeg'] + Vector((0, -0.02, 0)), (0.11 * max(1, w * 0.85), 0.11)); V('kn' + side, J[side + 'Leg'], (0.075, 0.075)); V('ca' + side, (J[side + 'Leg'] + J[side + 'Foot']) / 2 + Vector((0, 0, -0.012)), (0.07, 0.07)); V('an' + side, J[side + 'Foot'] + Vector((0, 0.02, 0)), (0.052, 0.052))
+            fx = s * (-0.03 + i * 0.02); V('fb%d%s' % (i, side), hp(fx, -0.045, 0.008), (0.02 * HS, 0.02 * HS)); V('ft%d%s' % (i, side), hp(fx * 1.05, -0.08, 0.03), (0.018 * HS, 0.018 * HS))
+        V('th' + side, hp(-s * 0.045, -0.005, 0.03), (0.023 * HS, 0.023 * HS)); V('tt' + side, hp(-s * 0.05, -0.04, 0.06), (0.02 * HS, 0.02 * HS))
+        V('hip' + side, J[side + 'UpLeg'] + Vector((0, -0.02, 0)), (0.11 * max(1, w * 0.85), 0.11)); V('kn' + side, J[side + 'Leg'], (0.085, 0.085)); V('ca' + side, (J[side + 'Leg'] + J[side + 'Foot']) / 2 + Vector((0, 0, -0.012)), (0.08, 0.08)); V('an' + side, J[side + 'Foot'] + Vector((0, 0.02, 0)), (0.06, 0.06))
         E += [('chest', 'sh' + side), ('sh' + side, 'el' + side), ('el' + side, 'wr' + side), ('wr' + side, 'pa' + side), ('pa' + side, 'th' + side), ('th' + side, 'tt' + side), ('pelvis', 'hip' + side), ('hip' + side, 'kn' + side), ('kn' + side, 'ca' + side), ('ca' + side, 'an' + side)]
         for i in range(4): E += [('pa' + side, 'fb%d%s' % (i, side)), ('fb%d%s' % (i, side), 'ft%d%s' % (i, side))]
     names = list(SK); idx = {n: i for i, n in enumerate(names)}
@@ -131,14 +131,14 @@ def body(tag, w, belly=0.0):
     parts = [o]
     for side, s in (('Left', 1), ('Right', -1)):
         a = J[side + 'Foot']
-        bpy.ops.mesh.primitive_cube_add(size=1); sh = bpy.context.object; sh.scale = (0.15, 0.27, 0.12); sh.location = B(Vector((a.x, 0.075, 0.045)))
+        bpy.ops.mesh.primitive_cube_add(size=1); sh = bpy.context.object; sh.scale = (0.18, 0.31, 0.15); sh.location = B(Vector((a.x, 0.085, 0.05)))
         m = sh.modifiers.new('s', 'SUBSURF'); m.levels = 3; apply_mods(sh); apply_xf(sh)
         for v in sh.data.vertices:
             g = Vector((v.co.x, v.co.z, -v.co.y)); fwd = g.z - 0.045
             if fwd > 0.06: v.co.z += 0.12 * (fwd - 0.06) ** 1.5 if v.co.z < 0.05 else 0    # toe spring
             if fwd > 0.0 and v.co.z > 0.09: v.co.z -= (v.co.z - 0.09) * min(1, fwd * 5) * 0.6   # low toe box
         sh.data.materials.append(mat('K_SHOES')); parts.append(sh)
-        bpy.ops.mesh.primitive_cube_add(size=1); so = bpy.context.object; so.scale = (0.158, 0.285, 0.04); so.location = B(Vector((a.x, 0.018, 0.045)))
+        bpy.ops.mesh.primitive_cube_add(size=1); so = bpy.context.object; so.scale = (0.186, 0.32, 0.045); so.location = B(Vector((a.x, 0.02, 0.05)))
         m = so.modifiers.new('b', 'BEVEL'); m.width = 0.016; m.segments = 3; apply_mods(so); apply_xf(so); so.data.materials.append(mat('K_SOLE')); parts.append(so)
     for r in REGIONS: o.data.materials.append(mat(r))
     def seg_t(p, a, b): d = b - a; return max(0, min(1, (p - a).dot(d) / d.length_squared)), (a + d * max(0, min(1, (p - a).dot(d) / d.length_squared)) - p).length
@@ -165,71 +165,30 @@ def meta(name, elems, res=0.014, thr=0.6):
 hs = 0.3
 FACES = {   # cranium sy, jaw width, jaw height, chin width, chin depth
     'classic': (0.97, 0.66, 0.5, 0.26, 0.72), 'round': (0.95, 0.74, 0.5, 0.22, 0.68), 'long': (1.05, 0.6, 0.58, 0.24, 0.8), 'square': (0.97, 0.78, 0.46, 0.34, 0.7)}
+SDF_DIR = os.environ.get('KIT_SDF', os.path.join(os.path.dirname(OUT), 'sdf'))
+def import_json(name, tris):   # sculpted SDF meshes exported from the game (tools/blender_kit/dump_sdf.js), head-local game units
+    import json
+    d = json.load(open(os.path.join(SDF_DIR, name + '.json'))); P = d['pos']; I = d['idx']
+    me = bpy.data.meshes.new(name); me.from_pydata([B((P[i], P[i + 1], P[i + 2])) for i in range(0, len(P), 3)], [], [tuple(I[i:i + 3]) for i in range(0, len(I), 3)])
+    o = link(bpy.data.objects.new(name, me)); smooth(o)
+    m = o.modifiers.new('w', 'WELD'); m.merge_threshold = 0.0005; apply_mods(o); decimate(o, tris); return o
 def head(tag, HJ):
-    crY, jW, jY, chW, chY = FACES[tag]
-    E = [('ELLIPSOID', (0, 0.012, -0.012), hs * 0.98, (1, crY, 1), False),
-         ('ELLIPSOID', (0, -hs * 0.42, hs * 0.16), hs * 0.66, (jW / 0.66, jY / 0.66, 1.03), False),
-         ('ELLIPSOID', (0, -hs * chY, hs * 0.5), hs * 0.26, (chW / 0.26, 0.77, 0.96), False),
-         ('ELLIPSOID', (-hs * 0.46, -hs * 0.27, hs * 0.55), hs * 0.35, (1, 0.77, 0.97), False), ('ELLIPSOID', (hs * 0.46, -hs * 0.27, hs * 0.55), hs * 0.35, (1, 0.77, 0.97), False),
-         ('CAPSULE', (0, -0.012, hs * 0.9), 0.022, (1, 1.6, 1), False), ('ELLIPSOID', (0, -0.05, hs * 0.97), 0.034, (1, 0.9, 0.95), False),
-         ('ELLIPSOID', (-hs * 0.95, -0.015, -0.02), 0.06, (0.4, 1.2, 0.8), False), ('ELLIPSOID', (hs * 0.95, -0.015, -0.02), 0.06, (0.4, 1.2, 0.8), False)]
-    o = to_mesh(meta('mh', E, res=0.012), 'head_' + tag); smooth(o)
-    sm = o.modifiers.new('sm', 'SMOOTH'); sm.factor = 0.5; sm.iterations = 3; apply_mods(o); decimate(o, 1400)
-    o.data.materials.append(mat('K_SKIN'))
+    o = import_json('head_' + tag, 1500); o.data.materials.append(mat('K_SKIN'))
     # face layer: the front of the head, lifted a hair, planar UVs in head-local units (u = 0.5 + x/0.64, v = 0.5 + y/0.64)
-    bm = bmesh.new(); bm.from_mesh(o.data)
-    keep = [f for f in bm.faces if f.normal.dot(Vector((0, -1, 0))) > 0.3 and abs(f.calc_center_median().x) < hs * 0.72 and -hs * 0.72 < f.calc_center_median().z < hs * 0.55]
-    bmesh.ops.delete(bm, geom=[f for f in bm.faces if f not in set(keep)], context='FACES')
-    for v in bm.verts: v.co += v.normal * 0.004
+    bm = bmesh.new(); bm.from_mesh(o.data); bm.normal_update()
+    keep = set(f for f in bm.faces if f.normal.dot(Vector((0, -1, 0))) > 0.25 and abs(f.calc_center_median().x) < hs * 0.75 and -hs * 0.8 < f.calc_center_median().z < hs * 0.6)
+    bmesh.ops.delete(bm, geom=[f for f in bm.faces if f not in keep], context='FACES')
+    for v in bm.verts: v.co += v.normal * 0.005
     uv = bm.loops.layers.uv.new('UVMap')
     for f in bm.faces:
         for l in f.loops: l[uv].uv = (0.5 + l.vert.co.x / 0.64, 0.5 + l.vert.co.z / 0.64)
     dme = bpy.data.meshes.new('decal_' + tag); bm.to_mesh(dme); bm.free()
-    d = link(bpy.data.objects.new('face_' + tag, dme)); smooth(d); d.data.materials.clear(); d.data.materials.append(mat('K_FACE'))
+    d = link(bpy.data.objects.new('face_' + tag, dme)); smooth(d); d.data.materials.append(mat('K_FACE'))
     for x in (o, d): x.scale = (HK, HK, HK); x.location = B(HJ); apply_xf(x)
     return o, d
-
-# ------------------------------------------------------------------ hair styles (head-local), mirroring the v8 hair fields
-def hair(style, HJ, seed):
-    rnd = random.Random(seed); L = []
-    def add(t, co, r, sz=(1, 1, 1), neg=False): L.append((t, co, r, sz, neg))
-    lush = style in ('messy', 'curl', 'afro'); capR = {'slick': 1.035, 'afro': 1.25, 'cap': 1.02}.get(style, 1.065)
-    add('ELLIPSOID', (0, 0.045, -0.02), hs * capR, (1, 1.15 if style == 'afro' else 0.99, 0.99))
-    if style != 'cap':
-        for i in range(12 if lush else 7):
-            a = rnd.random() * TAU; el = 0.3 + rnd.random() * 0.75; rr = hs * (0.3 if lush else 0.21) * (0.75 + rnd.random() * 0.5); R0 = hs * capR * 0.97
-            add('BALL', (math.cos(a) * math.cos(el) * R0, 0.045 + math.sin(el) * R0 * 0.96, math.sin(a) * math.cos(el) * R0 - 0.02), rr)
-        if style == 'slick': add('ELLIPSOID', (0, hs * 0.58, -hs * 0.22), hs * 0.8, (0.98, 0.45, 1.07))
-        elif style != 'mohawk': add('ELLIPSOID', (hs * 0.08 * (rnd.random() - 0.5), hs * 0.74, -hs * 0.04), hs * 0.72, (1, 0.56, 1.06))
-        if style not in ('slick', 'afro', 'mohawk'):
-            n = 3 + rnd.randrange(3); part = (rnd.random() - 0.5) * hs * 0.3
-            for i in range(n):
-                t = i / (n - 1) - 0.5 if n > 1 else 0; x0 = t * hs * 1.05 + part * 0.3
-                add('CAPSULE', (x0, hs * 0.62, hs * 0.72), hs * 0.12, (1.0, 1.9, 1.0))                                    # fringe lock (vertical capsule)
-        for s in (1, -1): add('CAPSULE', (s * hs * 0.92, 0.0, 0.04), hs * 0.1, (1, 1.8, 1))                                # strands over the ears
-        for i in range(3): add('BALL', ((i - 1) * hs * 0.42, -hs * 0.25, -hs * 0.82), hs * 0.2)                             # nape
-    if style == 'long':
-        add('ELLIPSOID', (0, -hs * 0.55, -hs * 0.52), hs * 0.98, (1, 1.28, 0.55))
-        for s in (1, -1): add('CAPSULE', (s * hs * 0.84, -hs * 0.7, 0.02), hs * 0.22, (1, 3.2, 1))
-    if style == 'bun': add('BALL', (0, hs * 0.78, -hs * 0.64), hs * 0.42)
-    if style == 'ponytail':
-        for i in range(3): add('BALL', (0, -hs * (0.05 + i * 0.4), -hs * (1.05 + i * 0.06)), hs * (0.3 - i * 0.05))
-    if style == 'spiky':
-        for i in range(9):
-            a = i / 9 * TAU + rnd.random() * 0.3; el = 0.55 + rnd.random() * 0.5; d = Vector((math.cos(a) * math.cos(el), math.sin(el), math.sin(a) * math.cos(el)))
-            for k in range(4): add('BALL', tuple(Vector((0, 0.045, -0.02)) + d * hs * (0.95 + k * 0.17)), hs * (0.17 - k * 0.035))
-    if style == 'afro':
-        for i in range(14):
-            a = rnd.random() * TAU; el = -0.2 + rnd.random() * 1.6; R0 = hs * 1.2
-            add('BALL', (math.cos(a) * math.cos(el) * R0, 0.06 + math.sin(el) * R0, math.sin(a) * math.cos(el) * R0 - 0.04), hs * 0.38)
-    if style == 'mohawk':
-        L.clear(); add('ELLIPSOID', (0, 0.04, -0.02), hs * 1.02, (0.98, 0.97, 0.99))
-        for i in range(6): add('BALL', (0, hs * (1.02 + 0.08 * math.sin(i)), hs * (0.65 - i * 0.28)), hs * 0.2)
-    add('ELLIPSOID', (0, -0.05, hs * 0.6), hs * 0.8, (1, 0.88, 0.8), True)                                                 # keep the face clear
-    if style not in ('long', 'ponytail', 'afro'): add('ELLIPSOID', (0, -hs * 1.05, 0.02), hs * 1.05, (1.2, 0.7, 1.2), True)   # nape line
-    o = to_mesh(meta('mhair', L, res=0.016), 'hair_' + style); smooth(o)
-    sm = o.modifiers.new('sm', 'SMOOTH'); sm.factor = 0.4; sm.iterations = 2; apply_mods(o); decimate(o, 900 if style not in ('afro', 'long') else 1200)
-    o.data.materials.append(mat('K_HAIR')); o.scale = (HK, HK, HK); o.location = B(HJ); apply_xf(o); return o
+def hair(style, HJ, seed=0):
+    o = import_json('hair_' + style, 1300 if style in ('afro', 'long', 'ponytail') else 1000); o.data.materials.append(mat('K_HAIR'))
+    o.scale = (HK, HK, HK); o.location = B(HJ); apply_xf(o); return o
 
 # ------------------------------------------------------------------ robe bell sleeves (average build)
 def bell(J, side, s):
@@ -243,7 +202,7 @@ def bell(J, side, s):
         for i in range(segs): F.append((j * segs + i, j * segs + (i + 1) % segs, (j + 1) * segs + (i + 1) % segs, (j + 1) * segs + i))
     me = bpy.data.meshes.new('bell'); me.from_pydata(V, [], F); o = link(bpy.data.objects.new('sleeve_bell_' + side, me))
     so = o.modifiers.new('so', 'SOLIDIFY'); so.thickness = 0.01; sb = o.modifiers.new('sb', 'SUBSURF'); sb.levels = 1; apply_mods(o); smooth(o)
-    o.data.materials.append(mat('K_TORSO')); return o
+    decimate(o, 420); o.data.materials.append(mat('K_TORSO')); return o
 
 # ------------------------------------------------------------------ build everything
 objs = []; rigs = {}
@@ -252,8 +211,8 @@ for tag, w, belly in (('v0', 1.0, 0.0), ('v1', 1.3, 0.0), ('v2', 1.5, 0.6)):
 rig0, J0 = rigs['v0']
 for tag in FACES:
     h_, d_ = head(tag, J0['Head']); skin_to(h_, rig0, False, 'Head'); skin_to(d_, rig0, False, 'Head'); objs += [h_, d_]
-for i, st in enumerate(['short', 'slick', 'messy', 'curl', 'long', 'bun', 'ponytail', 'spiky', 'afro', 'mohawk', 'cap']):
-    h_ = hair(st, J0['Head'], 11 + i); skin_to(h_, rig0, False, 'Head'); objs.append(h_)
+for i, st in enumerate(['short', 'slick', 'messy', 'curl', 'long', 'bun', 'ponytail', 'spiky', 'afro', 'cap']):
+    h_ = hair(st, J0['Head']); skin_to(h_, rig0, False, 'Head'); objs.append(h_)
 for side, s in (('Left', 1), ('Right', -1)):
     o = bell(J0, side, s); skin_to(o, rig0, False, side + 'ForeArm'); objs.append(o)
 
