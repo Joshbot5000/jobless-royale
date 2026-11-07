@@ -182,3 +182,27 @@ function kitExpr(p,fh){
     if(c.rar==='champion'||c.role==='tank'||c.role==='wincon'||c.role==='hero') return fh%3?'determined':'stern';
     if(/villain|evil|steal|scam|curse/i.test(d)) return 'smirk'; }
   return ['happy','neutral','happy','surprised','neutral','determined'][fh%6]; }
+// Flyers: overlapping round primitives of one material in one rig group become ONE smooth sculpted surface
+// (body + tail, head + cheeks, wing segments), so birds and bats read as single soft shapes like the kit humans.
+let SMOOTH_FLY=true;
+const BLOB_GEO=()=>({sph:'e',sphLo:'e',sphMid:'e',head:'e',puff:'e',puffLo:'e',caps:'c',capsLo:'c'});
+function smoothBlobs(node,keep){
+  for(const ch of node.children) if(!ch.isMesh&&ch.children.length) smoothBlobs(ch,keep);
+  const kinds=BLOB_GEO(), types=new Map(); for(const k in kinds) types.set(geo(k),kinds[k]);
+  const byMat=new Map();
+  for(const ch of node.children){ if(!ch.isMesh||keep.has(ch)||ch.userData.noOutline||ch.material.transparent||!types.has(ch.geometry)) continue; if(!byMat.has(ch.material)) byMat.set(ch.material,[]); byMat.get(ch.material).push(ch); }
+  for(const [m,list] of byMat){
+    if(list.length<2) continue;
+    const items=list.map(o=>{ o.updateMatrix(); const inv=o.matrix.clone().invert(), sc=Math.min(Math.abs(o.scale.x),Math.abs(o.scale.y),Math.abs(o.scale.z)), t=types.get(o.geometry);
+      const b=new THREE.Box3().setFromBufferAttribute(o.geometry.attributes.position).applyMatrix4(o.matrix); return {inv,sc,t,b,o}; });
+    // keep only parts that touch another part (a lone eye-sphere stays as it is)
+    const touch=items.filter(a=>items.some(b=>b!==a&&a.b.clone().expandByScalar(0.02).intersectsBox(b.b))); if(touch.length<2) continue;
+    const v=new THREE.Vector3(), fs=touch.map(it=>{ const e=it.inv.elements; return (x,y,z)=>{ v.set(x,y,z).applyMatrix4(it.inv); let d;
+      if(it.t==='c'){ const yy=Math.max(-0.5,Math.min(0.5,v.y)); d=Math.hypot(v.x,v.y-yy,v.z)-0.5; } else d=v.length()-1; return d*it.sc; }; });
+    const f=(x,y,z)=>{ let d=fs[0](x,y,z); for(let i=1;i<fs.length;i++) d=SDF.smin(d,fs[i](x,y,z),0.05); return d; };
+    const bb=touch.reduce((a,it)=>a.union(it.b),new THREE.Box3()); bb.expandByScalar(0.03);
+    const key='blob|'+touch.map(it=>it.t+it.o.position.toArray().concat(it.o.scale.toArray(),it.o.rotation.toArray().slice(0,3)).map(n=>(+n).toFixed(3)).join(',')).join(';');
+    const me=S(node,key,f,bb.min.toArray(),bb.max.toArray(),m,0.8); me.renderOrder=touch[0].o.renderOrder;
+    for(const it of touch) node.remove(it.o);
+  }
+}

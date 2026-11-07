@@ -539,6 +539,7 @@ function buildFlyer(p,tc){
       R.height=0.6; break; }
     default: flyerMore(p,R,root,T,wing,tc);
   }
+  { const keep=new Set(); for(const k in R){ const v=R[k]; if(v&&v.isObject3D) keep.add(v); else if(Array.isArray(v)) v.forEach(x=>x&&x.isObject3D&&keep.add(x)); } if(SMOOTH_FLY) smoothBlobs(root,keep); }
   return g;
 }
 
