@@ -1093,6 +1093,7 @@ function syncUnits(dt){
         R.root.position.set(0,rise,lunge); if(anim!=='spin') R.root.rotation.set(0,0,Math.sin(t*1.3+u.uid)*0.025*(1-mv));
         if(R.blackCap) R.blackCap.visible=u.capT>0;
         if(R.cape) R.cape.rotation.x=0.15+mv*0.45+Math.sin(t*(mv?12:5)+u.uid)*0.08;
+        if(R.spin) R.spin.rotation.z+=dt*9;
         if(R.jet&&(u.flying||u.moving)&&Math.random()<0.6){ const bx=u.x-Math.sin(u.yawVis)*0.3, bz=u.y-Math.cos(u.yawVis)*0.3; PSA.spawn(bx,y+0.45*u.scale,bz,0,-2,0,0.25,0.25,'#ffb02e',1,0); }
         if(u.c.model.flames&&Math.random()<dt*30) PSA.spawn(u.x+rnd(-0.3,0.3),y+rnd(0.5,1.6)*u.scale,u.y+rnd(-0.3,0.3),0,rnd(1.5,3),0,0.4,0.35,Math.random()<0.5?'#ff7a1a':'#ffd34d',1,-1);
         if(u.flying){ o.rotation.z=u.bank*0.6; o.rotation.x=mv*0.35; }

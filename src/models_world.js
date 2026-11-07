@@ -117,6 +117,7 @@ function buildProj(key,tc){
   const [shape,col,sz] = PROJ[key]||PROJ.cannon; const g=G0(); const glow=(PROJ[key]||[])[4]; const m=mat(colr(col,tc),{e:glow?0.9:0,s:80});
   switch(shape){
     case 'pumpkin': P(g,'sph',mat('#ff8a1f',{s:40}),sz,sz*0.85,sz); P(g,'cyl',mat('#4a6a2a'),sz*0.12,sz*0.4,sz*0.12,0,sz*0.9,0); P(g,'rbox2',mat('#ffd34d',{e:1}),sz*0.6,sz*0.12,sz*0.05,0,-sz*0.1,sz*0.97); break;
+    case 'rocketP': P(g,'cyl',m,sz*0.28,sz*1.3,sz*0.28,0,0,0,PI/2); P(g,'cone',mat('#ffd34d',{s:60}),sz*0.3,sz*0.5,sz*0.3,0,0,sz*0.85,PI/2); P(g,'cyl',mat('#ffb02e',{e:1}),sz*0.2,sz*0.4,sz*0.2,0,0,-sz*0.85,PI/2); break;
     case 'candy': P(g,'sph',m,sz*0.7,sz*0.5,sz*0.5); for(const s2 of [-1,1]) P(g,'cone4',m,sz*0.35,sz*0.4,sz*0.35,s2*sz*0.75,0,0,0,0,s2*PI/2); break;
     case 'leaflet': P(g,'box',mat('#ffffff',{map:labelTex('LEADER!','#ffffff','#b3202a'),basic:1}),sz*1.6,sz*0.04,sz*1.1,0,0,0,0.3,0.4,0.2); break;
     case 'medal': P(g,'cyl',gold(),sz*0.7,sz*0.15,sz*0.7,0,0,0,PI/2); P(g,'rbox2',mat('#e5302a'),sz*0.5,sz*0.7,sz*0.05,0,sz*0.8,0); break;

@@ -275,7 +275,7 @@ function buildHuman(p,tc){
     case 'topHat': P(head,'cyl',mat('#151515',{s:80}),hs*0.76,0.44,hs*0.76,0,hs*1.08,0); P(head,'cyl',mat('#151515',{s:80}),hs*1.28,0.035,hs*1.28,0,hs*0.86,0); P(head,'cyl',gold(),hs*0.78,0.07,hs*0.78,0,hs*0.94,0); break;
     case 'fedora': P(head,'cyl',c(hatC),hs*0.8,0.2,hs*0.8,0,hs*0.86,0); P(head,'cyl',c(hatC),hs*1.42,0.028,hs*1.42,0,hs*0.73,0); P(head,'cyl',mat('#222'),hs*0.82,0.05,hs*0.82,0,hs*0.8,0); P(head,'rbox2',c(hatC),hs*0.5,0.04,hs*1.2,0,hs*0.97,0); break;
     case 'cap': case 'capBack': P(head,'hemi',c(hatC),hs*1.08,hs*0.8,hs*1.06,0,0.05,0); P(head,'cyl',c(hatC),hs*0.62,0.025,hs*0.72,0,hs*0.42,(hat==='cap'?1:-1)*hs*0.92); P(head,'sphLo',mat('#ffffff'),0.03,0.02,0.03,0,hs*0.86,0); break;
-    case 'beanie': P(head,'hemi',c(hatC),hs*1.09,hs*0.97,hs*1.07,0,0.02,0); P(head,'tor',c(hatC),hs*1.02,hs*1.02,0.65,0,0.05,0,PI/2); P(head,'puff',c(hatC),0.06,0.06,0.06,0,hs*1.02,0); break;
+    case 'beanie': P(head,'hemi',c(hatC),hs*1.06,hs*0.8,hs*1.05,0,hs*0.5,0); P(head,'tor',c(hatC),hs*0.98,hs*0.98,0.4,0,hs*0.52,0,PI/2); P(head,'puff',c(hatC),0.06,0.06,0.06,0,hs*1.28,0); break;
     case 'beret': P(head,'sph',c(hatC),hs*1.07,hs*0.3,hs*1.07,0.05,hs*0.76,0,0,0,0.25); P(head,'cyl',c(hatC),0.012,0.05,0.012,0.04,hs*1.0,0); break;
     case 'chef': P(head,'cyl',mat('#ffffff',{s:15}),hs*0.88,0.32,hs*0.88,0,hs*1.02,0); for(let i=0;i<6;i++){ const a=i/6*TAU; P(head,'puff',mat('#ffffff',{s:15}),hs*0.48,hs*0.42,hs*0.48,Math.cos(a)*hs*0.48,hs*1.42,Math.sin(a)*hs*0.48); } P(head,'puff',mat('#ffffff',{s:15}),hs*0.55,hs*0.45,hs*0.55,0,hs*1.55,0); break;
     case 'chefShort': P(head,'cyl',mat('#ffffff',{s:15}),hs*0.96,0.15,hs*0.96,0,hs*0.84,0); P(head,'puff',mat('#ffffff',{s:15}),hs*1.0,hs*0.38,hs*1.0,0,hs*0.98,0); break;
