@@ -1,6 +1,8 @@
 # Jobless Royale character kit: ONE kit.glb with skinned bodies (3 builds, region materials), sculpted heads (+ face
 # layer for painted features), every hair style and robe bell sleeves, all sharing one grayscale painted-shading atlas.
-# Run with bpy (pip install bpy):  python build_kit.py <outdir>
+# Pipeline (bpy: pip install bpy):
+#   python3 build.py && node tools/blender_kit/dump_sdf.js <work>/sdf      # the game's sculpted heads, hair and body surfaces
+#   python tools/blender_kit/build_kit.py <work>/out && cp <work>/out/kit.glb vendor/kit.glb && python3 build.py
 # Coordinates: built in GAME space (x right, y up, z forward) and converted to Blender (x, -z, y); the exporter writes
 # glTF Y-up so the GLB comes back in game space. Joint positions mirror buildHuman() in src/models_chars.js exactly.
 import bpy, bmesh, math, sys, os, random
