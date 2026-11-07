@@ -221,6 +221,7 @@ function riverMaterial(rv){
 function skyTex(th){ return canvasTex(8,256,(x,w,h)=>{ const g=x.createLinearGradient(0,0,0,h); g.addColorStop(0,th.sky[0]); g.addColorStop(1,th.sky[1]); x.fillStyle=g; x.fillRect(0,0,w,h); }); }
 
 function buildArena(th){
+  kitSweep(scene);
   if(arenaRoot){ scene.remove(arenaRoot); arenaRoot.traverse(o=>{ if(o.isMesh && o.userData.own){ o.geometry.dispose(); if(o.material.map) o.material.map.dispose(); o.material.dispose(); } }); }
   themeAnim=[];
   arenaRoot=new THREE.Group(); scene.add(arenaRoot);

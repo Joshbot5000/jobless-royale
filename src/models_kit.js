@@ -75,13 +75,15 @@ function kitFaceMat(o){
   // blush
   for(const s of [-1,1]){ const g=x.createRadialGradient(X(s*0.15),Y(-0.075),2,X(s*0.15),Y(-0.075),26); g.addColorStop(0,'rgba(255,90,110,0.38)'); g.addColorStop(1,'rgba(255,90,110,0)'); x.fillStyle=g; x.fillRect(0,0,S,S); }
   // eyes: white, iris with a dark rim and a lighter lower crescent, pupil, two catch-lights, bold upper lash line
-  const ER=E==='surprised'?1.12:1, open=E==='sleepy'?0.45:E==='angry'?0.78:E==='happy'?0.9:1;
+  const ER=E==='surprised'?1.12:1, open=E==='sleepy'?0.45:E==='happy'?0.9:1;
+  const TILT={angry:[0.02,0.72],stern:[0.38,0.62],determined:[0.42,0.72],smirk:[0.32,0.4]}[E];   // lid line height (fraction above centre) at the inner / outer corner
   for(const s of [-1,1]){ const cx=X(s*0.105), cy=Y(0.028), rx=21*ER, ry=26*ER, top=cy-ry*(open*2-1);
+    const lid=TILT&&[[cx-s*rx,cy-ry*(E==='smirk'&&s<0?TILT[0]-0.15:TILT[0])],[cx+s*rx,cy-ry*(E==='smirk'&&s<0?TILT[1]-0.15:TILT[1])]];
     x.save(); x.beginPath(); x.ellipse(cx,cy,rx,ry,0,0,TAU); x.clip();
-    if(E==='angry'){ x.beginPath(); x.moveTo(cx-rx-2,cy-ry*(s>0?0.75:0.05)-2); x.lineTo(cx+rx+2,cy-ry*(s>0?0.05:0.75)-2); x.lineTo(cx+rx+2,cy+ry+2); x.lineTo(cx-rx-2,cy+ry+2); x.closePath(); x.clip(); }
+    if(lid){ x.beginPath(); x.moveTo(lid[0][0]-s*2,lid[0][1]); x.lineTo(lid[1][0]+s*2,lid[1][1]); x.lineTo(lid[1][0]+s*2,cy+ry+2); x.lineTo(lid[0][0]-s*2,cy+ry+2); x.closePath(); x.clip(); }
     else { x.beginPath(); x.rect(cx-rx-2,top,rx*2+4,ry*3); x.clip(); }
     x.fillStyle='#fbf7f2'; x.fillRect(cx-rx,cy-ry,rx*2,ry*2);
-    const ix=cx-s*2, iy=cy+2, ir=E==='surprised'?13:16.5;
+    const ix=cx-s*2, iy=cy+(lid?5:2), ir=E==='surprised'?13:16.5;
     const ig=x.createRadialGradient(ix,iy+ir*0.35,1,ix,iy,ir); ig.addColorStop(0,new THREE.Color(o.iris).lerp(new THREE.Color('#ffffff'),0.35).getStyle()); ig.addColorStop(0.75,o.iris); ig.addColorStop(1,new THREE.Color(o.iris).multiplyScalar(0.45).getStyle());
     x.fillStyle=ig; x.beginPath(); x.arc(ix,iy,ir,0,TAU); x.fill();
     x.fillStyle='#0b0b10'; x.beginPath(); x.arc(ix,iy,ir*0.5,0,TAU); x.fill();
@@ -91,31 +93,38 @@ function kitFaceMat(o){
     // lash line along the lid edge
     x.strokeStyle='#1a1214'; x.lineCap='round'; x.lineWidth=5;
     x.beginPath();
-    if(E==='angry'){ x.moveTo(cx-rx,cy-ry*(s>0?0.75:0.05)); x.lineTo(cx+rx,cy-ry*(s>0?0.05:0.75)); }
+    if(lid){ x.moveTo(lid[0][0],lid[0][1]); x.lineTo(lid[1][0],lid[1][1]); }
     else if(open<1){ x.moveTo(cx-rx*0.98,top+ry*0.1); x.quadraticCurveTo(cx,top-ry*0.12,cx+rx*0.98,top+ry*0.1); }
     else x.ellipse(cx,cy,rx,ry,0,PI*1.08,PI*1.92);
     x.stroke();
-    x.lineWidth=3; x.beginPath(); x.moveTo(cx+s*rx*0.82,(open<1?top:cy-ry*0.55)); x.lineTo(cx+s*rx*1.18,(open<1?top:cy-ry*0.55)-6); x.stroke();   // outer lash flick
+    const fy=lid?lid[1][1]:open<1?top:cy-ry*0.55;
+    x.lineWidth=3; x.beginPath(); x.moveTo(cx+s*rx*0.82,fy); x.lineTo(cx+s*rx*1.18,fy-6); x.stroke();   // outer lash flick
     x.strokeStyle='rgba(90,40,40,0.35)'; x.lineWidth=2; x.beginPath(); x.ellipse(cx,cy,rx*0.92,ry*0.95,0,PI*0.2,PI*0.8); x.stroke(); }
   // brows
   x.strokeStyle=o.brow; x.lineCap='round'; x.lineWidth=10;
   for(const s of [-1,1]){ const by=Y(E==='surprised'?0.15:0.13);
     x.beginPath();
     if(E==='angry'){ x.moveTo(X(s*0.045),by+11); x.lineTo(X(s*0.16),by-6); }
+    else if(E==='stern'||(E==='smirk'&&s<0)){ x.lineWidth=11; x.moveTo(X(s*0.045),by+8); x.lineTo(X(s*0.16),by-1); }
+    else if(E==='determined'){ x.lineWidth=11; x.moveTo(X(s*0.045),by+9); x.quadraticCurveTo(X(s*0.1),by-2,X(s*0.162),by-3); }
+    else if(E==='smirk'){ x.moveTo(X(s*0.05),by); x.quadraticCurveTo(X(s*0.1),by-12,X(s*0.162),by-3); }
     else if(E==='sleepy'){ x.moveTo(X(s*0.05),by+2); x.quadraticCurveTo(X(s*0.1),by-3,X(s*0.16),by+5); }
     else { x.moveTo(X(s*0.048),by+3); x.quadraticCurveTo(X(s*0.1),by-7,X(s*0.162),by+1); }
-    x.stroke(); }
+    x.stroke(); x.lineWidth=10; }
   // mouth
   const my=Y(-0.12), mx=X(0);
   x.lineCap='round'; x.lineJoin='round';
+  const lipLow=(w=8)=>{ x.strokeStyle=lip; x.lineWidth=4; x.beginPath(); x.moveTo(mx-w,my+11); x.quadraticCurveTo(mx,my+15,mx+w,my+11); x.stroke(); };
   if(E==='happy'){ x.fillStyle='#5a1a22'; x.beginPath(); x.moveTo(mx-22,my-4); x.quadraticCurveTo(mx,my-1,mx+22,my-4); x.quadraticCurveTo(mx+15,my+20,mx,my+21); x.quadraticCurveTo(mx-15,my+20,mx-22,my-4); x.fill();
     x.fillStyle='#ffffff'; x.beginPath(); x.moveTo(mx-17,my-3); x.quadraticCurveTo(mx,my,mx+17,my-3); x.lineTo(mx+14,my+3); x.quadraticCurveTo(mx,my+5,mx-14,my+3); x.closePath(); x.fill();
     x.fillStyle='#e0607a'; x.beginPath(); x.ellipse(mx,my+15,9,4.5,0,0,TAU); x.fill();
     x.strokeStyle=lip; x.lineWidth=3; x.beginPath(); x.moveTo(mx-22,my-4); x.quadraticCurveTo(mx+0,my-1,mx+22,my-4); x.stroke(); }
   else if(E==='surprised'){ x.fillStyle='#5a1a22'; x.beginPath(); x.ellipse(mx,my+4,9,12,0,0,TAU); x.fill(); x.strokeStyle=lip; x.lineWidth=4; x.stroke(); }
   else if(E==='angry'){ x.strokeStyle=dark; x.lineWidth=5; x.beginPath(); x.moveTo(mx-17,my+7); x.quadraticCurveTo(mx,my-5,mx+17,my+7); x.stroke(); }
-  else { x.strokeStyle=dark; x.lineWidth=4.5; x.beginPath(); x.moveTo(mx-17,my-1); x.quadraticCurveTo(mx,my+(E==='sleepy'?5:9),mx+17,my-1); x.stroke();
-    x.strokeStyle=lip; x.lineWidth=4; x.beginPath(); x.moveTo(mx-8,my+11); x.quadraticCurveTo(mx,my+15,mx+8,my+11); x.stroke(); }
+  else if(E==='stern'){ x.strokeStyle=dark; x.lineWidth=5; x.beginPath(); x.moveTo(mx-15,my+5); x.quadraticCurveTo(mx,my+1,mx+15,my+5); x.stroke(); lipLow(7); }
+  else if(E==='determined'){ x.strokeStyle=dark; x.lineWidth=4.5; x.beginPath(); x.moveTo(mx-14,my+1); x.quadraticCurveTo(mx,my+6,mx+14,my-1); x.stroke(); lipLow(7); }
+  else if(E==='smirk'){ x.strokeStyle=dark; x.lineWidth=4.5; x.beginPath(); x.moveTo(mx-13,my+5); x.quadraticCurveTo(mx+3,my+8,mx+19,my-5); x.stroke(); lipLow(6); }
+  else { x.strokeStyle=dark; x.lineWidth=4.5; x.beginPath(); x.moveTo(mx-17,my-1); x.quadraticCurveTo(mx,my+(E==='sleepy'?5:9),mx+17,my-1); x.stroke(); lipLow(); }
   const t=new THREE.CanvasTexture(c); t.flipY=false; t.anisotropy=4;   // glTF UVs: v runs down the canvas
   m=new THREE.MeshStandardMaterial({map:t,transparent:true,depthWrite:false,roughness:0.6,metalness:0,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
   m.envMap=envCube(); m.envMapIntensity=0.3; m.userData.jrSkin=true; m.userData.jrRim='#ffc9a8'; m.onBeforeCompile=jrPatch; m.customProgramCacheKey=jrKey;
@@ -151,5 +160,25 @@ function kitBindBody(root,vi,regionMats,bones){
 function kitSkinMap(tpl){ const idx=new Map(); let i=0; tpl.traverse(o=>idx.set(o,i++)); const L=[]; tpl.traverse(o=>{ if(o.isSkinnedMesh) L.push([idx.get(o),o.skeleton.bones.map(b=>idx.get(b))]); }); return L; }
 function kitRebind(c,L){ if(!L||!L.length) return; const nodes=[]; c.traverse(o=>nodes.push(o)); const made=new Map();
   for(const [mi,bi] of L){ const o=nodes[mi], src=o.skeleton; let sk=made.get(src); if(!sk){ sk=new THREE.Skeleton(bi.map(j=>nodes[j]),src.boneInverses); made.set(src,sk); } o.bind(sk,o.bindMatrix); }
-  c.addEventListener('removed',()=>{ for(const sk of made.values()) sk.dispose(); }); }
+  c.addEventListener('removed',()=>{ for(const sk of made.values()) sk.dispose(); });
+  KIT_LIVE.set(c,[...made.values()]); }
+// bone textures of clones that left the scene without a direct remove (tower defenders go with their tower / the arena)
+const KIT_LIVE=new Map();
+function kitSweep(scene){ for(const [c,sks] of KIT_LIVE){ let o=c; while(o.parent) o=o.parent; if(o!==scene){ for(const sk of sks) sk.dispose(); KIT_LIVE.delete(c); } } }
 kitBoot();
+// expression from the look and the card: face options first, then who the character is (stern officials and the military,
+// scheming villains, determined champions and tanks), then a stable hash among friendly faces
+let KIT_CARD=null;
+const KIT_STERN=/judge|barrister|bailiff|justice|chancellor|prosecutor|counsel|usher|clerk|notary|chef|supreme|leader|general|sergeant|colonel|commander|captain|admiral|cadet|soldier|military|marshal|police|swat|guard|security|warden|officer|inspector|detective|agent|fbi|referee|umpire|boss|ceo|banker|tax|auditor|dictator|emperor|king|queen|minister|president|senator|whip|speaker|incumbent|parliament|headmaster|drill|bouncer|landlord/i;
+const KIT_VILLAIN=/villain|vampire|witch|zombie|evil|crook|thief|robber|burglar|mob|gang|pirate|scam|fraud|hacker|plague|reaper|devil|demon|tyrant|shark|loan|lobbyist|spy|ninja|assassin|mummy|ghoul|skeleton|dracula|troll|bandit|outlaw|insider|ponzi|cartel/i;
+function kitExpr(p,fh){
+  const F=p.face||[]; if(F.includes('angry')) return 'angry'; if(F.includes('sleepy')) return 'sleepy';
+  if(!KIT_CARD&&typeof CARDS!=='undefined'){ KIT_CARD=new Map(); for(const k in CARDS){ const c=CARDS[k]; if(c&&c.model) KIT_CARD.set(c.model,Object.assign({id:k},c)); }
+    if(typeof THEMES!=='undefined') for(const t of THEMES){ if(t.king) KIT_CARD.set(t.king,{id:'king',name:'king',rar:'champion',role:'tank'}); if(t.archer) KIT_CARD.set(t.archer,{id:'guard',name:'tower guard',role:'tank'}); } }
+  const c=KIT_CARD&&KIT_CARD.get(p);
+  if(c){ const who=c.id+' '+(c.name||''), d=c.desc||'';
+    if(KIT_VILLAIN.test(who)) return fh%3?'smirk':'angry';
+    if(KIT_STERN.test(who)) return fh%4?'stern':'angry';
+    if(c.rar==='champion'||c.role==='tank'||c.role==='wincon'||c.role==='hero') return fh%3?'determined':'stern';
+    if(/villain|evil|steal|scam|curse/i.test(d)) return 'smirk'; }
+  return ['happy','neutral','happy','surprised','neutral','determined'][fh%6]; }

@@ -208,7 +208,7 @@ function buildHuman(p,tc){
   const browC = p.hair&&p.hair[0]!=='bald' ? colr(p.hair[1],tc) : '#3a2414';
   const angry=(p.face||[]).includes('angry'), sleepy=(p.face||[]).includes('sleepy');
   if(p.statue) for(const s of [-1,1]) P(head,'sph',skin,0.06,0.07,0.04,s*0.1,0.03,hs*0.8);
-  else if(KM){ const ex=angry?'angry':sleepy?'sleepy':['happy','neutral','happy','surprised','neutral','happy'][fhash%6];
+  else if(KM){ const ex=kitExpr(p,fhash);
     const fm=new THREE.Mesh(kitRigid('face_'+KF,'K_FACE',kitHeadInv()),kitFaceMat({expr:ex,iris:p.iris||'#4a2e1a',brow:browC,skin:skinC})); fm.userData.kit=true; fm.userData.noOutline=true; fm.renderOrder=2; head.add(fm); }
   if(!KM&&!p.statue){ faceEyes(head,0,0.03,EZ,EX,ER,{clip:headF0,clipKey:'h'+hs.toFixed(3)+FV,iris:p.iris,lid:skin,open:angry?0.48:sleepy?0.3:0.7,tilt:angry?-0.25:0});
   const onFace=(x,y,lift=0.004)=>sdfFrontZ(headF,x,y,hs*1.45,0)+lift;   // z of the sculpted face surface
@@ -296,8 +296,8 @@ function buildHuman(p,tc){
   for(const f of (p.face||[])){
     const fz2=hs*0.88;
     switch(f){
-      case 'glassesRound': case 'glassesHalf': { const gm=mat('#222',{s:80}), gz=fz2+0.065; for(const s of [-1,1]){ P(head,'torThin',gm,0.074,f==='glassesHalf'?0.042:0.074,0.074,s*0.1,f==='glassesHalf'?0.0:0.03,gz); templeArm(head,headF,hs,s,0.035,s*0.178,gz,gm); P(head,'sph',mat('#dff1ff',{op:0.18,s:160}),0.066,f==='glassesHalf'?0.036:0.066,0.01,s*0.1,f==='glassesHalf'?0.0:0.03,gz).userData.noOutline=true; } P(head,'box',gm,0.06,0.012,0.012,0,0.045,gz+0.004); break; }
-      case 'shades': { const sm=mat('#111',{s:160,m:0.4}), gz=fz2+0.07; for(const s of [-1,1]){ P(head,'rbox2',sm,0.125,0.075,0.03,s*0.095,0.035,gz); templeArm(head,headF,hs,s,0.045,s*0.165,gz,sm); } P(head,'box',sm,0.08,0.015,0.02,0,0.05,gz+0.005); break; }
+      case 'glassesRound': case 'glassesHalf': { const gm=mat('#222',{s:80}), gz=sdfFrontZ(headF,0.1,0.03,hs*1.45,0)+0.03; for(const s of [-1,1]){ P(head,'torThin',gm,0.074,f==='glassesHalf'?0.042:0.074,0.074,s*0.1,f==='glassesHalf'?0.0:0.03,gz); templeArm(head,headF,hs,s,0.035,s*0.178,gz,gm); P(head,'sph',mat('#dff1ff',{op:0.18,s:160}),0.066,f==='glassesHalf'?0.036:0.066,0.01,s*0.1,f==='glassesHalf'?0.0:0.03,gz).userData.noOutline=true; } P(head,'box',gm,0.06,0.012,0.012,0,0.045,gz+0.004); break; }
+      case 'shades': { const sm=mat('#111',{s:160,m:0.4}), gz=sdfFrontZ(headF,0.1,0.03,hs*1.45,0)+0.035; for(const s of [-1,1]){ P(head,'rbox2',sm,0.125,0.075,0.03,s*0.095,0.035,gz); templeArm(head,headF,hs,s,0.045,s*0.165,gz,sm); } P(head,'box',sm,0.08,0.015,0.02,0,0.05,gz+0.005); break; }
       case 'goggles': for(const s of [-1,1]){ P(head,'cyl',mat('#ff9f1a',{s:60}),0.068,0.06,0.068,s*0.1,0.04,fz2+0.035,PI/2); P(head,'cyl',mat('#9fe6ff',{op:0.7,s:150}),0.052,0.062,0.052,s*0.1,0.04,fz2+0.04,PI/2).userData.noOutline=true;} P(head,'tor',mat('#333'),hs*1.0,hs*1.0,0.3,0,0.04,0,PI/2); break;
       case 'mustache': for(const s of [-1,1]) P(head,'sph',mat('#4a3220',{s:20}),0.07,0.03,0.035,s*0.05,-0.08,fz2+0.035,0,0,s*0.3); break;
       case 'beard': P(head,'puff',mat(colr(p.hair&&p.hair[1]&&p.hair[0]!=='bald'?p.hair[1]:'#4a3220',tc),{s:20}),hs*0.78,hs*0.58,hs*0.52,0,-hs*0.55,hs*0.45); break;
@@ -355,6 +355,8 @@ function buildHuman(p,tc){
   R.legs[1].rotation.z=0.05; R.legs[0].rotation.z=-0.012; head.rotation.z=(fhash%2?1:-1)*0.05;
   if(!KM) stretchLower(R,hips,LR);
   R.height = 0.44*LR + th*2 + 0.035 + hs*1.85*HK;
+  if(KM&&p.h&&p.h!==1){ const hl=Math.max(0.72,Math.min(1.35,p.h));   // HU height: shorter or longer legs (bound bones stretch the skinned legs), hips follow
+    for(const L of R.legs) L.scale.y*=hl; lift.position.y=0.44*(LR*hl-1); R.height+=0.44*LR*(hl-1); }
   if(p.sc){ g.scale.setScalar(p.sc); R.height*=p.sc; }
   return g;
 }
@@ -370,8 +372,10 @@ function ringsToBands(segs){ const rings=new Set([geo('tor'),geo('torThin'),geo(
     const tube=(ch.geometry===geo('tor')||ch.geometry===geo('torLo'))?0.22:0.08, hh=Math.max(0.014,Math.min(0.05,tube*Math.abs(ch.scale.z))), y=ch.position.y;
     const use=sg.alt&&y>sg.alt.y0?sg.alt:sg; band(sg.grp,use.f,use.key,use.b0,use.b1,y,hh,ch.material,0.01); sg.grp.remove(ch); } }
 // glasses arm from the lens rim back to the ear, pushed out to sit just on the head surface
-function templeArm(head,f,hs,s,y,x0,z0,m){ const pts=[]; for(let i=0;i<=4;i++){ const t=i/4; let x=x0+(s*(hs*0.95+0.03)-x0)*t, z=z0+(-0.03-z0)*t; for(let k=0;k<30&&f(x,y,z)<0.007;k++){ const l=Math.hypot(x,z)||1; x+=x/l*0.004; z+=z/l*0.004; } pts.push([x,z]); }
-  for(let i=0;i<4;i++){ const [ax,az]=pts[i], [bx,bz]=pts[i+1], len=Math.hypot(bx-ax,bz-az); P(head,'box',m,0.01,0.01,len+0.004,(ax+bx)/2,y,(az+bz)/2,0,Math.atan2(bx-ax,bz-az),0); } }
+function templeArm(head,f,hs,s,y,x0,z0,m){   // hugs the head surface from the hinge back to the ear, where it tucks in (hidden by ears and hair)
+  const a0=Math.atan2(x0,z0), a1=Math.atan2(s*hs,0.07), pts=[[x0,z0]];
+  for(let i=1;i<=6;i++){ const t=i/6, a=a0+(a1-a0)*t, dx=Math.sin(a), dz=Math.cos(a); let r=0.6; while(r>0.05&&f(dx*r,y,dz*r)>(i===6?-0.012:0.006)) r-=0.002; pts.push([dx*r,dz*r]); }
+  for(let i=0;i<6;i++){ const [ax,az]=pts[i], [bx,bz]=pts[i+1], len=Math.hypot(bx-ax,bz-az); P(head,'box',m,0.011,0.011,len+0.006,(ax+bx)/2,y,(az+bz)/2,0,Math.atan2(bx-ax,bz-az),0).userData.noOutline=true; } }
 // Legs were modelled in a 0.44-tall frame (outfits everywhere attach socks, boots, skirts at those heights). Stretch the leg
 // groups to the new length, keep feet at their real size on the ground, and extend anything hanging below the hips.
 function stretchLower(R,hips,LR){
