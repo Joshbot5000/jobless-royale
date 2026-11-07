@@ -1,0 +1,285 @@
+# Jobless Royale character kit: ONE kit.glb with skinned bodies (3 builds, region materials), sculpted heads (+ face
+# layer for painted features), every hair style and robe bell sleeves, all sharing one grayscale painted-shading atlas.
+# Run with bpy (pip install bpy):  python build_kit.py <outdir>
+# Coordinates: built in GAME space (x right, y up, z forward) and converted to Blender (x, -z, y); the exporter writes
+# glTF Y-up so the GLB comes back in game space. Joint positions mirror buildHuman() in src/models_chars.js exactly.
+import bpy, bmesh, math, sys, os, random
+from mathutils import Vector, Matrix, Euler
+OUT = sys.argv[-1] if len(sys.argv) > 1 and not sys.argv[-1].endswith('.py') else 'out'
+os.makedirs(OUT, exist_ok=True)
+bpy.ops.wm.read_factory_settings(use_empty=True)
+sc = bpy.context.scene; col = sc.collection; TAU = math.tau
+
+def B(v): return Vector((v[0], -v[2], v[1]))                       # game -> blender
+def link(o):
+    if o.name not in col.objects: col.objects.link(o)
+    return o
+def activate(o, sel=()):
+    for x in list(bpy.context.view_layer.objects):
+        if x is not None: x.select_set(False)
+    for x in (o,) + tuple(sel): x.select_set(True)
+    bpy.context.view_layer.objects.active = o
+def apply_mods(o):
+    dg = bpy.context.evaluated_depsgraph_get(); me = bpy.data.meshes.new_from_object(o.evaluated_get(dg))
+    o.modifiers.clear(); old = o.data; o.data = me
+    if old.users == 0: bpy.data.meshes.remove(old)
+    return o
+def to_mesh(o, name=None):
+    dg = bpy.context.evaluated_depsgraph_get(); me = bpy.data.meshes.new_from_object(o.evaluated_get(dg))
+    m = link(bpy.data.objects.new(name or (o.name + '_m'), me)); m.matrix_world = o.matrix_world.copy(); bpy.data.objects.remove(o); return m
+def smooth(o):
+    for p in o.data.polygons: p.use_smooth = True
+def decimate(o, tris):
+    n = sum(len(p.vertices) - 2 for p in o.data.polygons)
+    if n > tris:
+        m = o.modifiers.new('d', 'DECIMATE'); m.ratio = tris / n; apply_mods(o)
+    smooth(o); return o
+def apply_xf(o):
+    activate(o); bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+
+# ------------------------------------------------------------------ joints (game space), mirroring buildHuman
+def R3(rx, ry, rz):   # three.js Euler 'XYZ' = Rx * Ry * Rz
+    return Matrix.Rotation(rx, 3, 'X') @ Matrix.Rotation(ry, 3, 'Y') @ Matrix.Rotation(rz, 3, 'Z')
+LR, HK = 1.36, 0.72
+def joints(w):
+    tw, th = 0.27 * w, 0.29
+    J = {}; hy = 0.44 * (LR - 1) + 0.44
+    J['Hips'] = Vector((0, hy, 0)); J['Spine'] = Vector((0, hy, 0)); J['Spine1'] = Vector((0, hy + th, 0)); J['Neck'] = Vector((0, hy + th * 1.9, 0))
+    J['Head'] = Vector((0, hy + th * 2 + 0.035 + 0.3 * 0.92 * HK, 0))
+    for s, side in ((1, 'Left'), (-1, 'Right')):
+        lx = s * 0.11 * w
+        J[side + 'UpLeg'] = Vector((lx, hy, 0)); J[side + 'Leg'] = Vector((lx, hy - 0.205 * LR, 0.024)); J[side + 'Foot'] = Vector((lx, hy - 0.37 * LR, 0.0))
+        A = Vector((s * (tw + 0.025), hy + th * 1.62, 0)); RA = R3(0.05, 0, s * 0.15)
+        J[side + 'Arm'] = A; J[side + 'ForeArm'] = A + RA @ Vector((0, -0.242, -0.012)); J[side + 'Wrist'] = A + RA @ Vector((0, -0.412, 0.07))
+        J[side + 'Hand'] = A + RA @ Vector((0, -0.448, 0.088)); J[side + 'HandRot'] = RA @ R3(0.25, -s * 0.4, s * 0.12)
+    return J
+
+# ------------------------------------------------------------------ bake shader: grayscale painted shading (AO x soft gradient x cavity highlight)
+def shade_mat(name, image=None):
+    m = bpy.data.materials.new(name); m.use_nodes = True; nt = m.node_tree; N = nt.nodes; L = nt.links
+    for n in list(N): N.remove(n)
+    out = N.new('ShaderNodeOutputMaterial'); em = N.new('ShaderNodeEmission'); L.new(em.outputs[0], out.inputs[0])
+    geo = N.new('ShaderNodeNewGeometry')
+    ao = N.new('ShaderNodeAmbientOcclusion'); ao.samples = 24; ao.inputs['Distance'].default_value = 0.07
+    aom = N.new('ShaderNodeMapRange'); aom.inputs[3].default_value = 0.5; aom.inputs[4].default_value = 1.0; L.new(ao.outputs['AO'], aom.inputs[0])
+    xyz = N.new('ShaderNodeSeparateXYZ'); L.new(geo.outputs['Normal'], xyz.inputs[0])
+    gm = N.new('ShaderNodeMapRange'); gm.inputs[1].default_value = -1; gm.inputs[2].default_value = 1; gm.inputs[3].default_value = 0.86; gm.inputs[4].default_value = 1.0; L.new(xyz.outputs['Z'], gm.inputs[0])   # top-lit softness
+    cv = N.new('ShaderNodeMapRange'); cv.inputs[1].default_value = 0.5; cv.inputs[2].default_value = 0.56; cv.inputs[3].default_value = 1.0; cv.inputs[4].default_value = 1.14; L.new(geo.outputs['Pointiness'], cv.inputs[0])
+    m1 = N.new('ShaderNodeMath'); m1.operation = 'MULTIPLY'; L.new(aom.outputs[0], m1.inputs[0]); L.new(gm.outputs[0], m1.inputs[1])
+    m2 = N.new('ShaderNodeMath'); m2.operation = 'MULTIPLY'; m2.use_clamp = True; L.new(m1.outputs[0], m2.inputs[0]); L.new(cv.outputs[0], m2.inputs[1])
+    L.new(m2.outputs[0], em.inputs[0])
+    if image is not None:
+        t = N.new('ShaderNodeTexImage'); t.image = image; N.active = t
+    return m
+REGIONS = ['K_NECK', 'K_TORSO', 'K_UPARM', 'K_FOREARM', 'K_HANDS', 'K_LEGS', 'K_SHOES', 'K_SOLE']
+MATS = {}
+def mat(name):
+    if name not in MATS: MATS[name] = shade_mat(name)
+    return MATS[name]
+
+# ------------------------------------------------------------------ armature per build (names match the runtime bones)
+PARENT = {'Spine': 'Hips', 'Spine1': 'Spine', 'Neck': 'Spine1', 'Head': 'Neck'}
+for side in ('Left', 'Right'):
+    PARENT.update({side + 'UpLeg': 'Hips', side + 'Leg': side + 'UpLeg', side + 'Foot': side + 'Leg', side + 'Arm': 'Spine1', side + 'ForeArm': side + 'Arm', side + 'Hand': side + 'ForeArm'})
+def armature(tag, J):
+    arm = bpy.data.armatures.new('rig_' + tag); rig = link(bpy.data.objects.new('rig_' + tag, arm)); activate(rig); bpy.ops.object.mode_set(mode='EDIT')
+    tails = {'Hips': J['Spine1'], 'Spine': J['Spine1'], 'Spine1': J['Neck'], 'Neck': J['Head'], 'Head': J['Head'] + Vector((0, 0.2, 0))}
+    for side in ('Left', 'Right'):
+        tails.update({side + 'UpLeg': J[side + 'Leg'], side + 'Leg': J[side + 'Foot'], side + 'Foot': J[side + 'Foot'] + Vector((0, -0.08, 0.15)),
+                      side + 'Arm': J[side + 'ForeArm'], side + 'ForeArm': J[side + 'Wrist'], side + 'Hand': J[side + 'Hand'] + J[side + 'HandRot'] @ Vector((0, -0.12, 0))})
+    for n in ['Hips', 'Spine', 'Spine1', 'Neck', 'Head'] + [s + p for s in ('Left', 'Right') for p in ('UpLeg', 'Leg', 'Foot', 'Arm', 'ForeArm', 'Hand')]:
+        b = arm.edit_bones.new(n); b.head = B(J[n]); b.tail = B(tails[n])
+        if (b.tail - b.head).length < 1e-3: b.tail = b.head + Vector((0, 0, 0.05))
+    for n, pn in PARENT.items(): arm.edit_bones[n].parent = arm.edit_bones[pn]
+    bpy.ops.object.mode_set(mode='OBJECT'); return rig
+def skin_to(o, rig, auto=True, group=None):
+    if auto:
+        activate(rig); o.select_set(True); bpy.context.view_layer.objects.active = rig; bpy.ops.object.parent_set(type='ARMATURE_AUTO')
+    else:
+        vg = o.vertex_groups.new(name=group); vg.add(list(range(len(o.data.vertices))), 1.0, 'REPLACE')
+        md = o.modifiers.new('arm', 'ARMATURE'); md.object = rig; o.parent = rig
+
+# ------------------------------------------------------------------ bodies: Skin modifier skeleton + subdivision, big mitten hands, chunky shoes
+def body(tag, w, belly=0.0):
+    J = joints(w); tw = 0.27 * w; SK = {}; E = []
+    def V(n, p, r): SK[n] = (p, r)
+    hy = J['Hips'].y
+    V('pelvis', J['Hips'] + Vector((0, 0.05, -0.01)), (tw * 0.86, 0.2))
+    V('waist', J['Hips'] + Vector((0, 0.2, 0.0 + belly * 0.05)), (tw * (0.74 + belly * 0.4), 0.17 + belly * 0.12))
+    V('chest', J['Spine1'] + Vector((0, 0.13, 0.01)), (tw * 0.95, 0.2))
+    V('neck', J['Neck'] + Vector((0, 0.02, -0.01)), (0.06, 0.055)); V('neckT', J['Head'] + Vector((0, -0.13, 0.0)), (0.052, 0.05))
+    E += [('pelvis', 'waist'), ('waist', 'chest'), ('chest', 'neck'), ('neck', 'neckT')]
+    HS = 1.3   # big, appealing hands
+    for side, s in (('Left', 1), ('Right', -1)):
+        V('sh' + side, J[side + 'Arm'] + Vector((-s * 0.02, 0, 0)), (0.085, 0.082)); V('el' + side, J[side + 'ForeArm'], (0.06, 0.058)); V('wr' + side, J[side + 'Wrist'], (0.046, 0.044))
+        HR = J[side + 'HandRot']; P = J[side + 'Hand']
+        def hp(x, y, z): return P + HR @ (Vector((x, y, z)) * HS)
+        V('pa' + side, hp(0, 0.0, 0), (0.06 * HS, 0.042 * HS))
+        for i in range(4):
+            fx = s * (-0.03 + i * 0.02); V('fb%d%s' % (i, side), hp(fx, -0.045, 0.008), (0.018 * HS, 0.018 * HS)); V('ft%d%s' % (i, side), hp(fx * 1.05, -0.08, 0.03), (0.016 * HS, 0.016 * HS))
+        V('th' + side, hp(-s * 0.045, -0.005, 0.03), (0.02 * HS, 0.02 * HS)); V('tt' + side, hp(-s * 0.05, -0.04, 0.06), (0.017 * HS, 0.017 * HS))
+        V('hip' + side, J[side + 'UpLeg'] + Vector((0, -0.02, 0)), (0.11 * max(1, w * 0.85), 0.11)); V('kn' + side, J[side + 'Leg'], (0.075, 0.075)); V('ca' + side, (J[side + 'Leg'] + J[side + 'Foot']) / 2 + Vector((0, 0, -0.012)), (0.07, 0.07)); V('an' + side, J[side + 'Foot'] + Vector((0, 0.02, 0)), (0.052, 0.052))
+        E += [('chest', 'sh' + side), ('sh' + side, 'el' + side), ('el' + side, 'wr' + side), ('wr' + side, 'pa' + side), ('pa' + side, 'th' + side), ('th' + side, 'tt' + side), ('pelvis', 'hip' + side), ('hip' + side, 'kn' + side), ('kn' + side, 'ca' + side), ('ca' + side, 'an' + side)]
+        for i in range(4): E += [('pa' + side, 'fb%d%s' % (i, side)), ('fb%d%s' % (i, side), 'ft%d%s' % (i, side))]
+    names = list(SK); idx = {n: i for i, n in enumerate(names)}
+    me = bpy.data.meshes.new('b'); me.from_pydata([B(SK[n][0]) for n in names], [(idx[a], idx[b]) for a, b in E], [])
+    o = link(bpy.data.objects.new('body_' + tag, me)); sk = o.modifiers.new('skin', 'SKIN'); sk.branch_smoothing = 0.7
+    for n in names: o.data.skin_vertices[0].data[idx[n]].radius = SK[n][1]
+    o.data.skin_vertices[0].data[idx['pelvis']].use_root = True
+    sb = o.modifiers.new('sub', 'SUBSURF'); sb.levels = 2; apply_mods(o)
+    # shoes: chunky rounded, toe spring, separate sole; joined into the body
+    parts = [o]
+    for side, s in (('Left', 1), ('Right', -1)):
+        a = J[side + 'Foot']
+        bpy.ops.mesh.primitive_cube_add(size=1); sh = bpy.context.object; sh.scale = (0.15, 0.27, 0.12); sh.location = B(Vector((a.x, 0.075, 0.045)))
+        m = sh.modifiers.new('s', 'SUBSURF'); m.levels = 3; apply_mods(sh); apply_xf(sh)
+        for v in sh.data.vertices:
+            g = Vector((v.co.x, v.co.z, -v.co.y)); fwd = g.z - 0.045
+            if fwd > 0.06: v.co.z += 0.12 * (fwd - 0.06) ** 1.5 if v.co.z < 0.05 else 0    # toe spring
+            if fwd > 0.0 and v.co.z > 0.09: v.co.z -= (v.co.z - 0.09) * min(1, fwd * 5) * 0.6   # low toe box
+        sh.data.materials.append(mat('K_SHOES')); parts.append(sh)
+        bpy.ops.mesh.primitive_cube_add(size=1); so = bpy.context.object; so.scale = (0.158, 0.285, 0.04); so.location = B(Vector((a.x, 0.018, 0.045)))
+        m = so.modifiers.new('b', 'BEVEL'); m.width = 0.016; m.segments = 3; apply_mods(so); apply_xf(so); so.data.materials.append(mat('K_SOLE')); parts.append(so)
+    for r in REGIONS: o.data.materials.append(mat(r))
+    def seg_t(p, a, b): d = b - a; return max(0, min(1, (p - a).dot(d) / d.length_squared)), (a + d * max(0, min(1, (p - a).dot(d) / d.length_squared)) - p).length
+    for f in o.data.polygons:
+        c = Vector(f.center); g = Vector((c.x, c.z, -c.y)); reg = 'K_TORSO'
+        if g.y < hy - 0.02: reg = 'K_LEGS'
+        elif g.y > J['Neck'].y - 0.01 and abs(g.x) < 0.1: reg = 'K_NECK'
+        for side in ('Left', 'Right'):
+            tu, du = seg_t(g, J[side + 'Arm'], J[side + 'ForeArm']); tf, df = seg_t(g, J[side + 'ForeArm'], J[side + 'Wrist'])
+            if (g - J[side + 'Hand']).length < 0.14 or (g - J[side + 'Wrist']).length < 0.035: reg = 'K_HANDS'
+            elif df < 0.09 and tf > 0.02: reg = 'K_FOREARM'
+            elif du < 0.11 and tu > 0.18: reg = 'K_UPARM'
+        f.material_index = REGIONS.index(reg)
+    activate(o, parts[1:]); bpy.ops.object.join(); o = bpy.context.object; o.name = 'body_' + tag
+    decimate(o, {'v0': 2600, 'v1': 2700, 'v2': 2800}[tag]); return o, J
+
+# ------------------------------------------------------------------ heads: metaball sculpts in head-local units (radius 0.3), scaled by HK at the head joint
+def meta(name, elems, res=0.014, thr=0.6):
+    mb = bpy.data.metaballs.new(name); mb.resolution = mb.render_resolution = res; mb.threshold = thr
+    for typ, co, r, sz, neg in elems:
+        e = mb.elements.new(); e.type = typ; e.co = B(co); e.radius = r; e.use_negative = neg
+        if typ in ('ELLIPSOID', 'CAPSULE'): e.size_x, e.size_y, e.size_z = sz[0], sz[2], sz[1]
+    return link(bpy.data.objects.new(name, mb))
+hs = 0.3
+FACES = {   # cranium sy, jaw width, jaw height, chin width, chin depth
+    'classic': (0.97, 0.66, 0.5, 0.26, 0.72), 'round': (0.95, 0.74, 0.5, 0.22, 0.68), 'long': (1.05, 0.6, 0.58, 0.24, 0.8), 'square': (0.97, 0.78, 0.46, 0.34, 0.7)}
+def head(tag, HJ):
+    crY, jW, jY, chW, chY = FACES[tag]
+    E = [('ELLIPSOID', (0, 0.012, -0.012), hs * 0.98, (1, crY, 1), False),
+         ('ELLIPSOID', (0, -hs * 0.42, hs * 0.16), hs * 0.66, (jW / 0.66, jY / 0.66, 1.03), False),
+         ('ELLIPSOID', (0, -hs * chY, hs * 0.5), hs * 0.26, (chW / 0.26, 0.77, 0.96), False),
+         ('ELLIPSOID', (-hs * 0.46, -hs * 0.27, hs * 0.55), hs * 0.35, (1, 0.77, 0.97), False), ('ELLIPSOID', (hs * 0.46, -hs * 0.27, hs * 0.55), hs * 0.35, (1, 0.77, 0.97), False),
+         ('CAPSULE', (0, -0.012, hs * 0.9), 0.022, (1, 1.6, 1), False), ('ELLIPSOID', (0, -0.05, hs * 0.97), 0.034, (1, 0.9, 0.95), False),
+         ('ELLIPSOID', (-hs * 0.95, -0.015, -0.02), 0.06, (0.4, 1.2, 0.8), False), ('ELLIPSOID', (hs * 0.95, -0.015, -0.02), 0.06, (0.4, 1.2, 0.8), False)]
+    o = to_mesh(meta('mh', E, res=0.012), 'head_' + tag); smooth(o)
+    sm = o.modifiers.new('sm', 'SMOOTH'); sm.factor = 0.5; sm.iterations = 3; apply_mods(o); decimate(o, 1400)
+    o.data.materials.append(mat('K_SKIN'))
+    # face layer: the front of the head, lifted a hair, planar UVs in head-local units (u = 0.5 + x/0.64, v = 0.5 + y/0.64)
+    bm = bmesh.new(); bm.from_mesh(o.data)
+    keep = [f for f in bm.faces if f.normal.dot(Vector((0, -1, 0))) > 0.3 and abs(f.calc_center_median().x) < hs * 0.72 and -hs * 0.72 < f.calc_center_median().z < hs * 0.55]
+    bmesh.ops.delete(bm, geom=[f for f in bm.faces if f not in set(keep)], context='FACES')
+    for v in bm.verts: v.co += v.normal * 0.004
+    uv = bm.loops.layers.uv.new('UVMap')
+    for f in bm.faces:
+        for l in f.loops: l[uv].uv = (0.5 + l.vert.co.x / 0.64, 0.5 + l.vert.co.z / 0.64)
+    dme = bpy.data.meshes.new('decal_' + tag); bm.to_mesh(dme); bm.free()
+    d = link(bpy.data.objects.new('face_' + tag, dme)); smooth(d); d.data.materials.clear(); d.data.materials.append(mat('K_FACE'))
+    for x in (o, d): x.scale = (HK, HK, HK); x.location = B(HJ); apply_xf(x)
+    return o, d
+
+# ------------------------------------------------------------------ hair styles (head-local), mirroring the v8 hair fields
+def hair(style, HJ, seed):
+    rnd = random.Random(seed); L = []
+    def add(t, co, r, sz=(1, 1, 1), neg=False): L.append((t, co, r, sz, neg))
+    lush = style in ('messy', 'curl', 'afro'); capR = {'slick': 1.035, 'afro': 1.25, 'cap': 1.02}.get(style, 1.065)
+    add('ELLIPSOID', (0, 0.045, -0.02), hs * capR, (1, 1.15 if style == 'afro' else 0.99, 0.99))
+    if style != 'cap':
+        for i in range(12 if lush else 7):
+            a = rnd.random() * TAU; el = 0.3 + rnd.random() * 0.75; rr = hs * (0.3 if lush else 0.21) * (0.75 + rnd.random() * 0.5); R0 = hs * capR * 0.97
+            add('BALL', (math.cos(a) * math.cos(el) * R0, 0.045 + math.sin(el) * R0 * 0.96, math.sin(a) * math.cos(el) * R0 - 0.02), rr)
+        if style == 'slick': add('ELLIPSOID', (0, hs * 0.58, -hs * 0.22), hs * 0.8, (0.98, 0.45, 1.07))
+        elif style != 'mohawk': add('ELLIPSOID', (hs * 0.08 * (rnd.random() - 0.5), hs * 0.74, -hs * 0.04), hs * 0.72, (1, 0.56, 1.06))
+        if style not in ('slick', 'afro', 'mohawk'):
+            n = 3 + rnd.randrange(3); part = (rnd.random() - 0.5) * hs * 0.3
+            for i in range(n):
+                t = i / (n - 1) - 0.5 if n > 1 else 0; x0 = t * hs * 1.05 + part * 0.3
+                add('CAPSULE', (x0, hs * 0.62, hs * 0.72), hs * 0.12, (1.0, 1.9, 1.0))                                    # fringe lock (vertical capsule)
+        for s in (1, -1): add('CAPSULE', (s * hs * 0.92, 0.0, 0.04), hs * 0.1, (1, 1.8, 1))                                # strands over the ears
+        for i in range(3): add('BALL', ((i - 1) * hs * 0.42, -hs * 0.25, -hs * 0.82), hs * 0.2)                             # nape
+    if style == 'long':
+        add('ELLIPSOID', (0, -hs * 0.55, -hs * 0.52), hs * 0.98, (1, 1.28, 0.55))
+        for s in (1, -1): add('CAPSULE', (s * hs * 0.84, -hs * 0.7, 0.02), hs * 0.22, (1, 3.2, 1))
+    if style == 'bun': add('BALL', (0, hs * 0.78, -hs * 0.64), hs * 0.42)
+    if style == 'ponytail':
+        for i in range(3): add('BALL', (0, -hs * (0.05 + i * 0.4), -hs * (1.05 + i * 0.06)), hs * (0.3 - i * 0.05))
+    if style == 'spiky':
+        for i in range(9):
+            a = i / 9 * TAU + rnd.random() * 0.3; el = 0.55 + rnd.random() * 0.5; d = Vector((math.cos(a) * math.cos(el), math.sin(el), math.sin(a) * math.cos(el)))
+            for k in range(4): add('BALL', tuple(Vector((0, 0.045, -0.02)) + d * hs * (0.95 + k * 0.17)), hs * (0.17 - k * 0.035))
+    if style == 'afro':
+        for i in range(14):
+            a = rnd.random() * TAU; el = -0.2 + rnd.random() * 1.6; R0 = hs * 1.2
+            add('BALL', (math.cos(a) * math.cos(el) * R0, 0.06 + math.sin(el) * R0, math.sin(a) * math.cos(el) * R0 - 0.04), hs * 0.38)
+    if style == 'mohawk':
+        L.clear(); add('ELLIPSOID', (0, 0.04, -0.02), hs * 1.02, (0.98, 0.97, 0.99))
+        for i in range(6): add('BALL', (0, hs * (1.02 + 0.08 * math.sin(i)), hs * (0.65 - i * 0.28)), hs * 0.2)
+    add('ELLIPSOID', (0, -0.05, hs * 0.6), hs * 0.8, (1, 0.88, 0.8), True)                                                 # keep the face clear
+    if style not in ('long', 'ponytail', 'afro'): add('ELLIPSOID', (0, -hs * 1.05, 0.02), hs * 1.05, (1.2, 0.7, 1.2), True)   # nape line
+    o = to_mesh(meta('mhair', L, res=0.016), 'hair_' + style); smooth(o)
+    sm = o.modifiers.new('sm', 'SMOOTH'); sm.factor = 0.4; sm.iterations = 2; apply_mods(o); decimate(o, 900 if style not in ('afro', 'long') else 1200)
+    o.data.materials.append(mat('K_HAIR')); o.scale = (HK, HK, HK); o.location = B(HJ); apply_xf(o); return o
+
+# ------------------------------------------------------------------ robe bell sleeves (average build)
+def bell(J, side, s):
+    a, b = J[side + 'ForeArm'], J[side + 'Wrist'] + (J[side + 'Wrist'] - J[side + 'ForeArm']) * 0.12
+    d = (b - a).normalized(); x = d.cross(Vector((0, 0, 1))).normalized(); y = d.cross(x).normalized(); segs, rings = 26, 7; V = []; F = []
+    for j in range(rings):
+        t = j / (rings - 1); c = a.lerp(b, t); r = 0.075 + 0.075 * t * t
+        for i in range(segs):
+            ang = i / segs * TAU; fold = 0.008 * t * math.sin(ang * 6); V.append(B(c + (x * math.cos(ang) + y * math.sin(ang)) * (r + fold)))
+    for j in range(rings - 1):
+        for i in range(segs): F.append((j * segs + i, j * segs + (i + 1) % segs, (j + 1) * segs + (i + 1) % segs, (j + 1) * segs + i))
+    me = bpy.data.meshes.new('bell'); me.from_pydata(V, [], F); o = link(bpy.data.objects.new('sleeve_bell_' + side, me))
+    so = o.modifiers.new('so', 'SOLIDIFY'); so.thickness = 0.01; sb = o.modifiers.new('sb', 'SUBSURF'); sb.levels = 1; apply_mods(o); smooth(o)
+    o.data.materials.append(mat('K_TORSO')); return o
+
+# ------------------------------------------------------------------ build everything
+objs = []; rigs = {}
+for tag, w, belly in (('v0', 1.0, 0.0), ('v1', 1.3, 0.0), ('v2', 1.5, 0.6)):
+    b_, J = body(tag, w, belly); rig = armature(tag, J); skin_to(b_, rig); rigs[tag] = (rig, J); objs.append(b_)
+rig0, J0 = rigs['v0']
+for tag in FACES:
+    h_, d_ = head(tag, J0['Head']); skin_to(h_, rig0, False, 'Head'); skin_to(d_, rig0, False, 'Head'); objs += [h_, d_]
+for i, st in enumerate(['short', 'slick', 'messy', 'curl', 'long', 'bun', 'ponytail', 'spiky', 'afro', 'mohawk', 'cap']):
+    h_ = hair(st, J0['Head'], 11 + i); skin_to(h_, rig0, False, 'Head'); objs.append(h_)
+for side, s in (('Left', 1), ('Right', -1)):
+    o = bell(J0, side, s); skin_to(o, rig0, False, side + 'ForeArm'); objs.append(o)
+
+# ------------------------------------------------------------------ one grayscale atlas for everything except the face layers (they use runtime-painted canvases)
+SIZE = 2048; ATL = bpy.data.images.new('kit_shading', SIZE, SIZE, alpha=False)
+bake = [o for o in objs if not o.name.startswith('face_')]
+for o in bake:
+    activate(o); bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.select_all(action='SELECT'); bpy.ops.uv.smart_project(angle_limit=math.radians(62), island_margin=0.003); bpy.ops.object.mode_set(mode='OBJECT')
+activate(bake[0], bake[1:]); bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.select_all(action='SELECT'); bpy.ops.uv.pack_islands(margin=0.003); bpy.ops.object.mode_set(mode='OBJECT')
+for m in bpy.data.materials:
+    t = m.node_tree.nodes.new('ShaderNodeTexImage'); t.image = ATL; m.node_tree.nodes.active = t
+sc.render.engine = 'CYCLES'; sc.cycles.device = 'CPU'; sc.cycles.samples = 48; sc.render.bake.margin = 6
+activate(bake[0], bake[1:]); bpy.ops.object.bake(type='EMIT')
+ATL.filepath_raw = os.path.join(OUT, 'kit_shading.png'); ATL.file_format = 'PNG'; ATL.save(); ATL.pack()
+# export materials: region names kept; every textured slot points at the one atlas (stored once in the GLB)
+for m in bpy.data.materials:
+    nt = m.node_tree
+    for n in list(nt.nodes): nt.nodes.remove(n)
+    out = nt.nodes.new('ShaderNodeOutputMaterial'); bs = nt.nodes.new('ShaderNodeBsdfPrincipled'); nt.links.new(bs.outputs[0], out.inputs[0])
+    if m.name != 'K_FACE':
+        t = nt.nodes.new('ShaderNodeTexImage'); t.image = ATL; nt.links.new(t.outputs[0], bs.inputs['Base Color'])
+tris = 0
+for o in objs: tris += sum(len(p.vertices) - 2 for p in o.data.polygons)
+print('KIT parts', len(objs), 'tris total', tris)
+for o in objs: print('  ', o.name, sum(len(p.vertices) - 2 for p in o.data.polygons))
+bpy.ops.export_scene.gltf(filepath=os.path.join(OUT, 'kit.glb'), export_format='GLB', export_yup=True, export_animations=False, export_image_format='JPEG', export_jpeg_quality=86,
+                          export_skins=True, export_morph=False, export_apply=False)
+bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, 'kit.blend'))
+print('DONE', os.path.getsize(os.path.join(OUT, 'kit.glb')))
