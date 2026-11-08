@@ -144,3 +144,27 @@ B('summons',{desc:'A legal summons drags every enemy in the area into the middle
 (function(){ // random side effects are too strong on a splash attack: give them to single hits only
   if(CARDS.virologist){ CARDS.virologist.onHit={cloud:[1.6,55,3]}; CARDS.virologist.desc='Lobs flasks that burst in a splash and leave a lingering toxic cloud that eats away at anything inside.'; }
   if(CARDS.pharmacist){ CARDS.pharmacist.onHit={slow:[1.5,0.7]}; CARDS.pharmacist.desc='Lobs pill bottles that heal friendly troops in the splash, while enemies hit get drowsy and slow down.'; } })();
+
+// ---------------------------------------------------------------- 8 Nov: new Hell's Kitchen cards, Sumo Champion, stat requests, "Broke Benefits"
+Object.assign(PROJ,{ burgerP:['sphere','#c8843a',0.17,null] });
+Object.assign(CARDS,{
+ minidonut:{id:'minidonut',theme:'kitchen',name:'Mini Doughnuts',cost:4,rar:'rare',unlock:0,role:'support',count:2,hp:220,dmg:40,hs:1.0,range:0.5,speed:1.3,radius:0.32,mass:2,targets:'ground',
+   atk:{k:'melee'},sp:{k:'trap',range:5,t:3},death:{sprinkles:[1.4,5,0.5]},anim:'bite',model:BLOB({type:'donut'}),
+   desc:'Two sticky little doughnuts that leap onto enemy troops and trap them in the hole for 3s – they cannot move or attack. Then each doughnut crumbles into a trail of sprinkles that slows enemies walking through it.'},
+ burgerstand:{id:'burgerstand',theme:'kitchen',name:'Burger Stand',cost:5,rar:'epic',unlock:0,type:'building',role:'bld',hp:3000,life:45,dmg:0,hs:1,range:0,radius:0.85,taunt:4.5,
+   atk:{k:'none'},death:{spawn:['burgerthrower',1]},model:{k:'b',type:'burgerstand',color:'#8a5a33'},
+   desc:'Smells so good that every enemy troop within 4.5 tiles queues up and attacks it first. 3000 health, and when it is finally knocked down the Burger Flipper storms out throwing burgers.'},
+ burgerthrower:{id:'burgerthrower',theme:'kitchen',name:'Burger Flipper',cost:3,hidden:true,rar:'common',unlock:0,role:'dps',hp:500,dmg:130,hs:2.6,range:5,speed:1.0,targets:'all',
+   atk:{k:'proj',proj:'burgerP'},anim:'throw',model:HU({skin:'#e8b48a',hair:['short','#5a3418'],hat:['cap','#b3202a'],outfit:['apron','#ffffff','#b3202a'],prop:'spatula'}),
+   desc:'Out of a job and furious about it. Throws burgers at air and ground from 5 tiles away.'},
+});
+{ const th=THEMES.find(t=>t.id==='kitchen'); if(th){ for(const k of ['minidonut','burgerstand']) if(!th.pool.includes(k)) th.pool.push(k); th.pool.sort((a,b)=>(CARDS[a].unlock||0)-(CARDS[b].unlock||0)); } }
+(function(){ const B=(k,o)=>{ if(CARDS[k]) Object.assign(CARDS[k],o); };
+  B('spacedog',{cost:3}); B('bailiff',{hp:3000}); B('judge',{hp:1500});
+  if(CARDS.elephant){ CARDS.elephant.dmg=Math.round(CARDS.elephant.dmg*1.35); CARDS.elephant.hs=1.4; }
+  B('sumo',{rar:'champion',champ:true,role:'hero',tap:{k:'deflect',cost:1,cd:10,icon:'🛡️',name:'Belly Deflect'},
+    desc:'Anything that hits it up close bounces off, knocked back 3 tiles. TAP – Belly Deflect (1 benefit, every 10s): the next ranged attack that hits the belly is fired straight back at whoever sent it, for full damage.'});
+  // the money is "Broke Benefits" now: every card text says so
+  for(const k in CARDS){ const c=CARDS[k]; if(!c.desc) continue;
+    c.desc=c.desc.replace(/(\d+(?:\.\d+)?)\s+elixir/gi,(m,n)=>n==='1'?'1 benefit':n+' benefits').replace(/\belixir\b/gi,'benefits').replace(/💧/g,'💵'); }
+})();

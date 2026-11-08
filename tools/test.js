@@ -34,7 +34,7 @@ const FILE='file://'+path.resolve(__dirname,'..','dist','jobless-royale-offline.
     // matches
     const matches=[];
     for(const th of THEMES){ const reps=focus.includes(th.id)?3:1;
-      for(let r=0;r<reps;r++){ try{ newGame(THEMES.indexOf(th),2,['classic','rush','chaos'][r],randomDeck(th.pool),randomDeck(th.pool)); G.diff=DIFF[2]; let s=0;
+      for(let r=0;r<reps;r++){ try{ newGame(THEMES.indexOf(th),2,['classic','rush','rage'][r],randomDeck(th.pool),randomDeck(th.pool)); G.diff=DIFF[2]; let s=0;
           while(!G.over&&s<4000){ G.ai0Timer=(G.ai0Timer||1)-0.05; if(G.ai0Timer<=0){ G.ai0Timer=0.6; aiAct(0); } update(0.05); if(s%2===0){ syncUnits(0.1); syncWorld(0.1); } s++; }
           matches.push(`${th.id} ${G.crowns.join('-')} ${Math.round(G.t)}s`); }catch(e){ out.push(`match ${th.id}: ${e.message}`); } } }
     G=null; return {out,warn,matches,arenas:THEMES.length,cards:Object.keys(CARDS).length};

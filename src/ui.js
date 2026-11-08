@@ -192,7 +192,7 @@ function drawCardFace(c,id,w,h,dpr){
   c.lineWidth=fsz*0.22; c.strokeStyle='#14161c'; c.strokeText(nm,w/2,h*0.9); c.fillStyle='#fff'; c.fillText(nm,w/2,h*0.9);
   const r=w*0.17, ex=r*1.0, ey=r*1.05;
   c.beginPath(); c.moveTo(ex,ey-r*1.35); c.quadraticCurveTo(ex+r*1.1,ey-r*0.2,ex+r*0.95,ey+r*0.15); c.arc(ex,ey+r*0.1,r*0.95,0.05,PI-0.05); c.quadraticCurveTo(ex-r*1.1,ey-r*0.2,ex,ey-r*1.35);
-  const eg=c.createLinearGradient(0,ey-r,0,ey+r); eg.addColorStop(0,'#f68cff'); eg.addColorStop(1,'#a020d8'); c.fillStyle=eg; c.fill(); c.lineWidth=Math.max(1.5,w*0.03); c.strokeStyle='#14161c'; c.stroke();
+  const eg=c.createLinearGradient(0,ey-r,0,ey+r); eg.addColorStop(0,'#8dff9a'); eg.addColorStop(1,'#16924a'); c.fillStyle=eg; c.fill(); c.lineWidth=Math.max(1.5,w*0.03); c.strokeStyle='#14161c'; c.stroke();
   c.font=`${r*1.25}px ${FONT}`; c.lineWidth=r*0.3; c.strokeText(d.cost,ex,ey+r*0.12); c.fillStyle='#fff'; c.fillText(d.cost,ex,ey+r*0.12);
   c.restore(); return ready;
 }
@@ -338,11 +338,12 @@ function drawHUD(){
     hx.globalAlpha=1; });
   const e=elixRect, dr=e.h*0.85;
   hx.fillStyle='#14161c'; rrp(hx,e.x+dr*0.6,e.y,e.w-dr*0.6,e.h,e.h/2); hx.fill();
-  const inn={x:e.x+dr*1.4,y:e.y+3,w:e.w-dr*1.4-4,h:e.h-6}; hx.fillStyle='#3d2a55'; rrp(hx,inn.x,inn.y,inn.w,inn.h,inn.h/2); hx.fill();
-  const fw=inn.w*el/10; if(fw>1){ const eg=hx.createLinearGradient(0,inn.y,0,inn.y+inn.h); eg.addColorStop(0,'#ff8cff'); eg.addColorStop(0.5,'#d63af0'); eg.addColorStop(1,'#9b2ee0'); hx.fillStyle=eg; rrp(hx,inn.x,inn.y,fw,inn.h,inn.h/2); hx.fill(); hx.fillStyle='rgba(255,255,255,.35)'; hx.fillRect(inn.x+inn.h/2,inn.y+2,Math.max(0,fw-inn.h),inn.h*0.25); }
+  const inn={x:e.x+dr*1.4,y:e.y+3,w:e.w-dr*1.4-4,h:e.h-6}; hx.fillStyle='#1d3a28'; rrp(hx,inn.x,inn.y,inn.w,inn.h,inn.h/2); hx.fill();
+  const fw=inn.w*el/10; if(fw>1){ const eg=hx.createLinearGradient(0,inn.y,0,inn.y+inn.h); eg.addColorStop(0,'#9dffab'); eg.addColorStop(0.5,'#3ddc6a'); eg.addColorStop(1,'#169a48'); hx.fillStyle=eg; rrp(hx,inn.x,inn.y,fw,inn.h,inn.h/2); hx.fill(); hx.fillStyle='rgba(255,255,255,.35)'; hx.fillRect(inn.x+inn.h/2,inn.y+2,Math.max(0,fw-inn.h),inn.h*0.25); }
   hx.strokeStyle='rgba(0,0,0,.45)'; hx.lineWidth=2; for(let i=1;i<10;i++){ const x=inn.x+inn.w*i/10; hx.beginPath(); hx.moveTo(x,inn.y); hx.lineTo(x,inn.y+inn.h); hx.stroke(); }
+  hx.font=`${Math.max(9,inn.h*0.52)}px ${FONT}`; hx.textAlign='center'; hx.textBaseline='middle'; hx.fillStyle='rgba(6,48,22,.62)'; hx.fillText('BROKE BENEFITS',inn.x+inn.w/2,inn.y+inn.h/2+1);
   const dx=e.x+dr*0.75, dy=e.y+e.h/2; hx.beginPath(); hx.moveTo(dx,dy-dr*1.05); hx.quadraticCurveTo(dx+dr*0.85,dy-dr*0.1,dx+dr*0.72,dy+dr*0.2); hx.arc(dx,dy+dr*0.15,dr*0.74,0.05,PI-0.05); hx.quadraticCurveTo(dx-dr*0.85,dy-dr*0.1,dx,dy-dr*1.05);
-  const dg=hx.createLinearGradient(0,dy-dr,0,dy+dr); dg.addColorStop(0,'#f68cff'); dg.addColorStop(1,'#a020d8'); hx.fillStyle=dg; hx.fill(); hx.strokeStyle='#14161c'; hx.lineWidth=2.5; hx.stroke();
+  const dg=hx.createLinearGradient(0,dy-dr,0,dy+dr); dg.addColorStop(0,'#8dff9a'); dg.addColorStop(1,'#16924a'); hx.fillStyle=dg; hx.fill(); hx.strokeStyle='#14161c'; hx.lineWidth=2.5; hx.stroke();
   txt(String(Math.floor(el)),dx,dy+dr*0.12,dr*1.05,'#fff');
   drawTapButton();
   if(emoteOpen){ const em=G.th.emotes; const bh=Math.max(34,PANH*0.24), by=PANY-bh-8; emoteRects=[];
@@ -393,7 +394,7 @@ const inArena=p=>p.y>TOPH&&p.y<PANY-2&&!(tapState(0)&&Math.hypot(p.x-(tapRect.x+
 let infoCard=null, holdTimer=null;
 function tryDeploy(i,p){
   const id=G.hands[0][i]; if(!id) return;
-  if(G.elixir[0]<CARDS[id].cost){ G.msg={s:'Not enough elixir!',t:1.1}; sfx('bad'); return; }
+  if(G.elixir[0]<CARDS[id].cost){ G.msg={s:'Not enough benefits!',t:1.1}; sfx('bad'); return; }
   const wp=screenToGround(p.x,p.y); if(!wp) return;
   if(G.puppet){ if(CARDS[id].champ&&champOf(0)){ G.msg={s:'Your Champion is already in battle!',t:1.4}; sfx('bad'); return; } netSend({t:'play',i,id,x:wp.x,y:wp.y}); G.sel=-1; buzz(15); sfx(CARDS[id].champ?'champ':'deploy'); return; }
   const r=playCard(0,i,wp.x,wp.y);
@@ -406,8 +407,8 @@ hud.addEventListener('pointerdown',e=>{
   if(emoteOpen){ const r=emoteRects.find(r=>hit(r,p)); emoteOpen=false; if(r){ sfx('emote'); if(G.puppet){ netSend({t:'emote',i:r.i}); return; } G.emotes=G.emotes.filter(x=>x.team!==0); G.emotes.push({team:0,text:G.th.emotes[r.i],t:0}); if(G.online) return; if(Math.random()<0.6) setTimeout(()=>{ if(G&&!G.over) aiEmote(Math.random()<0.5?'taunt':'gloat',true); },900+Math.random()*800); return; } }
   if(hit(emoteRect,p)){ emoteOpen=true; sfx('pop'); return; }
   if(tapState(0)&&Math.hypot(p.x-(tapRect.x+tapRect.r),p.y-(tapRect.y+tapRect.r))<tapRect.r+4){
-    if(G.puppet){ const st=tapState(0); if(st&&!st.ready){ G.msg={s:G.elixir[0]<st.tp.cost?'Not enough elixir!':'Ability recharging…',t:1.1}; sfx('bad'); return; } netSend({t:'tap'}); buzz(25); sfx('champ'); return; }
-    const r=useTap(0); const msg={elixir:'Not enough elixir!',cd:'Ability recharging…',notarget:'No target in range!',stunned:'Your Champion is stunned!'}[r];
+    if(G.puppet){ const st=tapState(0); if(st&&!st.ready){ G.msg={s:G.elixir[0]<st.tp.cost?'Not enough benefits!':'Ability recharging…',t:1.1}; sfx('bad'); return; } netSend({t:'tap'}); buzz(25); sfx('champ'); return; }
+    const r=useTap(0); const msg={elixir:'Not enough benefits!',cd:'Ability recharging…',notarget:'No target in range!',stunned:'Your Champion is stunned!'}[r];
     if(msg){ G.msg={s:msg,t:1.1}; sfx('bad'); } else if(r==='ok'){ buzz(25); sfx('champ'); } return; }
   const ci=cardRects.findIndex(r=>hit(r,p));
   if(ci>=0){ const was=G.sel===ci; G.sel=ci; G.drag={x:p.x,y:p.y,sx:p.x,sy:p.y,inArena:false,toggle:was}; try{ hud.setPointerCapture(e.pointerId); }catch(_){} sfx('pop');
@@ -521,16 +522,16 @@ function cardTraits(d){ const t=[], a=d.atk||{}, oh=d.onHit||{}, sp=d.sp||{};
   if(oh.stun||oh.chain||sp.stun||sp.frozen||sp.k==='zap') t.push(oh.chain?'Chains':'Stuns');
   if(sp.k==='charge') t.push('Charges'); if(sp.k==='leap') t.push('Leaps'); if(d.swim) t.push('Swims the river'); if(d.anywhere||d.deployAnywhere) t.push('Deploy anywhere');
   if(d.armor) t.push('Splash armour '+Math.round(d.armor*100)+'%'); if(d.shield0) t.push('Shield '+d.shield0); if(d.dodge) t.push('Dodges '+Math.round(d.dodge*100)+'%'); if(d.thorns) t.push('Thorns '+Math.round(d.thorns*100)+'%');
-  if(d.taunt) t.push('Draws enemies'); if(d.spawner) t.push('Spawns '+(CARDS[d.spawner.card]||{}).name); if(d.gen) t.push('Makes elixir'); if(d.life) t.push('Lasts '+d.life+'s');
+  if(d.taunt) t.push('Draws enemies'); if(d.spawner) t.push('Spawns '+(CARDS[d.spawner.card]||{}).name); if(d.gen) t.push('Makes benefits'); if(d.life) t.push('Lasts '+d.life+'s');
   if(d.regen) t.push('Heals itself'); if(d.aura&&(d.aura.heal||d.aura.repair)) t.push('Heals allies'); if(d.aura&&d.aura.rush) t.push('Speeds allies'); if(d.aura&&d.aura.slow) t.push('Slows enemies');
   if(d.death) t.push('Death effect');
   return t; }
 function cardInfo(id){ const d=CARDS[id]; const kind=d.type==='spell'?'Spell':d.type==='building'?'Building':d.champ?'Champion':'Troop';
   const lock=!unlocked(id)?`<br><span class="lockline">🔒 Unlocks at 🏆 ${d.unlock}</span>`:'';
-  $('#info').innerHTML=`<b>${d.name}</b> · ${d.cost} elixir · ${kind}<br>${d.desc}`+(d.hp?`<br><span class="dim">HP ${d.hp}${d.count>1?' ×'+d.count:''} · ${d.targets==='buildings'?'Targets buildings':d.targets==='all'?'Hits air & ground':'Hits ground'}${d.flying?' · Flying':''}${d.range>1.5?' · Range '+d.range:''}</span>`:'')+(cardTraits(d).length?`<br><span class="traits">${cardTraits(d).map(x=>`<i>${x}</i>`).join('')}</span>`:'')+lock; }
+  $('#info').innerHTML=`<b>${d.name}</b> · ${d.cost} benefits · ${kind}<br>${d.desc}`+(d.hp?`<br><span class="dim">HP ${d.hp}${d.count>1?' ×'+d.count:''} · ${d.targets==='buildings'?'Targets buildings':d.targets==='all'?'Hits air & ground':'Hits ground'}${d.flying?' · Flying':''}${d.range>1.5?' · Range '+d.range:''}</span>`:'')+(cardTraits(d).length?`<br><span class="traits">${cardTraits(d).map(x=>`<i>${x}</i>`).join('')}</span>`:'')+lock; }
 function cardTile(id,onTap,extra=''){
   const b=document.createElement('button'); b.type='button'; b.className='cardtile '+extra; b.id='card-'+id+(extra?'-'+extra.split(' ')[0]:''); const lk=!unlocked(id);
-  b.setAttribute('aria-label',CARDS[id].name+', '+CARDS[id].cost+' elixir'+(lk?', locked until '+CARDS[id].unlock+' trophies':''));
+  b.setAttribute('aria-label',CARDS[id].name+', '+CARDS[id].cost+' benefits'+(lk?', locked until '+CARDS[id].unlock+' trophies':''));
   b.dataset.card=id; const c=document.createElement('canvas'); drawTileFace(c,id);
   b.appendChild(c);
   if(swapPick===id) b.classList.add('pick');
@@ -550,11 +551,11 @@ function cardBack(id){ const d=CARDS[id], n=d.count||1, sp=d.sp||{};
   if(d.type==='spell'){ hl='Radius'; hp=sp.r?'r'+sp.r:'–';
     if(sp.k==='barrage') dmg=(sp.n||1)+'×'+sp.dmg; else if(sp.k==='cloud'&&sp.dps) dmg=sp.dps+'/s'; else if(sp.dmg) dmg=sp.dmg;
     else if(sp.k==='stun'||sp.k==='freeze'){ dl=sp.k==='freeze'?'Freeze':'Stun'; dmg=sp.t+'s'; } else if(sp.t){ dl='Lasts'; dmg=sp.t+'s'; } else if(sp.amt){ dl='Heal'; dmg=sp.amt; } }
-  else { hp=n>1?d.hp+'×'+n:d.hp; if(d.dmg) dmg=n>1?d.dmg+'×'+n:d.dmg; else if(sp.dmg) dmg=sp.dmg; else if(d.gen){ dl='Elixir'; dmg='+'+d.gen.amt+'/'+d.gen.every+'s'; } else if(d.spawner){ dl='Spawns'; dmg=(d.spawner.n||1)+'/'+d.spawner.every+'s'; } }
+  else { hp=n>1?d.hp+'×'+n:d.hp; if(d.dmg) dmg=n>1?d.dmg+'×'+n:d.dmg; else if(sp.dmg) dmg=sp.dmg; else if(d.gen){ dl='Benefits'; dmg='+'+d.gen.amt+'/'+d.gen.every+'s'; } else if(d.spawner){ dl='Spawns'; dmg=(d.spawner.n||1)+'/'+d.spawner.every+'s'; } }
   let line=(d.desc||'').replace(/^LEGENDARY\.\s*/,'').split(/(?<=[.!?])\s/)[0]; if(line.length>78) line=line.slice(0,75).replace(/\s\S*$/,'')+'…';
   const tap=d.tap?`<div class="cbtap">👆 ${d.tap.name}</div>`:'';
   const el=document.createElement('div'); el.className='cardback rar-'+(d.rar||'common');
-  el.innerHTML=`<div class="cbname">${d.short||d.name}</div><div class="cbstats"><div><i>💧</i><b>${d.cost}</b><span>Elixir</span></div><div><i>⚔️</i><b>${dmg}</b><span>${dl}</span></div><div><i>${d.type==='spell'?'🎯':'❤️'}</i><b>${hp}</b><span>${hl}</span></div></div><div class="cbline">${line}</div>${tap}`;
+  el.innerHTML=`<div class="cbname">${d.short||d.name}</div><div class="cbstats"><div><i>💵</i><b>${d.cost}</b><span>Benefits</span></div><div><i>⚔️</i><b>${dmg}</b><span>${dl}</span></div><div><i>${d.type==='spell'?'🎯':'❤️'}</i><b>${hp}</b><span>${hl}</span></div></div><div class="cbline">${line}</div>${tap}`;
   return el; }
 function drawTileFace(c,id){ const w=88,h=110, lk=!unlocked(id); c.width=w*2; c.height=h*2; const x=c.getContext('2d'); drawCardFace(x,id,w,h,2);
   if(lk){ x.save(); x.scale(2,2); x.fillStyle='rgba(12,16,34,.72)'; rrp(x,0,0,w,h,w*0.1); x.fill(); x.font=`${w*0.34}px ${FONT}`; x.textAlign='center'; x.textBaseline='middle'; x.fillText('🔒',w/2,h*0.36);
@@ -606,7 +607,7 @@ function renderMenu(){
   const th=THEMES[arenaIdx], mix=modeKey==='mix', deck=curDeck();
   const chars=deck.filter(k=>!isSpell(k)), spells=deck.filter(isSpell), ok=deckValid(deck);
   const avgEl=deck.length?(deck.reduce((t,k)=>t+CARDS[k].cost,0)/deck.length).toFixed(1):'–';
-  $('#deckHead').textContent = (mix ? `🃏 MIX DECK · ${chars.length}/6 + ${spells.length}/2` : `${th.emoji} YOUR ${th.name.toUpperCase()} DECK · ${chars.length}/6 + ${spells.length}/2`)+` · ⌀ ${avgEl} 💧`;
+  $('#deckHead').textContent = (mix ? `🃏 MIX DECK · ${chars.length}/6 + ${spells.length}/2` : `${th.emoji} YOUR ${th.name.toUpperCase()} DECK · ${chars.length}/6 + ${spells.length}/2`)+` · ⌀ ${avgEl} 💵`;
   const dk=$('#deck'); dk.innerHTML='';
   for(let i=0;i<DECK_CHARS;i++){ const id=chars[i]; if(id){ requestPortrait(id); dk.appendChild(cardTile(id,deckTap,'in')); } else dk.appendChild(emptySlot('Character')); }
   for(let i=0;i<DECK_SPELLS;i++){ const id=spells[i]; if(id) dk.appendChild(cardTile(id,deckTap,'in spell')); else dk.appendChild(emptySlot('Spell')); }
