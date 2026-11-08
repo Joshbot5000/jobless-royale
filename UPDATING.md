@@ -25,6 +25,7 @@ Copy the structure of `src/data_news_20261027.js` (Election Night):
   Only add a new mechanic if the job really needs one, and implement it in `src/sim.js`.
 - Balance against similar existing cards (similar cost → similar HP and damage).
 - Models: build characters from `HU({...})` (humans: skin, hair, hat, outfit, face, prop, back, cape, w, h, sc), `DOG({...})` (animals), `FLY({type})`, `BLOB({type})`, `PEN({})`, vehicles `{k:'v',type}` and buildings `{k:'b',type}`. Add any new props, hats, outfits, vehicles, buildings or flyers in `src/models_more.js`, and any new deco or spell drop (`fall`) in `src/models_world.js`.
+- **Job File (required for the Career Academy):** add an entry for the new arena id to `JOBFILES` in `src/data_academy.js`: the real job behind the arena (`title`, `emoji`), `what` they do, three `skills`, the `route` into the job in the UK (apprenticeships, college, university), and one true, kid-friendly `fact`. Keep each line short, true and checkable. No real people or brands, nothing grim. The four Academy shifts are generated automatically; `tools/test.js` fails if the Job File is missing.
 
 ## 3. Test
 ```

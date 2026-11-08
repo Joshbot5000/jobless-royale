@@ -37,9 +37,17 @@ const FILE='file://'+path.resolve(__dirname,'..','dist','jobless-royale-offline.
       for(let r=0;r<reps;r++){ try{ newGame(THEMES.indexOf(th),2,['classic','rush','rage'][r],randomDeck(th.pool),randomDeck(th.pool)); G.diff=DIFF[2]; let s=0;
           while(!G.over&&s<4000){ G.ai0Timer=(G.ai0Timer||1)-0.05; if(G.ai0Timer<=0){ G.ai0Timer=0.6; aiAct(0); } update(0.05); if(s%2===0){ syncUnits(0.1); syncWorld(0.1); } s++; }
           matches.push(`${th.id} ${G.crowns.join('-')} ${Math.round(G.t)}s`); }catch(e){ out.push(`match ${th.id}: ${e.message}`); } } }
-    G=null; return {out,warn,matches,arenas:THEMES.length,cards:Object.keys(CARDS).length};
+    // Career Academy: every arena has a complete Job File, and every shift runs (the AI plays your side)
+    for(const th of THEMES){ const j=JOBFILES[th.id]; if(!j){ out.push(`${th.id}: no Job File in src/data_academy.js`); continue; }
+      for(const k of ['title','emoji','what','route','fact']) if(!j[k]) out.push(`${th.id}: Job File missing "${k}"`); if(!(j.skills||[]).length) out.push(`${th.id}: Job File has no skills`); }
+    const shifts=[];
+    for(const th of THEMES) for(let i=0;i<SHIFTS.length;i++){ try{ acStart(THEMES.indexOf(th),i); let s=0, t0=0;
+        while(!G.over&&s<500){ t0-=0.05; if(t0<=0){ t0=0.7; aiAct(0); } update(0.05); s++; }
+        if(i===3&&!G.mission.boss) out.push(`academy ${th.id}: no boss appeared`); if(G.over) shifts.push(th.id+(i+1)+(G.winner===0?'✓':'✗')); }catch(e){ out.push(`academy ${th.id} shift ${i+1}: ${e.message} ${(e.stack||'').split('\n')[1]||''}`); } }
+    $('#end').hidden=true;
+    G=null; return {out,warn,matches,shifts,arenas:THEMES.length,cards:Object.keys(CARDS).length};
   },focus);
-  console.log(`${res.arenas} arenas, ${res.cards} cards`); console.log('matches:',res.matches.join(' | '));
+  console.log(`${res.arenas} arenas, ${res.cards} cards`); console.log('matches:',res.matches.join(' | ')); console.log('academy shifts finished in 25s of play:',res.shifts.join(' '));
   if(res.warn.length) console.log('warnings:\n  '+res.warn.join('\n  '));
   const fails=res.out.concat(errs.map(e=>'page error: '+e));
   if(fails.length){ console.log('FAIL\n  '+fails.join('\n  ')); process.exitCode=1; } else console.log('ALL TESTS PASSED');

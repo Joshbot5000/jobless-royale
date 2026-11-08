@@ -325,7 +325,8 @@ function drawHUD(){
   hx.fillStyle='#fff'; hx.fillRect(p.x+p.w*0.32,p.y+p.h*0.28,p.w*0.12,p.h*0.44); hx.fillRect(p.x+p.w*0.56,p.y+p.h*0.28,p.w*0.12,p.h*0.44);
   const ns=Math.min(18,TBH*0.36);
   txt(G.foe,p.x+p.w+10,SAT+TBH*0.36,ns,'#ffb3b0','left');
-  txt(`${G.mode.icon} ${G.mode.name} · ${G.th.emoji} ${G.th.name}`,p.x+p.w+10,SAT+TBH*0.72,ns*0.64,'rgba(255,255,255,.78)','left',false);
+  txt(G.mission?`🎓 Shift ${G.mission.i+1} · ${G.th.emoji} ${G.mission.job}`:`${G.mode.icon} ${G.mode.name} · ${G.th.emoji} ${G.th.name}`,p.x+p.w+10,SAT+TBH*0.72,ns*0.64,'rgba(255,255,255,.78)','left',false);
+  if(G.mission&&!G.over){ const s=missionHud(), fs=Math.max(11,Math.min(15,W*0.036)); hx.font=`${fs}px ${FONT}`; const mw=hx.measureText(s).width+20; hx.fillStyle='rgba(10,14,30,.62)'; const py=PANY-fs-18; rrp(hx,W/2-mw/2,py,mw,fs+10,(fs+10)/2); hx.fill(); txt(s,W/2,py+(fs+10)/2+1,fs,G.mission.sh.key==='budget'&&G.mission.bank<3?'#ffb02e':'#fff'); }
   const tw=Math.min(110,W*0.27), tx=W-tw-6; hx.fillStyle='rgba(0,0,0,.35)'; rrp(hx,tx,SAT+5,tw,TBH-10,8); hx.fill();
   const tm=Math.max(0,Math.ceil(G.time)), ts=`${Math.floor(tm/60)}:${String(tm%60).padStart(2,'0')}`;
   txt(G.overtime?'Overtime':G.mode.sudden?'Sudden death':'Time left',tx+tw/2,SAT+TBH*0.3,TBH*0.22,G.overtime||G.mode.sudden?'#ffb02e':'#cfd8ff','center',false);
@@ -440,7 +441,7 @@ hud.addEventListener('contextmenu',e=>e.preventDefault());
 // ---------------------------------------------------------------- screens
 function pauseGame(){ if(!G.online) G.paused=true; $('#pause').hidden=false; $('#quitBtn').textContent=G.online?'LEAVE MATCH':'QUIT BATTLE'; $('#pauseNote').hidden=!G.online; }
 $('#resumeBtn').onclick=()=>{ G.paused=false; $('#pause').hidden=true; last=performance.now(); };
-$('#quitBtn').onclick=()=>{ $('#pause').hidden=true; if(G&&G.online){ netLeave(); return; } G=null; showMenu(); };
+$('#quitBtn').onclick=()=>{ $('#pause').hidden=true; if(G&&G.online){ netLeave(); return; } if(G&&G.mission){ const a=G.mission.th; G=null; startPreview(); openAcademy(a); return; } G=null; showMenu(); };
 function randomDeck(pool){
   const chars=pool.filter(k=>!isSpell(k)), spells=pool.filter(isSpell);
   for(let tries=0;tries<300;tries++){
@@ -470,21 +471,29 @@ function startBattle(){
   if(!mix) arenaDeck=loadDeck(th);
   const deck=mix?mixDeck:arenaDeck;
   if(!deckValid(deck)&&!AUTOTEST){ $('#menu').hidden=false; renderMenu(); return; }
-  newGame(arenaIdx,diffIdx,modeKey,AUTOTEST?aiDeckFor(th):deck,mix?aiMixDeck():aiDeckFor(th));
+  const aiDeck=mix?aiMixDeck():aiDeckFor(th);
+  newGame(arenaIdx,diffIdx,modeKey,AUTOTEST?aiDeckFor(th):deck,aiDeck);
+  if(!AUTOTEST){ G.lvl=[deckLevels(deck),aiLevels(aiDeck,deck)]; G.myDeck=deck.slice(); }
   ensureZone(); hideGhost(); emoteOpen=false; fitCamera(W,H,TOPH,PANH);
   G.hands[0].concat(G.queues[0]).forEach(requestPortrait); G.hands[1].concat(G.queues[1]).forEach(requestPortrait);
   last=performance.now(); fpsAcc=0; fpsN=0; Music.stop(); Music.kick();
 }
-$('#playBtn').onclick=startBattle; $('#againBtn').onclick=()=>{ if(G&&G.online){ netRematch(); return; } startBattle(); };
-$('#nextBtn').onclick=()=>{ arenaIdx=(arenaIdx+1)%THEMES.length; store.set('arena',arenaIdx); arenaDeck=loadDeck(THEMES[arenaIdx]); startBattle(); };
-$('#menuBtn').onclick=()=>{ if(G&&G.online){ netLeave(); return; } G=null; showMenu(); };
+$('#playBtn').onclick=startBattle; $('#againBtn').onclick=()=>{ if(G&&G.mission){ acStart(G.mission.th,G.mission.i); return; } if(G&&G.online){ netRematch(); return; } startBattle(); };
+$('#nextBtn').onclick=()=>{ if(G&&G.mission){ acStart(G.mission.th,G.mission.i+1); return; } arenaIdx=(arenaIdx+1)%THEMES.length; store.set('arena',arenaIdx); arenaDeck=loadDeck(THEMES[arenaIdx]); startBattle(); };
+$('#menuBtn').onclick=()=>{ if(G&&G.mission){ const a=G.mission.th; G=null; Music.stop(); setTimeout(()=>Music.kick(),0); startPreview(); openAcademy(a); return; } if(G&&G.tour){ tourBackFromMatch(); return; } if(G&&G.online){ netLeave(); return; } G=null; showMenu(); };
 function showEnd(){ Music.stop();
+  $('#nextBtn').textContent='NEXT ARENA ▶'; $('#endPacket').hidden=true; $('#endTro').textContent='';
+  if(G.mission){ academyEnd(); return; }
   const w=G.winner, th=G.th;
   for(const id of ['againBtn','nextBtn']) $('#'+id).hidden=false; $('#menuBtn').textContent='MENU'; $('#againBtn').textContent='REMATCH';
   if(G.online){ $('#endUnlock').hidden=true; $('#endTitle').textContent=w===0?'VICTORY!':w===1?'DEFEAT':'DRAW'; $('#endTitle').style.color=w===0?'#ffc83d':w===1?'#ff8a85':'#e8e8e8';
     $('#cBlue').textContent='👑'.repeat(G.crowns[0])||'–'; $('#cRed').textContent='👑'.repeat(G.crowns[1])||'–'; $('#endFoe').textContent=G.foe;
-    $('#endTro').textContent='👥 Friendly match (no trophies)'; $('#endSub').textContent=w===0?`You beat ${G.foe}!`:w===1?`${G.foe} won ${G.crowns[1]}–${G.crowns[0]}.`:'Even crowns and even towers.';
-    $('#nextBtn').hidden=true; $('#menuBtn').textContent='LEAVE'; if(G.puppet){ $('#againBtn').textContent='ASK FOR REMATCH'; } $('#end').hidden=false; return; }
+    $('#endTro').textContent='👥 Friendly match (no trophies)';
+    if(!G.tour) showPacket($('#endPacket'),payPacket(w===0?'draw':'loss',NET.mode==='mix'?PLAYABLE:th.pool,G.myDeck||[]),'💼 MATCH FEE'); $('#endSub').textContent=w===0?`You beat ${G.foe}!`:w===1?`${G.foe} won ${G.crowns[1]}–${G.crowns[0]}.`:'Even crowns and even towers.';
+    $('#nextBtn').hidden=true; $('#menuBtn').textContent='LEAVE'; if(G.puppet){ $('#againBtn').textContent='ASK FOR REMATCH'; }
+    if(G.tour){ tourReport(w); $('#againBtn').hidden=true; $('#menuBtn').textContent='BACK TO TOURNAMENT'; $('#endTro').textContent=w===0?'🏆 Through to the next round!':'Knocked out of the tournament';
+      $('#endSub').textContent=w===0?`You beat ${G.foe}!`:`${G.foe} goes through. Stay to watch the bracket!`; showPacket($('#endPacket'),payPacket(w===0?'win':'loss',th.pool,G.myDeck||[]),w===0?'💼 PAY PACKET':'💼 CONSOLATION PAY'); }
+    $('#end').hidden=false; return; }
   const delta = w===0 ? 25+G.crowns[0]*5 : w===1 ? -15 : 0;
   const before=trophies;
   trophies=Math.max(0,trophies+delta); store.set('trophies',trophies);
@@ -496,6 +505,8 @@ function showEnd(){ Music.stop();
     if(fresh.length>show.length){ const m=document.createElement('div'); m.className='tag small'; m.textContent=`+${fresh.length-show.length} more across the other arenas`; ul.appendChild(m); }
     sfx('crown'); }
   ul.hidden=!fresh.length;
+  const pk=payPacket(w===0?'win':w===1?'loss':'draw',modeKey==='mix'?PLAYABLE:th.pool,G.myDeck||curDeck(),w===0?G.crowns[0]*5:0);
+  showPacket($('#endPacket'),pk,w===0?'💼 PAY PACKET':'💼 CONSOLATION PAY');
   streak = w===0 ? streak+1 : 0; store.set('streak',streak);
   if(w===0){ best[th.id]=Math.max(best[th.id]||0,G.crowns[0]); store.set('best',best); }
   $('#endTitle').textContent=w===0?'VICTORY!':w===1?'DEFEAT':'DRAW';
@@ -544,12 +555,13 @@ function cardTraits(d){ const t=[], a=d.atk||{}, oh=d.onHit||{}, sp=d.sp||{};
   return t; }
 function cardInfo(id){ const d=CARDS[id]; const kind=d.type==='spell'?'Spell':d.type==='building'?'Building':d.champ?'Champion':'Troop';
   const lock=!unlocked(id)?`<br><span class="lockline">🔒 Unlocks at 🏆 ${d.unlock}</span>`:'';
-  $('#info').innerHTML=`<b>${d.name}</b> · ${d.cost} Broke Bucks · ${kind}<br>${d.desc}`+(d.hp?`<br><span class="dim">HP ${d.hp}${d.count>1?' ×'+d.count:''} · ${d.targets==='buildings'?'Targets buildings':d.targets==='all'?'Hits air & ground':'Hits ground'}${d.flying?' · Flying':''}${d.range>1.5?' · Range '+d.range:''}</span>`:'')+(cardTraits(d).length?`<br><span class="traits">${cardTraits(d).map(x=>`<i>${x}</i>`).join('')}</span>`:'')+lock; }
+  (INFO_EL&&document.body.contains(INFO_EL)?INFO_EL:$('#info')).innerHTML=`<b>${d.name}</b> · ${d.cost} Broke Bucks · ${kind}<br>${d.desc}`+(d.hp?`<br><span class="dim">HP ${d.hp}${d.count>1?' ×'+d.count:''} · ${d.targets==='buildings'?'Targets buildings':d.targets==='all'?'Hits air & ground':'Hits ground'}${d.flying?' · Flying':''}${d.range>1.5?' · Range '+d.range:''}</span>`:'')+(cardTraits(d).length?`<br><span class="traits">${cardTraits(d).map(x=>`<i>${x}</i>`).join('')}</span>`:'')+lock+promoLine(id); }
+let INFO_EL=null, onPromoDone=null;
 function cardTile(id,onTap,extra=''){
   const b=document.createElement('button'); b.type='button'; b.className='cardtile '+extra; b.id='card-'+id+(extra?'-'+extra.split(' ')[0]:''); const lk=!unlocked(id);
   b.setAttribute('aria-label',CARDS[id].name+', '+CARDS[id].cost+' Broke Bucks'+(lk?', locked until '+CARDS[id].unlock+' trophies':''));
   b.dataset.card=id; const c=document.createElement('canvas'); drawTileFace(c,id);
-  b.appendChild(c);
+  b.appendChild(c); lvBadges(b,id);
   if(swapPick===id) b.classList.add('pick');
   // hold to flip the card over like a flashcard; let go to flip it back (a quick tap still selects it)
   let holdT=null, held=false;
@@ -562,7 +574,7 @@ function cardTile(id,onTap,extra=''){
   return b;
 }
 // the back of a card: the three numbers that matter and one short line on how it plays
-function cardBack(id){ const d=CARDS[id], n=d.count||1, sp=d.sp||{};
+function cardBack(id){ const lv=cardLv(id), d=lv>1?scaleCard(CARDS[id],lvMul(lv)):CARDS[id], n=d.count||1, sp=d.sp||{};
   let dmg='–', hp='–', dl='Damage', hl='Health';
   if(d.type==='spell'){ hl='Radius'; hp=sp.r?'r'+sp.r:'–';
     if(sp.k==='barrage') dmg=(sp.n||1)+'×'+sp.dmg; else if(sp.k==='cloud'&&sp.dps) dmg=sp.dps+'/s'; else if(sp.dmg) dmg=sp.dmg;
@@ -571,7 +583,7 @@ function cardBack(id){ const d=CARDS[id], n=d.count||1, sp=d.sp||{};
   let line=(d.desc||'').replace(/^LEGENDARY\.\s*/,'').split(/(?<=[.!?])\s/)[0]; if(line.length>78) line=line.slice(0,75).replace(/\s\S*$/,'')+'…';
   const tap=d.tap?`<div class="cbtap">👆 ${d.tap.name}</div>`:'';
   const el=document.createElement('div'); el.className='cardback rar-'+(d.rar||'common');
-  el.innerHTML=`<div class="cbname">${d.short||d.name}</div><div class="cbstats"><div><i>💵</i><b>${d.cost}</b><span>Bucks</span></div><div><i>⚔️</i><b>${dmg}</b><span>${dl}</span></div><div><i>${d.type==='spell'?'🎯':'❤️'}</i><b>${hp}</b><span>${hl}</span></div></div><div class="cbline">${line}</div>${tap}`;
+  el.innerHTML=`<div class="cbname">${d.short||d.name}</div><div class="cbrank">Lv${lv} · ${rankName(lv)}</div><div class="cbstats"><div><i>💵</i><b>${d.cost}</b><span>Bucks</span></div><div><i>⚔️</i><b>${dmg}</b><span>${dl}</span></div><div><i>${d.type==='spell'?'🎯':'❤️'}</i><b>${hp}</b><span>${hl}</span></div></div><div class="cbline">${line}</div>${tap}`;
   return el; }
 function drawTileFace(c,id){ const w=88,h=110, lk=!unlocked(id); c.width=w*2; c.height=h*2; const x=c.getContext('2d'); drawCardFace(x,id,w,h,2);
   if(lk){ x.save(); x.scale(2,2); x.fillStyle='rgba(12,16,34,.72)'; rrp(x,0,0,w,h,w*0.1); x.fill(); x.font=`${w*0.34}px ${FONT}`; x.textAlign='center'; x.textBaseline='middle'; x.fillText('🔒',w/2,h*0.36);
@@ -603,6 +615,36 @@ function collTap(id){
   swapPick=id; renderMenu(); cardInfo(id);
   $('#info').innerHTML+=`<br><span class="lockline">👆 Now tap a ${CARDS[id].champ&&champCount(d)?'Champion':sp?'spell':'character'} in your deck to swap it out.</span>`;
 }
+// A self-contained deck builder for a given arena (used before online and tournament matches, where the arena is
+// chosen by someone else). Edits save to the same per-arena deck as the main menu. onChange(deck,valid) after every edit.
+function deckEditor(el,th,mix,onChange){
+  const key=mix?'mix':'deck_'+th.id, pool=(mix?PLAYABLE:th.pool).filter(k=>!CARDS[k].hidden);
+  let deck=mix?mixDeck.slice():loadDeck(th), pick=null;
+  const save=()=>{ store.set(key,deck); if(mix) mixDeck=deck.slice(); else if(THEMES[arenaIdx]===th) arenaDeck=deck.slice(); };
+  const note=el.querySelector('.deNote')||null;
+  const say=h=>{ const n=el.querySelector('.deInfo'); if(n) n.innerHTML=h; };
+  function tapDeck(id){ if(pick){ if(isSpell(pick)!==isSpell(id)){ say(`<b>Wrong slot</b><br>${isSpell(pick)?'Spells':'Characters'} swap with ${isSpell(pick)?'spells':'characters'}.`); return; }
+      if(CARDS[pick].champ&&!CARDS[id].champ&&champCount(deck)){ say('<b>One Champion per deck</b><br>Swap it with your current Champion.'); return; }
+      deck=deck.map(k=>k===id?pick:k); pick=null; sfx('pop'); }
+    else deck=deck.filter(k=>k!==id);
+    save(); render(); }
+  function tapColl(id){ if(!unlocked(id)){ say(`<b>${CARDS[id].name}</b><br>🔒 Unlocks at 🏆 ${CARDS[id].unlock}`); return; }
+    const sp=isSpell(id), n=deck.filter(k=>isSpell(k)===sp).length;
+    if(pick===id){ pick=null; render(); return; }
+    if(n<(sp?DECK_SPELLS:DECK_CHARS)&&!(CARDS[id].champ&&champCount(deck))){ deck=deck.concat([id]); pick=null; save(); render(); sfx('pop'); return; }
+    pick=id; render(); say(`<b>${CARDS[id].name}</b><br>👆 Now tap a ${CARDS[id].champ&&champCount(deck)?'Champion':sp?'spell':'character'} in your deck to swap it out.`); }
+  function render(){
+    const chars=deck.filter(k=>!isSpell(k)), spells=deck.filter(isSpell), ok=deckValid(deck);
+    const avg=deck.length?(deck.reduce((t,k)=>t+CARDS[k].cost,0)/deck.length).toFixed(1):'–';
+    el.innerHTML=`<h2>${mix?'🃏 YOUR MIX DECK':th.emoji+' YOUR '+th.name.toUpperCase()+' DECK'} · ${chars.length}/6 + ${spells.length}/2 · ⌀ ${avg} 💵</h2><div class="grid deDeck"></div>
+      <div class="deInfo">${ok?'Tap a card below to swap it in. Hold any card to flip it.':'<b>Finish your deck</b><br>6 characters + 2 spells, one Champion at most.'}</div><div class="grid deColl"></div>`;
+    const dk=el.querySelector('.deDeck'), col=el.querySelector('.deColl');
+    for(let i=0;i<DECK_CHARS;i++){ const id=chars[i]; if(id){ requestPortrait(id); const t=cardTile(id,tapDeck,'in'); if(pick===id) t.classList.add('pick'); dk.appendChild(t); } else dk.appendChild(emptySlot('Character')); }
+    for(let i=0;i<DECK_SPELLS;i++){ const id=spells[i]; if(id) dk.appendChild(cardTile(id,tapDeck,'in spell')); else dk.appendChild(emptySlot('Spell')); }
+    for(const id of pool.filter(k=>!deck.includes(k)).sort((a,b)=>unlocked(b)-unlocked(a))){ requestPortrait(id); const t=cardTile(id,tapColl,'coll'); if(pick===id) t.classList.add('pick'); col.appendChild(t); }
+    INFO_EL=el.querySelector('.deInfo'); onPromoDone=render; onChange&&onChange(deck.slice(),ok); }
+  render(); return {get deck(){ return deck.slice(); }, get valid(){ return deckValid(deck); }, render};
+}
 function renderRoad(){
   const th=THEMES[arenaIdx], list=$('#roadList'); list.innerHTML='';
   $('#roadTro').textContent=`🏆 ${trophies}`; $('#roadArena').textContent=`${th.emoji} Showing ${th.name} unlocks`;
@@ -616,6 +658,7 @@ $('#randBtn').onclick=$('#randBtn2').onclick=()=>{ initAudio(); randomizeDeck();
 $('#roadBtn').onclick=()=>{ $('#menu').hidden=true; $('#road').hidden=false; renderRoad(); };
 $('#roadBack').onclick=()=>{ $('#road').hidden=true; $('#menu').hidden=false; renderMenu(); };
 function renderMenu(){
+  INFO_EL=null; onPromoDone=null;
   const ag=$('#arenas'); ag.innerHTML=''; THEMES.forEach((_,i)=>ag.appendChild(arenaTile(i)));
   const mg=$('#modes'); mg.innerHTML='';
   for(const k in MODES){ const m=MODES[k]; const b=document.createElement('button'); b.type='button'; b.className='mode'+(k===modeKey?' on':''); b.id='mode-'+k; b.innerHTML=`<span>${m.icon}</span>${m.name}`; b.onclick=()=>{ modeKey=k; store.set('mode',k); swapPick=null; renderMenu(); }; mg.appendChild(b); }
@@ -636,7 +679,7 @@ function renderMenu(){
     $('#collHead').textContent=`${th.emoji} ${th.name.toUpperCase()} CARDS · ${open}/${pool.length} unlocked`; }
   $('#deckPeek').textContent='Deck: '+chars.concat(spells).map(k=>CARDS[k].short||CARDS[k].name).join(' · ');
   const nx=UNLOCK_STEPS.find(v=>v>trophies); $('#nextUnlock').textContent=nx?`Next unlock at 🏆 ${nx} (${nx-trophies} to go)`:'Every card unlocked!';
-  $('#trophies').textContent=`🏆 ${trophies}`+(streak>1?`  🔥${streak}`:'');
+  $('#trophies').textContent=`🏆 ${trophies}`+(streak>1?`  🔥${streak}`:''); collLoad(); $('#wages').textContent=`💰 ${WAGES}`;
   const need=(DECK_CHARS-chars.length)+(DECK_SPELLS-spells.length);
   $('#playBtn').disabled = !ok;
   $('#playBtn').textContent = ok ? 'BATTLE' : need>0 ? `PICK ${need} MORE` : 'FIX DECK';

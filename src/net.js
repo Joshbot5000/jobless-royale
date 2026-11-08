@@ -17,7 +17,8 @@ const r2=v=>Math.round(v*100)/100;
 
 // ---------------------------------------------------------------- transport
 function netMakeCode(){ const C='BCDFGHJKLMNPRSTVZ', V='AEIOU'; let s=''; for(let i=0;i<4;i++) s+=(i%2?V:C)[Math.random()*(i%2?5:17)|0]; return s+(10+(Math.random()*90|0)); }
-function netStatus(html){ $('#netStatus').innerHTML=html; }
+function netStatus(html){ $('#netStatus').innerHTML=html; if(NET.tour&&typeof tourStatus==='function'&&!$('#tour').hidden) tourStatus(html.replace(/\n/g,'<br>')); }
+const netArena=()=>NET.tour?NET.tour.arena:arenaIdx, netMode=()=>NET.tour?NET.tour.mode:modeKey;
 function localConn(code,role){ // BroadcastChannel pair, same API subset as a PeerJS DataConnection
   const bc=new BroadcastChannel('jroyale-'+code), h={}; const c={open:true,on(ev,f){ (h[ev]=h[ev]||[]).push(f); return c; },send(d){ bc.postMessage({from:role,d}); },close(){ bc.postMessage({from:role,bye:1}); bc.close(); c.open=false; }};
   bc.onmessage=e=>{ const m=e.data; if(m.from===role) return; if(m.bye){ (h.close||[]).forEach(f=>f()); return; } (h.data||[]).forEach(f=>f(m.d)); };
@@ -125,11 +126,21 @@ const netRelayUp=()=>NET.mq?NET.mq.clients.filter(c=>c.up).length:0;
 function netHost(fixed){ // fixed: re-open the same room code (after an automatic update)
   netReset(); NET.role='host'; NET.code=fixed||netMakeCode(); store.set('netName',myName());
   $('#netCreate').disabled=true; $('#netJoin').disabled=true;
-  if(NET_LOCAL){ const bc=new BroadcastChannel('jroyale-'+NET.code+'-lobby'); bc.onmessage=()=>{ bc.close(); netSetupConn(localConn(NET.code,'host')); }; NET.lobbyBC=bc; netShowCode(); return; }
+  if(NET_LOCAL){ const bc=new BroadcastChannel('jroyale-'+NET.code+'-lobby'); bc.onmessage=()=>{ if(NET.conn) return; netSetupConn(localConn(NET.code,'host')); }; NET.lobbyBC=bc; netShowCode(); if(!NET.tour) netShowDeck(THEMES[arenaIdx],modeKey==='mix'); return; }
   const n=window.Trystero?netJoinRooms(NET.code,netHostConn):0; netRelayStart(NET.code,'h',netHostConn);
   if(!n&&!NET.mq.clients.length){ netStatus('⚠️ Online play could not load. Check your internet and reopen the app.'); netResetButtons(); return; }
-  netShowCode(); netWatch();
+  netShowCode(); netWatch(); if(!NET.tour) netShowDeck(THEMES[arenaIdx],modeKey==='mix');
 }
+// the deck you'll take into this room's arena (picked from your own unlocked cards), shown under the room status
+function netShowDeck(th,mix){ const el=$('#netDeck'); el.hidden=false;
+  NET.editor=deckEditor(el,th,mix,(deck,ok)=>{
+    if(NET.role==='guest'){ const b=$('#netReady'); if(NET.iReady){ NET.iReady=false; netSend({t:'unready'}); } b.hidden=false; b.disabled=!ok; b.textContent=ok?'✅ READY':'FINISH YOUR DECK'; }
+    if(NET.role==='host'){ $('#netStart').disabled=!ok; $('#netStart').textContent=ok?'START BATTLE':'FINISH YOUR DECK'; } }); }
+function netHideDeck(){ $('#netDeck').hidden=true; $('#netDeck').innerHTML=''; $('#netReady').hidden=true; NET.editor=null; NET.iReady=false; }
+$('#netReady').onclick=()=>{ if(NET.role!=='guest'||!NET.editor||!NET.editor.valid) return; const deck=NET.editor.deck;
+  NET.iReady=true; netSend({t:'deck',deck,lv:deckLevels(deck)}); const b=$('#netReady'); b.hidden=true;
+  netStatus(`✅ Ready! Waiting for ${NET.friend} to start…\n<span class="dim">Change a card below if you change your mind.</span>`); };
+$('#netEqual').onchange=e=>store.set('netEqual',e.target.checked);
 // a friend's phone connected over one of the networks: introduce ourselves; adopt it when it says hello
 function netHostConn(c){
   c.send({t:'iam',host:1,sid:NET_SID});
@@ -139,7 +150,7 @@ function netHostConn(c){
     NET.friendSid=d.sid; netSetupConn(c); netOnMessage(d); });
 }
 function netLink(){ const base=/^https?:/.test(location.protocol)&&!netBlocked()?location.origin+location.pathname:APP_URL; return base+'?room='+NET.code; }
-function netShowCode(){ NET.shown=true; netStatus(`Your room code<span class="bigcode">${NET.code}</span>Tap 📤 SEND INVITE: your friend just taps the link. (Or they tap PLAY A FRIEND, type the code, then JOIN.)\nKeep this screen open. Waiting for them…<span class="netdiag" id="netDiag"></span>`); $('#netShare').hidden=false; }
+function netShowCode(){ NET.shown=true; if(NET.tour){ netStatus(`⚔️ Waiting for <b>${NET.tour.foe}</b> to connect…<span class="netdiag" id="netDiag"></span>`); return; } netStatus(`Your room code<span class="bigcode">${NET.code}</span>Tap 📤 SEND INVITE: your friend just taps the link. (Or they tap PLAY A FRIEND, type the code, then JOIN.)\nKeep this screen open. Waiting for them…<span class="netdiag" id="netDiag"></span>`); $('#netShare').hidden=false; }
 // every second while waiting: show how many servers we reach, so "nothing happening" is never silent
 function netWatch(){ clearInterval(NET.watchT); NET.t0=Date.now();
   NET.watchT=setInterval(()=>{ if(!NET.role||NET.ready||(G&&G.online)){ clearInterval(NET.watchT); return; }
@@ -151,7 +162,8 @@ function netJoin(){
   netReset(); NET.role='guest'; NET.code=code; store.set('netName',myName());
   $('#netCreate').disabled=true; $('#netJoin').disabled=true; netStatus('Looking for room <b>'+code+'</b>…');
   const hello=()=>netSend({t:'hello',name:myName(),ver:NET_VER,build:BUILD,sid:NET_SID});
-  if(NET_LOCAL){ const c=localConn(code,'guest'); netSetupConn(c); const bc=new BroadcastChannel('jroyale-'+code+'-lobby'); bc.postMessage(1); bc.close(); setTimeout(hello,120); return; }
+  if(NET_LOCAL){ const c=localConn(code,'guest'); netSetupConn(c); const bc=new BroadcastChannel('jroyale-'+code+'-lobby'); bc.postMessage(1); setTimeout(hello,120);
+    NET.relayT=setInterval(()=>{ if(NET.role!=='guest'||NET.ready||NET.conn!==c){ clearInterval(NET.relayT); bc.close(); return; } bc.postMessage(1); setTimeout(hello,120); },1000); return; }   // keep knocking until the host answers
   // adopt the first connection that says it's the host; ignore the same host arriving over a second network
   netJoinRooms(code,c=>c.on('data',d=>{ if(!d||d.t!=='iam'||!d.host||NET.role!=='guest') return; if(NET.conn&&NET.conn.open!==false) return;
     NET.friendSid=d.sid; netSetupConn(c); netStatus('Connected! Joining…'); hello(); }));
@@ -166,18 +178,23 @@ function netJoin(){
 function netErr(e){ return e.type==='network'||e.type==='server-error'?'Could not reach the online service. Check your internet and try again.':e.type==='browser-incompatible'?'This browser does not support online play.':'Online error ('+(e.type||'unknown')+'). Try again.'; }
 function myName(){ const v=($('#netName').value||'').trim().slice(0,14); return v||'Player'; }
 function netResetButtons(){ $('#netCreate').disabled=false; $('#netJoin').disabled=false; $('#netStart').hidden=true; $('#netShare').hidden=true; }
-function netReset(){ clearInterval(NET.watchT); clearInterval(NET.relayT); try{ if(NET.conn) NET.conn.close(); }catch(e){} netLeaveRooms(); netRelayStop(); try{ if(NET.lobbyBC) NET.lobbyBC.close(); }catch(e){}
+function netReset(){ netHideDeck(); clearInterval(NET.watchT); clearInterval(NET.relayT); try{ if(NET.conn) NET.conn.close(); }catch(e){} netLeaveRooms(); netRelayStop(); try{ if(NET.lobbyBC) NET.lobbyBC.close(); }catch(e){}
   Object.assign(NET,{pending:null,shown:false,role:null,peer:null,conn:null,code:null,rec:false,ev:[],ready:false,friendDeck:null,guestWantsRematch:false,last:null,towerMap:null,lobbyBC:null}); NET.objs.clear(); NET.units.clear(); NET.projs.clear(); NET.orbs.clear(); NET.clouds=[]; }
 function netLost(why){
   if(!NET.role) return; const inMatch=!!(G&&G.online); netReset();
-  if(inMatch){ if(!G.over){ G.over=true; G.winner=-1; showBanner('DISCONNECTED',why,2.5,'#ff8080'); } setTimeout(()=>{ if(G&&G.online){ G=null; $('#end').hidden=true; $('#pause').hidden=true; openOnline(); netStatus('⚠️ '+why); } },2600); }
+  const tour=NET.tour; if(tour) NET.tour=tour;   // netReset keeps the tournament context
+  if(inMatch){ const wasOver=G.over; if(!G.over){ G.over=true; G.winner=-1; showBanner('DISCONNECTED',why,2.5,'#ff8080'); }
+    if(tour&&!wasOver) tourLeft();
+    setTimeout(()=>{ if(G&&G.online){ if(tour&&TOUR.role){ if($('#end').hidden||!wasOver) tourBackFromMatch(); return; } G=null; $('#end').hidden=true; $('#pause').hidden=true; openOnline(); netStatus('⚠️ '+why); } },2600); }
   else { netStatus('⚠️ '+why); netResetButtons(); }
 }
-function netLeave(){ netSend({t:'bye'}); netReset(); $('#end').hidden=true; $('#pause').hidden=true; G=null; showMenu(); }
+function netLeave(){ netSend({t:'bye'});
+  if(NET.tour&&TOUR.role){ if(G&&G.online&&!G.over&&TOUR.bus) TOUR.bus.send({t:'res',m:NET.tour.match,w:NET.tour.foeSid}); tourBackFromMatch(); return; }  // quitting a tournament match forfeits it
+  netReset(); $('#end').hidden=true; $('#pause').hidden=true; G=null; showMenu(); }
 
 // ---------------------------------------------------------------- lobby screen
 function openOnline(){
-  $('#menu').hidden=true; $('#online').hidden=false; $('#netName').value=store.get('netName','');
+  $('#menu').hidden=true; $('#online').hidden=false; $('#netName').value=store.get('netName',''); $('#netEqual').checked=!!store.get('netEqual',false);
   const th=THEMES[arenaIdx]; $('#netArena').textContent=`If you create the room: ${th.emoji} ${th.name} · ${MODES[modeKey].icon} ${MODES[modeKey].name}`;
   if(!NET.role){ netResetButtons(); netStatus(''); netCheckUpdate(); }
   if(netBlocked()&&!NET_LOCAL) netStatus(`⚠️ Online play doesn't work inside this page. Open the game app instead:<br><a href="${APP_URL}" target="_blank" rel="noopener" style="color:#ffd34d">${APP_URL.replace('https://','')}</a>`);
@@ -218,8 +235,10 @@ function netOnMessage(m){
   if(NET.role==='host'){
     if(m.t==='hello'){ NET.friend=(m.name||'Friend').slice(0,14);
       if(m.build!==BUILD){ netSend({t:'oldver',build:BUILD}); netStatus(`${NET.friend} has a different version of the game. Updating…\nKeep this screen open: they'll rejoin automatically.`); netCheckUpdate({host:NET.code}); return; }
-      netSend({t:'lobby',arena:THEMES[arenaIdx].id,mode:modeKey,name:myName()}); netStatus(`${NET.friend} joined! Picking their deck…`); }
-    else if(m.t==='deck'){ NET.friendDeck=(m.deck||[]).filter(k=>CARDS[k]); NET.ready=true; netStatus(`✅ ${NET.friend} is ready.\n${THEMES[arenaIdx].emoji} ${THEMES[arenaIdx].name} · ${MODES[modeKey].name}`); $('#netStart').hidden=false; $('#netShare').hidden=true; }
+      NET.eq=NET.tour?NET.tour.eq:!!$('#netEqual').checked; netSend({t:'lobby',arena:THEMES[netArena()].id,mode:netMode(),name:myName(),eq:NET.eq?1:0}); netStatus(`${NET.friend} joined! They're picking their deck…\n<span class="dim">Check yours below while you wait.</span>`); $('#netShare').hidden=true; }
+    else if(m.t==='deck'){ NET.friendDeck=(m.deck||[]).filter(k=>CARDS[k]); NET.friendLv=m.lv||null; NET.ready=true; const ta=THEMES[netArena()]; netStatus(`✅ ${NET.friend} is ready.\n${ta.emoji} ${ta.name} · ${MODES[netMode()].name}${NET.eq?' · ⚖️ Equal levels':''}`); $('#netStart').hidden=!!NET.tour; $('#netShare').hidden=true;
+      if(NET.tour) setTimeout(()=>{ if(NET.ready&&!(G&&G.online)) netStartMatch(); },1200); }
+    else if(m.t==='unready'){ NET.ready=false; $('#netStart').hidden=true; netStatus(`${NET.friend} is changing their deck…`); }
     else if(m.t==='play'&&G&&G.online&&!G.over){ if(G.hands[1][m.i]!==m.id) return; const r=playCard(1,m.i,MX(m.x),MY(m.y)); if(r==='champ') netSend({t:'msg',s:'Your Champion is already in battle!'}); else if(!r) netSend({t:'msg',s:'Not enough elixir!'}); }
     else if(m.t==='tap'&&G&&G.online&&!G.over){ const r=useTap(1); const msg={elixir:'Not enough elixir!',cd:'Ability recharging…',notarget:'No target in range!',stunned:'Your Champion is stunned!'}[r]; if(msg) netSend({t:'msg',s:msg}); }
     else if(m.t==='emote'&&G&&G.online){ G.emotes=G.emotes.filter(x=>x.team!==1); G.emotes.push({team:1,text:G.th.emotes[m.i]||'👋',t:0}); sfx('emote'); }
@@ -228,8 +247,10 @@ function netOnMessage(m){
   } else if(NET.role==='guest'){
     if(m.t==='lobby'){ NET.ready=true; NET.friend=(m.name||'Friend').slice(0,14); const th=THEMES.find(t=>t.id===m.arena);
       if(!th){ netStatus('⚠️ Your friend has a newer version of the game. Fully close and reopen the app, then try again.'); return; }
-      const deck=m.mode==='mix'?mixDeck:loadDeck(th);
-      netSend({t:'deck',deck}); netStatus(`✅ Joined ${NET.friend}’s room.\n${th.emoji} ${th.name} · ${MODES[m.mode].name}\nUsing your ${m.mode==='mix'?'Mix & Match':th.name} deck. Waiting for ${NET.friend} to start…`); }
+      NET.eq=!!m.eq; NET.iReady=false;
+      if(NET.tour){ const deck=loadDeck(th); NET.iReady=true; netSend({t:'deck',deck,lv:deckLevels(deck)}); netStatus(`✅ Connected to ${NET.friend}. Starting…`); return; }
+      netShowDeck(th,m.mode==='mix');
+      netStatus(`✅ Joined ${NET.friend}’s room: ${th.emoji} ${th.name} · ${MODES[m.mode].name}${NET.eq?' · ⚖️ Equal levels':''}\nPick your deck below, then tap READY.`); }
     else if(m.t==='oldver') { const code=NET.code; netStatus('Your friend has a different version. Updating…'); NET.role=null;
       netCheckUpdate({room:code}).then(up=>{ if(up===true) return; netReset(); netResetButtons(); $('#netCode').value=code;
         if(up==='stuck') netStatus('⚠️ Your game needs updating. Close the app fully (swipe it away), open it again, then tap JOIN.');
@@ -245,13 +266,14 @@ function netOnMessage(m){
 // ---------------------------------------------------------------- host: start, record, stream
 function netStartMatch(){
   if(NET.role!=='host'||!NET.ready) return;
-  const th=THEMES[arenaIdx], mix=modeKey==='mix';
-  const myDeck=mix?mixDeck:loadDeck(th); if(!deckValid(myDeck)){ netStatus('⚠️ Your deck is not complete. Go back and fix it first.'); return; }
-  NET.myDeck=myDeck; NET.mode=modeKey; NET.arena=arenaIdx; netBegin();
+  const th=THEMES[netArena()], mix=netMode()==='mix';
+  const myDeck=NET.editor&&!NET.tour?NET.editor.deck:mix?mixDeck:loadDeck(th); if(!deckValid(myDeck)){ netStatus('⚠️ Finish your deck below first.'); return; }
+  NET.myDeck=myDeck; NET.mode=netMode(); NET.arena=netArena(); netBegin();
 }
 function netBegin(){
-  $('#online').hidden=true; $('#menu').hidden=true; $('#end').hidden=true; menuPreview=null; infoCard=null; NET.guestWantsRematch=false;
-  newGame(NET.arena,1,NET.mode,NET.myDeck,NET.friendDeck); G.online=true; G.foe=NET.friend; G.aiTimer=1e9;
+  $('#online').hidden=true; $('#menu').hidden=true; $('#end').hidden=true; menuPreview=null; infoCard=null; NET.guestWantsRematch=false; if(typeof tourHide==='function') tourHide();
+  newGame(NET.arena,1,NET.mode,NET.myDeck,NET.friendDeck); G.online=true; G.foe=NET.friend; G.aiTimer=1e9; G.myDeck=NET.myDeck.slice();
+  G.lvl=NET.eq?null:[deckLevels(NET.myDeck),NET.friendLv||{_:1}]; if(NET.tour) G.tour=NET.tour;
   ensureZone(); hideGhost(); emoteOpen=false; fitCamera(W,H,TOPH,PANH);
   G.hands[0].concat(G.queues[0]).forEach(requestPortrait);
   last=performance.now(); Music.stop(); Music.kick();
@@ -305,7 +327,7 @@ function netGuestStart(m){
   NET.friend=(m.name||NET.friend).slice(0,14);
   $('#online').hidden=true; $('#menu').hidden=true; $('#end').hidden=true; $('#pause').hidden=true; menuPreview=null; infoCard=null;
   const deck=m.mode==='mix'?mixDeck:loadDeck(THEMES[ai]);
-  newGame(ai,1,m.mode,deck,deck); G.online=true; G.puppet=true; G.foe=NET.friend; G.aiTimer=1e9; G.banner=null;
+  newGame(ai,1,m.mode,deck,deck); G.online=true; G.puppet=true; G.foe=NET.friend; G.aiTimer=1e9; G.banner=null; G.myDeck=deck.slice(); if(NET.tour) G.tour=NET.tour;
   NET.units.clear(); NET.projs.clear(); NET.objs.forEach(o=>dynRoot.remove(o.obj)); NET.objs.clear(); NET.orbs.clear(); NET.clouds=[]; NET.last=null;
   // host tower i  ->  local tower with the mirrored position
   NET.towerMap=G.towers.map(()=>0); const hostOrder=[[1,3.5,6.5],[1,14.5,6.5],[1,9,3],[0,3.5,25.5],[0,14.5,25.5],[0,9,29]];
@@ -400,7 +422,7 @@ function netGuestTick(dt){
   for(const f of G.feed) f.t+=dt; G.feed=G.feed.filter(f=>f.t<5);
   G.t+=dt;
   if(G.over){ G.overT+=dt; if(G.overT>2.4&&$('#end').hidden) showEnd(); }
-  else { G.time=Math.max(0,G.time-dt); G.elixir[0]=Math.min(10,G.elixir[0]+dt/2.8*NET.elixRate); if(G.tapCd[0]>0) G.tapCd[0]-=dt; }
+  else { G.time=Math.max(0,G.time-dt); G.elixir[0]=Math.min(10,G.elixir[0]+dt/ELIXIR_SECS*NET.elixRate); if(G.tapCd[0]>0) G.tapCd[0]-=dt; }
   const k=Math.min(1,dt*14);
   for(const v of G.units){ if(v.tx!==undefined){ const dx=v.tx-v.x, dy=v.ty-v.y; if(dx*dx+dy*dy>9){ v.x=v.tx; v.y=v.ty; } else { v.x+=dx*k; v.y+=dy*k; } }
     if(v.moving) v.walk+=dt*9*Math.min(1.4,v.speed||1); if(v.atk>0){ v.atk+=dt/0.38; if(v.atk>=1) v.atk=0; } if(v.hitT>0) v.hitT-=dt; if(v.landT>0) v.landT-=dt; if(v.deploy>0) v.deploy=Math.max(0,v.deploy-dt);

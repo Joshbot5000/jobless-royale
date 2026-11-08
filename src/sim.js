@@ -83,8 +83,20 @@ function prewarmMatch(){
 }
 function shadowFor(r){ const m=new THREE.Mesh(geo('plane'),shadowMat); m.rotation.x=-PI/2; m.scale.set(r*2,r*2,1); m.renderOrder=1; dynRoot.add(m); return m; }
 
+// ---------------------------------------------------------------- card levels (Career Ladder)
+// G.lvl=[{cardId:level,_:default},…] per team, or null (everything level 1, as in the balance tools).
+// Each level adds LV_STEP to health, damage, healing and shields; a team's cards are scaled once per match.
+const LV_STEP=0.08, LV_KEYS=new Set(['hp','dmg','towerDmg','heal','poison','dps','amt','shield','shieldAllies','shield0','regen','healSplash','healOnKill']);
+const lvMul=l=>1+LV_STEP*((l||1)-1);
+function scaleCard(c,m){ const cl=(o,parent)=>{ if(Array.isArray(o)) return o.map(v=>v&&typeof v==='object'?cl(v,parent):v); const r={};
+    for(const k in o){ const v=o[k]; if(k==='model'||k==='gen'){ r[k]=v; continue; }
+      r[k]=typeof v==='number'&&LV_KEYS.has(k)?Math.round(v*m):v&&typeof v==='object'?cl(v,k):v; } return r; };
+  return cl(c,''); }
+function teamLv(team,id){ const L=G&&G.lvl&&G.lvl[team]; return L?(L[id]||L._||1):1; }
+function cardFor(team,id){ const c=CARDS[id], l=teamLv(team,id); if(!c||l<=1) return c;
+  const cache=G.lvCache||(G.lvCache=[{},{}]), t=team===1?1:0; return cache[t][id]||(cache[t][id]=scaleCard(c,lvMul(l))); }
 function spawnUnit(id,team,x,y,deploy=1){
-  const c=CARDS[id];
+  const c=cardFor(team,id);
   const u={uid:UID++,card:id,c,team,x,y,hp:c.hp,maxHp:c.hp,dmg:c.dmg,hs:c.hs,range:c.range||0,speed:c.speed,sight:c.sight,targets:c.targets,flying:!!c.flying,
     radius:c.radius,baseR:c.radius,mass:c.mass,building:c.type==='building',life:c.life||0,armor:c.armor||0,taunt:c.taunt||0,
     cd:0.3,target:null,deploy,deployMax:Math.max(0.01,deploy),walk:Math.random()*6,atk:0,yaw:team?0:PI,yawVis:team?0:PI,kvx:0,kvy:0,
@@ -318,7 +330,7 @@ function kingLaunch(team,x,y,quiet){
   return {x:kt.x,y:kt.y,h:4.4,d,flight:0.5+d*0.05};
 }
 function castSpell(id,team,x,y){
-  const c=CARDS[id], s=c.sp, tc=TEAMC[team];
+  const c=cardFor(team,id), s=c.sp, tc=TEAMC[team];
   callout({x,y,h:2.5},c.name.toUpperCase()+(c.name.endsWith('!')?'':'!'),team===0?'#bfe0ff':'#ffc2c0',true);
   switch(s.k){
     case 'damage': case 'drain': case 'stun': case 'freeze':
@@ -402,6 +414,7 @@ function update(dt){
   if(G.shake>0) G.shake=Math.max(0,G.shake-dt);
   if(G.over){ G.overT+=dt; if(G.overT>2.4 && $('#end').hidden) showEnd(); updateEntities(dt*0.25); return; }
   G.t+=dt; G.time-=dt;
+  if(G.mission){ missionTick(dt); if(G.over) return; }
   if(G.time<=0){
     if(!G.overtime&&!G.mode.sudden&&G.crowns[0]===G.crowns[1]){ G.overtime=true; G.time=60; showBanner('OVERTIME!','Next crown wins',1.8,'#ffb02e'); }
     else { G.time=0; endGame(decideWinner()); return; }
@@ -410,7 +423,9 @@ function update(dt){
   const rate=Math.max(base,dbl?2:1)*(G.overtime&&base<3?1.5:1);
   if(dbl&&!G.dbl&&base<2){ G.dbl=true; if(!G.overtime) showBanner('2x BROKE BUCKS!','',1.5,'#85bb65'); }
   G.rate=rate;
-  for(let t=0;t<2;t++){ const mul=t===1?G.diff.elixirMul:(AUTOTEST?G.diff.elixirMul:1); G.elixir[t]=Math.min(10,G.elixir[t]+dt/ELIXIR_SECS*rate*mul); }
+  for(let t=0;t<2;t++){ const mul=t===1?G.diff.elixirMul:(AUTOTEST?G.diff.elixirMul:1); let add=dt/ELIXIR_SECS*rate*mul;
+    if(t===0&&G.mission&&G.mission.bank!=null){ add=Math.max(0,Math.min(add,G.mission.bank,10-G.elixir[0])); G.mission.bank-=add; }   // Academy "Tight Budget": a fixed allowance
+    G.elixir[t]=Math.min(10,G.elixir[t]+add); }
   if(G.mode.chaos){ G.chaosT-=dt; if(G.chaosT<=0){ G.chaosT=20; const ev=CHAOS_EVENTS[Math.random()*CHAOS_EVENTS.length|0]; ev.run(); showBanner(ev.icon+' '+ev.name,'Chaos event!',1.6,'#ffd34d'); feedLog(`${ev.icon} Chaos: ${ev.name}`,-1); sfx('power'); } }
   G.aiTimer-=dt; if(G.aiTimer<=0&&!G.online){ G.aiTimer=G.diff.think*rnd(0.7,1.3); aiAct(1); }
   if(AUTOTEST){ G.ai0Timer-=dt; if(G.ai0Timer<=0){ G.ai0Timer=G.diff.think*rnd(0.7,1.3); aiAct(0); } }
@@ -825,7 +840,9 @@ function decideWinner(){
   const a=low(0), b=low(1); if(Math.abs(a-b)<1) return -1; return a>b?0:1;
 }
 function endGame(w){
-  if(G.over) return; G.over=true; G.winner=w; G.sel=-1; G.drag=null; hideGhost();
+  if(G.over) return;
+  if(w===-1&&G.tour){ const hp=tm=>G.towers.filter(t=>t.team===tm&&!t.dead).reduce((a,t)=>a+t.hp,0); const a=hp(0), b=hp(1); w=Math.abs(a-b)>=1?(a>b?0:1):(Math.random()<0.5?0:1); }  // knockouts need a winner
+  G.over=true; G.winner=w; G.sel=-1; G.drag=null; hideGhost();
   if(w===-1) showBanner('DRAW','',2.2,'#ffe14d'); else if(G.time<=0) showBanner(w===0?'YOU WIN!':'YOU LOSE','',2.2,w===0?'#ffe14d':'#ff8080');
   aiEmote(w===1?'gloat':'sad',true);
 }
