@@ -16,7 +16,7 @@ const MODES={
   classic:{name:'Classic',icon:'⚔️',time:180,desc:'3 minutes. Elixir doubles in the last minute. Overtime if crowns are tied.'},
   rush:{name:'Rush Hour',icon:'⚡',time:150,elixir:3,desc:'Triple Broke Bucks from the first second. Pure chaos, constant pushes.'},
   sudden:{name:'Sudden Death',icon:'💀',time:120,elixir:2,sudden:true,desc:'Double elixir. The first tower to fall ends the match.'},
-  rage:{name:'Rage',icon:'💢',time:180,elixir:2,speedMul:3,desc:'Everything moves three times as fast and your Broke Bucks pay out at double speed. Total carnage.'},
+  rage:{name:'Rage',icon:'💢',time:180,elixir:2,speedMul:2,desc:'Everything moves twice as fast and your Broke Bucks pay out at double speed. Total carnage.'},
   mix:{name:'Mix & Match',icon:'🃏',time:180,mix:true,desc:'Build a 6 + 2 deck from every card you have unlocked in any arena. The AI brings a random mix.'},
 };
 const CHAOS_EVENTS=[
@@ -63,9 +63,23 @@ function newGame(themeIdx,diffIdx,modeKey='classic',deck0=null,deck1=null){
   G.towers.push(mkTower(1,'princess',3.5,6.5),mkTower(1,'princess',14.5,6.5),mkTower(1,'king',9,3));
   G.towers.push(mkTower(0,'princess',3.5,25.5),mkTower(0,'princess',14.5,25.5),mkTower(0,'king',9,29));
   for(const t of G.towers){ t.obj=buildTower(th,t.kind,t.team); mergeRigid(t.rig0=t.obj.userData.rig.main); t.obj.position.set(t.x,0,t.y); t.rig=t.obj.userData.rig; dynRoot.add(t.obj); t.shadow=shadowFor(t.radius*1.5); t.shadow.position.set(t.x+0.25,0.03,t.y+0.3); }
+  G.needWarm=true;
   // pre-build both decks' models one per frame (ui.js frame loop) so the first deploy of a card never stutters
   G.warm=[]; decks.forEach((d,t)=>d.forEach(k=>{ const c=CARDS[k]; if(c&&c.type!=='spell'&&c.model) G.warm.push([k,t]); }));
   showBanner('FIGHT!',th.towerTxt||'',2.2);
+}
+function prewarmMatch(){
+  if(typeof renderer==='undefined'||!renderer||!G) return; const grp=G0(); let n=0;
+  const add=o=>{ if(!o) return; o.position.set(9+((n%6)-2.5)*0.5,0.2,16+(Math.floor(n/6)%6-2.5)*0.5); o.scale.multiplyScalar(0.25); grp.add(o); n++; };
+  const ids=new Set(G.hands.flat().concat(G.queues.flat()));
+  for(const t of [0,1]){ const tc=TEAMC[t]; try{ add(buildProj(G.th.towerProj,tc)); add(buildProj('cannon',tc)); }catch(e){}
+    for(const k of ids){ const c=CARDS[k]; if(!c) continue;
+      try{ if(c.atk&&c.atk.proj) add(buildProj(c.atk.proj,tc)); if(c.sp&&c.sp.fall) add(buildFall(c.sp.fall,tc)); if(c.sp&&c.sp.model) add(buildFall(c.sp.model,tc));
+        if(c.model&&c.type!=='spell') add(getModel(c.model,t));
+        for(const sub of [c.death&&c.death.spawn&&c.death.spawn[0],c.spawner&&c.spawner.card,c.sp&&c.sp.card]) if(sub&&CARDS[sub]&&CARDS[sub].model) add(getModel(CARDS[sub].model,t)); }catch(e){} } }
+  scene.add(grp);
+  try{ renderer.compile(scene,camera); renderer.render(scene,camera); }catch(e){}   // the render also warms the shadow-map variants
+  scene.remove(grp);
 }
 function shadowFor(r){ const m=new THREE.Mesh(geo('plane'),shadowMat); m.rotation.x=-PI/2; m.scale.set(r*2,r*2,1); m.renderOrder=1; dynRoot.add(m); return m; }
 
@@ -102,9 +116,9 @@ function moveGoal(u,tx,ty){
   if(u.flying||u.c.swim) return [tx,ty];
   const us=u.y>16, ts=ty>16, inRiver=u.y>14.9&&u.y<17.1;
   if(us!==ts||inRiver){
-    const bx=Math.abs(u.x-BRIDGES[0])<Math.abs(u.x-BRIDGES[1])?BRIDGES[0]:BRIDGES[1];
-    if(Math.abs(u.x-bx)>0.45) return [bx,us?17.7:14.3];
-    return [bx+(tx>bx?0.2:-0.2),ts?17.9:14.1];
+    const bx=Math.abs(u.x-BRIDGES[0])<Math.abs(u.x-BRIDGES[1])?BRIDGES[0]:BRIDGES[1], lane=bx+(u.team===0?-0.42:0.42);
+    if(Math.abs(u.x-lane)>0.5&&!(u.y>14.9&&u.y<17.1)) return [lane,us?17.7:14.3];
+    return [lane+(tx>bx?0.12:-0.12),ts?17.9:14.1];
   }
   return [tx,ty];
 }
@@ -581,7 +595,11 @@ function updateUnit(u,dt){
   } else if(u.speed>0){
     u.inRange=false;
     const [gx,gy]=moveGoal(u,t.x,t.y);
-    const dx=gx-u.x, dy=gy-u.y, L=Math.hypot(dx,dy)||1;
+    let dx=gx-u.x, dy=gy-u.y, L=Math.hypot(dx,dy)||1;
+    if(!u.flying&&!(u.y>14.4&&u.y<17.6)){ const fx=dx/L, fy=dy/L; let blk=null, bd=1e9;
+      for(const v of G.units){ if(v===u||v.dead||v.flying||v.leap||v===t||v.team!==u.team||(v.moving&&v.speed>=u.speed*0.85)) continue; const ox=v.x-u.x, oy=v.y-u.y, ahead=ox*fx+oy*fy; if(ahead<=0.01||ahead>u.radius+v.radius+0.5) continue;
+        const side=ox*fy-oy*fx; if(Math.abs(side)>(u.radius+v.radius)*0.95) continue; if(ahead<bd){ bd=ahead; blk=side; } }
+      if(blk!==null){ const sgn=blk>0.03?-1:blk<-0.03?1:(u.uid%2?1:-1), k=0.6; const nx=fx+fy*sgn*k, ny=fy-fx*sgn*k, nl=Math.hypot(nx,ny)||1; dx=nx/nl*L; dy=ny/nl*L; } }
     const step=Math.min(L,u.speed*spd*dt*(u.drunkT>0?0.75:1));
     u.x+=dx/L*step; u.y+=dy/L*step; u.walk+=dt*9*spd*Math.min(1.4,u.speed); u.moving=true;
     if((u.drunkT>0||u.c.tipsy)&&!u.flying){ const wb=Math.sin(G.t*3.2+u.uid*1.7)*u.speed*dt*(u.drunkT>0?1.1:0.6); u.x+=dy/L*wb; u.y-=dx/L*wb; }
@@ -787,7 +805,8 @@ function separate(){
     const a=us[i]; if(a.dead) continue; const af=a.flying||!!a.leap;
     for(let j=i+1;j<us.length;j++){
       const b=us[j]; if(b.dead||af!==(b.flying||!!b.leap)) continue;
-      const dx=b.x-a.x, dy=b.y-a.y, min=(a.radius+b.radius)*0.9;
+      const onBr=a.y>14.6&&a.y<17.4&&b.y>14.6&&b.y<17.4, squeeze=onBr&&a.team!==b.team&&a.target!==b&&b.target!==a;
+      const dx=b.x-a.x, dy=b.y-a.y, min=(a.radius+b.radius)*(squeeze?0.45:0.9);
       if(Math.abs(dx)>min||Math.abs(dy)>min) continue;
       let d=Math.hypot(dx,dy); if(d>=min) continue;
       let nx,ny; if(d<0.001){ const r=Math.random()*TAU; nx=Math.cos(r); ny=Math.sin(r); d=0; } else { nx=dx/d; ny=dy/d; }
@@ -796,7 +815,7 @@ function separate(){
     }
     if(!af) for(const t of G.towers){ if(t.dead) continue; const dx=a.x-t.x, dy=a.y-t.y, m=t.radius+a.radius*0.8, d=Math.hypot(dx,dy); if(d<m&&d>0.001){ a.x=t.x+dx/d*m; a.y=t.y+dy/d*m; } }
     if(!af&&!a.c.swim&&a.y>15&&a.y<17){ const bx=Math.abs(a.x-BRIDGES[0])<Math.abs(a.x-BRIDGES[1])?BRIDGES[0]:BRIDGES[1];
-      if(Math.abs(a.x-bx)>0.9){ if(a.deploy>0||Math.abs(a.x-bx)>1.3) a.y=a.y<16?15:17; else a.x=bx+Math.sign(a.x-bx)*0.9; } }
+      if(Math.abs(a.x-bx)>1.0){ if(a.deploy>0||Math.abs(a.x-bx)>1.4) a.y=a.y<16?15:17; else a.x=bx+Math.sign(a.x-bx)*1.0; } }
     a.x=clamp(a.x,0.35,AW-0.35); a.y=clamp(a.y,0.35,AH-0.35);
   }
 }

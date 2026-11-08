@@ -654,6 +654,7 @@ function frame(now){
   try{
     { const done=pumpPortraits(G?2:3); if(done.length&&!G&&repaintTiles(done)&&!$('#menu').hidden) menuDirty=0.25; }
     if(menuDirty>0){ menuDirty-=dt; if(menuDirty<=0) renderMenu(); }
+    if(G&&G.needWarm){ G.needWarm=false; prewarmMatch(); }
     if(G&&G.warm&&G.warm.length){ const [k,t]=G.warm.shift(); try{ getModel(CARDS[k].model,t); }catch(e){} }
     if(G){
       if(!G.paused){ const steps=AUTOTEST?3:1;
