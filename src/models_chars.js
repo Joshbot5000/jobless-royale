@@ -704,18 +704,30 @@ const SHARED_GEO=()=>{ const s=new Set(Object.values(GEO)); if(KIT) for(const g 
 function freeModel(root,shared=SHARED_GEO()){ const seen=new Set(); root.traverse(o=>{ if(o.isSkinnedMesh&&o.skeleton) o.skeleton.dispose(); if(o.isMesh&&!shared.has(o.geometry)&&!seen.has(o.geometry)){ seen.add(o.geometry); o.geometry.dispose(); } }); }
 // called at the start of each match: drop models not used this match or last, so memory stays flat however many arenas you visit
 function pruneModels(){ MODEL_GEN++; const sh=SHARED_GEO(); for(const k in MODEL_CACHE){ const t=MODEL_CACHE[k]; if((t.userData.used||0)<MODEL_GEN-2){ freeModel(t,sh); TPL_RIG.delete(t); TPL_SKIN.delete(t); delete MODEL_CACHE[k]; } } }
+// Merge a node's rigid child meshes into as few draw calls as possible. Meshes whose materials differ only in colour
+// are merged too: the colour moves into the vertex colours (multiplied with the baked AO) and they share one white copy
+// of the material. On a phone the number of draw calls is what costs the most, and a character used to be ~40 of them.
+const WHITE_MATS=new Map();
+function matSig(m){ if(m.type!=='MeshStandardMaterial'||m.transparent) return m.uuid;
+  const em=m.emissiveIntensity>0?m.emissive.getHexString()+m.emissiveIntensity:'';
+  return ['S',m.roughness,m.metalness,m.map?m.map.uuid:'',m.bumpMap?m.bumpMap.uuid:'',m.bumpScale,em,m.flatShading?1:0,m.side,m.envMapIntensity,m.userData.jrSkin?1:0,m.userData.jrRim||''].join('|'); }
+function whiteMat(m,sig){ let w=WHITE_MATS.get(sig); if(!w){ w=m.clone(); w.color.set(0xffffff); w.vertexColors=true; w.onBeforeCompile=m.onBeforeCompile; w.customProgramCacheKey=m.customProgramCacheKey; w.userData={...m.userData}; WHITE_MATS.set(sig,w); } return w; }
 function mergeRigid(node){
   for(const ch of node.children.slice()) if(ch.children.length) mergeRigid(ch);
   const groups=new Map();
-  for(const ch of node.children){ if(!ch.isMesh||ch.isSkinnedMesh||ch.userData.kit||ch.children.length||ch.name.startsWith('rig:')) continue; const k=ch.material.uuid+(ch.userData.noOutline?'n':''); if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(ch); }
-  for(const list of groups.values()){
+  for(const ch of node.children){ if(!ch.isMesh||ch.isSkinnedMesh||ch.userData.kit||ch.children.length||ch.name.startsWith('rig:')) continue; const k=matSig(ch.material)+'#'+(ch.userData.noOutline?'n':'')+ch.renderOrder; if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(ch); }
+  for(const [sig,list] of groups){
     if(list.length<2) continue;
-    const hasUV=list.every(m=>m.geometry.attributes.uv), hasCol=list.every(m=>m.geometry.attributes.color);
+    const oneMat=list.every(m=>m.material===list[0].material);
+    const hasUV=list.every(m=>m.geometry.attributes.uv), hasCol=!oneMat||list.every(m=>m.geometry.attributes.color);
     const pos=[], nor=[], uvs=[], cols=[];
-    for(const m of list){ m.updateMatrix(); let gg=m.geometry.index?m.geometry.toNonIndexed():m.geometry.clone(); gg.applyMatrix4(m.matrix); pos.push(gg.attributes.position.array); nor.push(gg.attributes.normal.array); if(hasUV) uvs.push(gg.attributes.uv.array); if(hasCol) cols.push(gg.attributes.color.array); gg.dispose(); }
+    for(const m of list){ m.updateMatrix(); let gg=m.geometry.index?m.geometry.toNonIndexed():m.geometry.clone(); gg.applyMatrix4(m.matrix); pos.push(gg.attributes.position.array); nor.push(gg.attributes.normal.array); if(hasUV) uvs.push(gg.attributes.uv.array);
+      if(hasCol){ const n=gg.attributes.position.count, src=gg.attributes.color&&gg.attributes.color.array, c=new Float32Array(n*3), mc=oneMat?{r:1,g:1,b:1}:m.material.color;
+        for(let i=0;i<n;i++){ const a=src?src[i*3]:1, b=src?src[i*3+1]:1, d=src?src[i*3+2]:1; c[i*3]=a*mc.r; c[i*3+1]=b*mc.g; c[i*3+2]=d*mc.b; } cols.push(c); }
+      gg.dispose(); }
     const cat=(arrs)=>{ const n=arrs.reduce((s,a)=>s+a.length,0), out=new Float32Array(n); let o=0; for(const a of arrs){ out.set(a,o); o+=a.length; } return out; };
     const mg=new THREE.BufferGeometry(); mg.setAttribute('position',new THREE.BufferAttribute(cat(pos),3)); mg.setAttribute('normal',new THREE.BufferAttribute(cat(nor),3)); if(hasUV) mg.setAttribute('uv',new THREE.BufferAttribute(cat(uvs),2)); if(hasCol) mg.setAttribute('color',new THREE.BufferAttribute(cat(cols),3)); mg.computeBoundingSphere();
-    const mesh=new THREE.Mesh(mg,list[0].material); mesh.renderOrder=list[0].renderOrder; mesh.userData.noOutline=!!list[0].userData.noOutline; mesh.castShadow=list.some(m=>m.castShadow); mesh.receiveShadow=list.some(m=>m.receiveShadow); node.add(mesh);
+    const mesh=new THREE.Mesh(mg,oneMat?list[0].material:whiteMat(list[0].material,sig)); mesh.renderOrder=list[0].renderOrder; mesh.userData.noOutline=!!list[0].userData.noOutline; mesh.castShadow=list.some(m=>m.castShadow); mesh.receiveShadow=list.some(m=>m.receiveShadow); node.add(mesh);
     for(const m of list) node.remove(m);
   }
 }
@@ -724,11 +736,11 @@ function getModel(m,team,opts={}){
   const ink = opts.ink || TEAMC[team].ink;
   const key=JSON.stringify(m)+'|'+team+'|'+(QUALITY.outlines?ink:'')+'|'+QUALITY.shadows;
   let tpl=MODEL_CACHE[key];
-  if(!tpl){ const cell0=SDF_CELL; if(opts.temp) SDF_CELL=0.012; try{ tpl=buildModel(m,team); } finally{ SDF_CELL=cell0; } tagRig(tpl); TPL_RIG.set(tpl,tpl.userData.rig); tpl.userData={};
+  if(!tpl){ const cell0=SDF_CELL; if(opts.temp){ SDF_CELL=0.012; GEO_LO=false; } try{ tpl=buildModel(m,team); } finally{ SDF_CELL=cell0; GEO_LO=true; } tagRig(tpl); TPL_RIG.set(tpl,tpl.userData.rig); tpl.userData={};
     // nested models (riders, patients, statues) keep their own rig object full of three.js references; Object3D.clone() JSON-copies
     // userData, which made every spawn of those cards take up to a second. Their rigs are never used on clones, so drop them.
     tpl.traverse(o=>{ if(o!==tpl&&o.userData&&o.userData.rig) delete o.userData.rig; });
-    bakeAO(tpl); mergeRigid(tpl); if(QUALITY.outlines) addOutlines(tpl,ink); setShadows(tpl,QUALITY.shadows,false);
+    bakeAO(tpl); mergeRigid(tpl); if(QUALITY.outlines) addOutlines(tpl,ink,opts.temp?0.045:0.07);   // battle: no outlines on tiny parts setShadows(tpl,QUALITY.shadows,false);
     if(opts.temp){ const R=TPL_RIG.get(tpl); TPL_RIG.delete(tpl); tpl.userData={rig:R,temp:true}; return tpl; }   // one-off (card portraits): not cached, caller frees it
     MODEL_CACHE[key]=tpl; TPL_SKIN.set(tpl,kitSkinMap(tpl)); }
   tpl.userData.used=MODEL_GEN;

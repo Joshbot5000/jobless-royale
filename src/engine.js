@@ -10,11 +10,12 @@ const raycaster = new THREE.Raycaster(), groundPlane = new THREE.Plane(new THREE
 const _v3 = new THREE.Vector3();
 
 function init3D(canvas){
-  renderer = new THREE.WebGLRenderer({canvas, antialias:true, powerPreference:'high-performance'});
+  // phones with sharp (2x+) screens skip multisampling: at that pixel density it costs a lot of GPU for little visible gain
+  renderer = new THREE.WebGLRenderer({canvas, antialias:(window.devicePixelRatio||1)<2, powerPreference:'high-performance'});
   // if the phone reclaims the GPU (low memory, app switching), reload cleanly instead of freezing on a black screen; progress is saved
   canvas.addEventListener('webglcontextlost',e=>{ e.preventDefault(); },false); canvas.addEventListener('webglcontextrestored',()=>location.reload(),false);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
-  renderer.shadowMap.enabled = QUALITY.shadows; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.enabled = QUALITY.shadows; renderer.shadowMap.type = THREE.PCFShadowMap; renderer.shadowMap.autoUpdate=false;   // shadows re-render every other frame (ui.js)
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(36, 1, 0.5, 500);
   hemiLight = new THREE.HemisphereLight(0xffffff, 0x666666, 0.62); scene.add(hemiLight);
@@ -22,7 +23,7 @@ function init3D(canvas){
   dirLight.target.position.set(9,0,16); scene.add(dirLight.target);
   dirLight.castShadow = QUALITY.shadows;
   const sc0=dirLight.shadow.camera; sc0.left=-20; sc0.right=20; sc0.top=24; sc0.bottom=-24; sc0.near=5; sc0.far=90;
-  dirLight.shadow.mapSize.set(2048,2048); dirLight.shadow.bias=-0.0006; dirLight.shadow.normalBias=0.035;
+  dirLight.shadow.mapSize.set(1536,1536); dirLight.shadow.bias=-0.0006; dirLight.shadow.normalBias=0.035;
   const rim = new THREE.DirectionalLight(0xc8dcff, 0.45); rim.position.set(14,12,-22); scene.add(rim);
   ambLight = new THREE.AmbientLight(0xffffff, 0.16); scene.add(ambLight);
   dynRoot = new THREE.Group(); scene.add(dynRoot);

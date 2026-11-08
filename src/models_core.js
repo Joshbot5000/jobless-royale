@@ -29,7 +29,7 @@ function capsulePts(n=8){ const pts=[]; for(let i=0;i<=n;i++){ const a=-PI/2+i/n
 function smoothNormals(g){ g.computeVertexNormals(); const p=g.attributes.position, n=g.attributes.normal, map=new Map();
   for(let i=0;i<p.count;i++){ const k=Math.round(p.getX(i)*1e4)+','+Math.round(p.getY(i)*1e4)+','+Math.round(p.getZ(i)*1e4); let a=map.get(k); if(!a){ a=[0,0,0,[]]; map.set(k,a); } a[0]+=n.getX(i); a[1]+=n.getY(i); a[2]+=n.getZ(i); a[3].push(i); }
   for(const a of map.values()){ const l=Math.hypot(a[0],a[1],a[2])||1; for(const i of a[3]) n.setXYZ(i,a[0]/l,a[1]/l,a[2]/l); } n.needsUpdate=true; return g; }
-function faceGeo(){ const g=new THREE.SphereGeometry(1,30,24), p=g.attributes.position;
+function faceGeo(){ const g=new THREE.SphereGeometry(1,segQ(30),segQ(24)), p=g.attributes.position;
   for(let i=0;i<p.count;i++){ let x=p.getX(i), y=p.getY(i), z=p.getZ(i);
     const low=Math.max(0,-y), front=Math.max(0,z);
     x*=1-0.2*Math.pow(low,1.6);                                          // narrower toward the chin
@@ -40,7 +40,7 @@ function faceGeo(){ const g=new THREE.SphereGeometry(1,30,24), p=g.attributes.po
     if(y>0.15) z*=1-0.04*front*(y-0.15);                                 // slightly flatter brow
     p.setXYZ(i,x,y,z); }
   return smoothNormals(g); }
-function shoeGeo(){ const g=new THREE.SphereGeometry(1,16,10), p=g.attributes.position;   // rounded toe with toe spring, flat sole, heel
+function shoeGeo(){ const g=new THREE.SphereGeometry(1,segQ(16),segQ(10,4)), p=g.attributes.position;   // rounded toe with toe spring, flat sole, heel
   for(let i=0;i<p.count;i++){ let x=p.getX(i), y=p.getY(i), z=p.getZ(i); if(y<-0.35) y=-0.35-(y+0.35)*0.15; if(z>0){ y-=0.18*z*z*(y>0?1:0); x*=1-0.08*z; if(z>0.55) y+=0.22*(z-0.55)*(1-y)*0.5; } else x*=1-0.12*(-z); p.setXYZ(i,x,y,z); }
   return smoothNormals(g); }
 // torso: hips, narrow waist, full chest, square rounded shoulders; flatter back, chest forward
@@ -55,62 +55,64 @@ function skirtGeo(){ const g=lathe([[0.0001,0.5],[0.6,0.5],[0.68,0.32],[0.8,0.05
   for(let i=0;i<p.count;i++){ const x=p.getX(i), y=p.getY(i), z=p.getZ(i), r=Math.hypot(x,z); if(r<1e-3) continue; const a=Math.atan2(z,x), t=Math.min(1,Math.max(0,(0.45-y)/0.95));
     const f=1+t*t*(0.075*Math.sin(a*9)+0.035*Math.sin(a*17+1.3))+t*0.04; p.setXYZ(i,x*f,y-(t>0.95?0.02*Math.sin(a*9):0),z*f); }
   return smoothNormals(g); }
-function noseGeo(){ const g=new THREE.SphereGeometry(1,14,12), p=g.attributes.position;
+function noseGeo(){ const g=new THREE.SphereGeometry(1,segQ(14),segQ(12,4)), p=g.attributes.position;
   for(let i=0;i<p.count;i++){ let x=p.getX(i), y=p.getY(i), z=p.getZ(i);
     if(y>-0.25){ const k=(y+0.25)/1.25; x*=0.55-0.25*k; z=z*(0.7-0.3*k)-0.28*k; }               // narrow bridge running back between the eyes
     else { x*=1.0+0.15*(-y-0.25); }                                                                  // rounded tip with nostril wings
     p.setXYZ(i,x,y,z); }
   return smoothNormals(g); }
+// Battle models are seen from far away, so they use fewer segments (GEO_LO); card portraits switch it off for full detail.
+let GEO_LO=true; const segQ=(n,min=6)=>GEO_LO?Math.max(min,Math.round(n*0.6)):n;
 function geo(k){
-  if(GEO[k]) return GEO[k];
+  const ck=(GEO_LO?'~':'')+k; if(GEO[ck]) return GEO[ck];
   let g;
   switch(k){
-    case 'sph': g=new THREE.SphereGeometry(1,22,16); break;
-    case 'head': g=new THREE.SphereGeometry(1,28,20); break;
-    case 'sphLo': g=new THREE.SphereGeometry(1,12,9); break;
+    case 'sph': g=new THREE.SphereGeometry(1,segQ(22),segQ(16,4)); break;
+    case 'head': g=new THREE.SphereGeometry(1,segQ(28),segQ(20,4)); break;
+    case 'sphLo': g=new THREE.SphereGeometry(1,segQ(12),segQ(9,4)); break;
     case 'box': g=new THREE.BoxGeometry(1,1,1); break;
     case 'rbox': g=roundBoxGeo(0.2,4); break;
     case 'rbox2': g=roundBoxGeo(0.1,3); break;
     case 'rboxS': g=roundBoxGeo(0.32,5); break;
-    case 'cyl': g=new THREE.CylinderGeometry(1,1,1,24); break;
-    case 'cylLo': g=new THREE.CylinderGeometry(1,1,1,10); break;
-    case 'cone': g=new THREE.ConeGeometry(1,1,24); break;
+    case 'cyl': g=new THREE.CylinderGeometry(1,1,1,segQ(24)); break;
+    case 'cylLo': g=new THREE.CylinderGeometry(1,1,1,segQ(10)); break;
+    case 'cone': g=new THREE.ConeGeometry(1,1,segQ(24)); break;
     case 'cone4': g=new THREE.ConeGeometry(1,1,4); break;
-    case 'tor': g=new THREE.TorusGeometry(1,0.22,12,32); break;
-    case 'torThin': g=new THREE.TorusGeometry(1,0.08,8,28); break;
-    case 'torHalf': g=new THREE.TorusGeometry(1,0.12,8,20,PI); break;
-    case 'smile': g=new THREE.TorusGeometry(1,0.26,8,16,PI*0.8); break;
-    case 'hemi': g=new THREE.SphereGeometry(1,24,12,0,TAU,0,PI/2); break;
-    case 'dish': g=new THREE.SphereGeometry(1,24,8,0,TAU,0,PI/3.2); break;
-    case 'ring': g=new THREE.RingGeometry(0.8,1,48); break;
-    case 'circle': g=new THREE.CircleGeometry(1,40); break;
+    case 'tor': g=new THREE.TorusGeometry(1,0.22,segQ(12,4),segQ(32)); break;
+    case 'torThin': g=new THREE.TorusGeometry(1,0.08,segQ(8,4),segQ(28)); break;
+    case 'torHalf': g=new THREE.TorusGeometry(1,0.12,segQ(8,4),segQ(20),PI); break;
+    case 'smile': g=new THREE.TorusGeometry(1,0.26,segQ(8,4),segQ(16),PI*0.8); break;
+    case 'hemi': g=new THREE.SphereGeometry(1,segQ(24),segQ(12,4),0,TAU,0,PI/2); break;
+    case 'dish': g=new THREE.SphereGeometry(1,segQ(24),segQ(8,4),0,TAU,0,PI/3.2); break;
+    case 'ring': g=new THREE.RingGeometry(0.8,1,segQ(48)); break;
+    case 'circle': g=new THREE.CircleGeometry(1,segQ(40)); break;
     case 'plane': g=new THREE.PlaneGeometry(1,1); break;
     case 'dodec': g=new THREE.DodecahedronGeometry(1,0); break;
     case 'oct': g=new THREE.OctahedronGeometry(1,0); break;
     case 'ico': g=new THREE.IcosahedronGeometry(1,1); break;
-    case 'caps': g=lathe(capsulePts(8),18); break;                       // height 2, radius 0.5
+    case 'caps': g=lathe(capsulePts(8),segQ(18)); break;                       // height 2, radius 0.5
     case 'torso': g=torsoGeo(); break;
     case 'bell': g=lathe([[0.0001,0.5],[0.6,0.5],[0.68,0.32],[0.8,0.05],[0.93,-0.3],[1.02,-0.46],[0.97,-0.5],[0.0001,-0.5]].reverse(),28); break;
-    case 'shoe': g=lathe([[0.0001,-0.5],[0.85,-0.5],[1.0,-0.3],[0.95,0.1],[0.7,0.4],[0.0001,0.5]],16); break;
+    case 'shoe': g=lathe([[0.0001,-0.5],[0.85,-0.5],[1.0,-0.3],[0.95,0.1],[0.7,0.4],[0.0001,0.5]],segQ(16)); break;
     case 'roof': g=lathe([[0.0001,1],[0.25,0.82],[0.55,0.45],[0.85,0.1],[1.08,-0.02],[1.0,-0.06],[0.0001,-0.06]].reverse(),24); break;
     case 'puff': g=new THREE.IcosahedronGeometry(1,2); break;
     // lower-detail variants, picked automatically by P() for small parts (keeps triangle counts phone-friendly)
-    case 'sphMid': g=new THREE.SphereGeometry(1,16,11); break;
-    case 'capsLo': g=lathe(capsulePts(4),10); break;
-    case 'torLo': g=new THREE.TorusGeometry(1,0.22,8,18); break;
-    case 'torThinLo': g=new THREE.TorusGeometry(1,0.08,6,16); break;
+    case 'sphMid': g=new THREE.SphereGeometry(1,segQ(16),segQ(11,4)); break;
+    case 'capsLo': g=lathe(capsulePts(4),segQ(10)); break;
+    case 'torLo': g=new THREE.TorusGeometry(1,0.22,segQ(8,4),segQ(18)); break;
+    case 'torThinLo': g=new THREE.TorusGeometry(1,0.08,segQ(6,4),segQ(16)); break;
     case 'puffLo': g=new THREE.IcosahedronGeometry(1,1); break;
-    case 'hemiLo': g=new THREE.SphereGeometry(1,12,6,0,TAU,0,PI/2); break;
+    case 'hemiLo': g=new THREE.SphereGeometry(1,segQ(12),segQ(6,4),0,TAU,0,PI/2); break;
     case 'face': g=faceGeo(); break;                                   // head with cheeks, jaw and chin in one smooth shell
-    case 'lid': g=new THREE.SphereGeometry(1,14,6,0,TAU,0,PI*0.42); break;   // eyelid cap
-    case 'limb': g=lathe([[0.0001,-1],[0.36,-0.97],[0.47,-0.85],[0.44,-0.5],[0.42,-0.05],[0.47,0.45],[0.5,0.8],[0.38,0.97],[0.0001,1]],14); break; // tapered limb, fuller at top
+    case 'lid': g=new THREE.SphereGeometry(1,segQ(14),segQ(6,4),0,TAU,0,PI*0.42); break;   // eyelid cap
+    case 'limb': g=lathe([[0.0001,-1],[0.36,-0.97],[0.47,-0.85],[0.44,-0.5],[0.42,-0.05],[0.47,0.45],[0.5,0.8],[0.38,0.97],[0.0001,1]],segQ(14)); break; // tapered limb, fuller at top
     case 'shoeS': g=shoeGeo(); break;
     case 'skirt': g=skirtGeo(); break;                                 // flared, folded hem for robes, dresses and coats
     case 'noseG': g=noseGeo(); break;                                  // bridge + rounded tip
-    case 'disc': g=new THREE.CircleGeometry(1,20); break;
+    case 'disc': g=new THREE.CircleGeometry(1,segQ(20)); break;
     case 'banner': g=new THREE.PlaneGeometry(1,1.45,6,8); break;
   }
-  return GEO[k]=g;
+  return GEO[ck]=g;
 }
 
 
@@ -134,7 +136,7 @@ const SDF={
   cutBelow(f,yc,k=0.012){ return (x,y,z)=>SDF.smax(f(x,y,z),yc-y,k); },     // keep y >= yc
   cutAbove(f,yc,k=0.012){ return (x,y,z)=>SDF.smax(f(x,y,z),y-yc,k); },     // keep y <= yc
 };
-let SDF_CELL=0.024;                       // battle resolution; card portraits build with a finer cell
+let SDF_CELL=0.032;                       // battle resolution; card portraits build with a finer cell
 const SDF_CACHE=new Map();
 function sdfGeo(key,fn,bmin,bmax,cellMul=1){
   const cell=SDF_CELL*cellMul, ck=key+'@'+cell; let g=SDF_CACHE.get(ck); if(g) return g;

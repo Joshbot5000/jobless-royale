@@ -65,14 +65,14 @@ function acStart(thIdx,i){
   const pool=th.pool.filter(k=>!CARDS[k].hidden&&CARDS[k].unlock<=Math.max(400,trophies+300));
   const aiDeck=sh.hard?(randomDeck(pool)||th.cards.slice()):th.cards.slice();
   const bossId=sh.boss?(th.cards.find(k=>CARDS[k].champ)||th.pool.find(k=>CARDS[k].champ)):null;
-  newGame(thIdx,sh.hard?1:0,'classic',deck,aiDeck);
+  readyDeck(deck); newGame(thIdx,sh.hard?1:0,'classic',deck,aiDeck);
   const myL=deckLevels(deck), aiL=Math.max(1,Math.round(avgLevel(deck))); G.lvl=[myL,{_:aiL}]; G.myDeck=deck.slice();
   G.diff=Object.assign({},G.diff,sh.ai); G.time=sh.time; G.foe=`${sh.icon} ${sh.name}`;
   G.mission={th:thIdx,i,sh,bank:sh.budget?sh.budget-5:null,bossId,boss:null,bossT:2.5,job:jobOf(th).title};
   if(sh.foeTower) for(const t of G.towers) if(t.team===1&&t.kind==='princess'){ t.hp=t.maxHp=Math.round(t.maxHp*sh.foeTower); }
   G.banner=null; showBanner(`${sh.icon} ${sh.name.toUpperCase()}`,sh.goal,2.6,'#ffd34d');
   ensureZone(); hideGhost(); emoteOpen=false; fitCamera(W,H,TOPH,PANH);
-  G.hands[0].concat(G.queues[0]).forEach(requestPortrait); G.hands[1].concat(G.queues[1]).forEach(requestPortrait);
+  G.hands[0].concat(G.queues[0]).forEach(requestPortrait);
   last=performance.now(); Music.stop(); Music.kick();
 }
 function missionTick(dt){ const M=G.mission, sh=M.sh, lost=G.towers.filter(t=>t.team===0&&t.dead).length;

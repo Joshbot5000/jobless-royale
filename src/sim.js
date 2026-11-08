@@ -78,7 +78,7 @@ function prewarmMatch(){
         if(c.model&&c.type!=='spell') add(getModel(c.model,t));
         for(const sub of [c.death&&c.death.spawn&&c.death.spawn[0],c.spawner&&c.spawner.card,c.sp&&c.sp.card]) if(sub&&CARDS[sub]&&CARDS[sub].model) add(getModel(CARDS[sub].model,t)); }catch(e){} } }
   scene.add(grp);
-  try{ renderer.compile(scene,camera); renderer.render(scene,camera); }catch(e){}   // the render also warms the shadow-map variants
+  try{ renderer.compile(scene,camera); renderer.shadowMap.needsUpdate=true; renderer.render(scene,camera); }catch(e){}   // the render also warms the shadow-map variants
   scene.remove(grp);
 }
 function shadowFor(r){ const m=new THREE.Mesh(geo('plane'),shadowMat); m.rotation.x=-PI/2; m.scale.set(r*2,r*2,1); m.renderOrder=1; dynRoot.add(m); return m; }
@@ -102,7 +102,7 @@ function spawnUnit(id,team,x,y,deploy=1){
     cd:0.3,target:null,deploy,deployMax:Math.max(0.01,deploy),walk:Math.random()*6,atk:0,yaw:team?0:PI,yawVis:team?0:PI,kvx:0,kvy:0,
     frozen:0,stun:0,rush:0,shield:c.shield0||0,giant:0,fire:0,hits:0,retarget:0,dead:false,moving:false,scale:1,spT:(c.sp&&c.sp.k==='execute')?3:(c.sp&&c.sp.cd?c.sp.cd*0.5:0),
     spawnT:c.spawner?c.spawner.every*(c.spawner.first??0.8):0,lastAtkT:-99,stealthOn:!!(c.sp&&c.sp.k==='stealth'),hitT:0,landT:0,grow:0};
-  G.units.push(u); return u;
+  u.vs=visScale(c); G.units.push(u); return u;
 }
 
 // ---------------------------------------------------------------- targeting & movement
@@ -127,9 +127,13 @@ const inRange=(u,t)=>dist(u,t)-t.radius-u.radius<=u.range+0.05;
 function moveGoal(u,tx,ty){
   if(u.flying||u.c.swim) return [tx,ty];
   const us=u.y>16, ts=ty>16, inRiver=u.y>14.9&&u.y<17.1;
-  if(us!==ts||inRiver){
+  if(us===ts&&inRiver){ const bx=Math.abs(u.x-BRIDGES[0])<Math.abs(u.x-BRIDGES[1])?BRIDGES[0]:BRIDGES[1]; return [clamp(tx,bx-0.8,bx+0.8),ty]; }  // on the bridge, target on this half: walk to it along the bridge
+  if(us!==ts){
     const bx=Math.abs(u.x-BRIDGES[0])<Math.abs(u.x-BRIDGES[1])?BRIDGES[0]:BRIDGES[1], lane=bx+(u.team===0?-0.42:0.42);
-    if(Math.abs(u.x-lane)>0.5&&!(u.y>14.9&&u.y<17.1)) return [lane,us?17.7:14.3];
+    // line up with the lane at the bridge mouth, but only while still in front of it: a troop that is already level
+    // with (or past) the mouth heads straight for the far end instead of stepping back (that flip-flop was the "spasm")
+    const ey=us?17.7:14.3, before=us?u.y>ey+0.4:u.y<ey-0.4;   // within 0.4 of the mouth: just go (the bridge is wide enough)
+    if(before&&!inRiver&&Math.abs(u.x-lane)>0.5) return [lane,ey];
     return [lane+(tx>bx?0.12:-0.12),ts?17.9:14.1];
   }
   return [tx,ty];
@@ -145,7 +149,7 @@ function damage(t,amt,src,o){
   t.hp-=amt; t.hitT=0.14;
   if(src&&src.x!==undefined&&!t.isTower){ const dx=t.x-src.x, dy=t.y-src.y, L=Math.hypot(dx,dy)||1; t.hdx=dx/L; t.hdy=dy/L; }
   if(amt>=40&&G.units.length<60){ const hh=t.isTower?2:((t.rig&&t.rig.height)||1.2)*(t.scale||1)*0.75+(t.flying?1.5:0); PSA.spawn(t.x,hh,t.y,0,0,0,0.09,Math.min(1.6,0.5+amt/400),'#ffffff',0.9,0); }
-  if(amt>=90&&src&&(src.c||src.isTower===undefined)){ G.nums.push({x:t.x+rnd(-0.25,0.25),y:t.y,h:t.isTower?3.2:((t.rig&&t.rig.height)||1.2)*(t.scale||1)*VS+(t.flying?1.5:0),v:Math.round(amt),t:0,big:amt>=300}); if(G.nums.length>24) G.nums.shift(); }
+  if(amt>=90&&src&&(src.c||src.isTower===undefined)){ G.nums.push({x:t.x+rnd(-0.25,0.25),y:t.y,h:t.isTower?3.2:((t.rig&&t.rig.height)||1.2)*(t.scale||1)*uvs(t)+(t.flying?1.5:0),v:Math.round(amt),t:0,big:amt>=300}); if(G.nums.length>24) G.nums.shift(); }
   if(amt>=300&&src&&src.c&&!(o&&o.splash)) G.freezeT=Math.max(G.freezeT||0,0.07);
   if(t.isTower&&t.kind==='king'&&!t.active) t.active=true;
   if(t.hp<=0){ t.hp=0; if(t.isTower) destroyTower(t); else killUnit(t, src&&src.c?src:null); }
@@ -483,7 +487,7 @@ function updateEntities(dt){
     if(p.tick<=0){ p.tick=0.5; for(const e of enemiesIn(p.team,p.x,p.y,p.r,{towers:false,air:false})) damage(e,p.dps*0.5,p.team); }
     for(let i=0;i<3;i++){ const a=G.t*6+i*2.1+Math.random(), rr=Math.random()*p.r; PSN.spawn(p.x+Math.cos(a)*rr,rnd(0.1,1.5),p.y+Math.sin(a)*rr,-Math.sin(a)*4,0.5,Math.cos(a)*4,0.5,0.3,i?'#d8c0ff':'#ff6bff',0.7,0,0,1); } }
   G.pulls=G.pulls.filter(p=>p.t>0);
-  separate();
+  separate(dt);
   G.units=G.units.filter(u=>!u.dead);
   G.projs=G.projs.filter(p=>{ if(p.done&&p.obj) dynRoot.remove(p.obj); return !p.done; });
   G.rolls=G.rolls.filter(r=>{ if(r.done) dynRoot.remove(r.obj); return !r.done; });
@@ -614,7 +618,8 @@ function updateUnit(u,dt){
     if(!u.flying&&!(u.y>14.4&&u.y<17.6)){ const fx=dx/L, fy=dy/L; let blk=null, bd=1e9;
       for(const v of G.units){ if(v===u||v.dead||v.flying||v.leap||v===t||v.team!==u.team||(v.moving&&v.speed>=u.speed*0.85)) continue; const ox=v.x-u.x, oy=v.y-u.y, ahead=ox*fx+oy*fy; if(ahead<=0.01||ahead>u.radius+v.radius+0.5) continue;
         const side=ox*fy-oy*fx; if(Math.abs(side)>(u.radius+v.radius)*0.95) continue; if(ahead<bd){ bd=ahead; blk=side; } }
-      if(blk!==null){ const sgn=blk>0.03?-1:blk<-0.03?1:(u.uid%2?1:-1), k=0.6; const nx=fx+fy*sgn*k, ny=fy-fx*sgn*k, nl=Math.hypot(nx,ny)||1; dx=nx/nl*L; dy=ny/nl*L; } }
+      u.steerT=(u.steerT||0)-dt;   // once a side is picked to go round a slow ally, keep it for a moment
+      if(blk!==null){ let sgn=blk>0.03?-1:blk<-0.03?1:(u.uid%2?1:-1); const k=0.6; if(u.steerT>0&&u.steerSide) sgn=u.steerSide; else { u.steerSide=sgn; u.steerT=0.6; } const nx=fx+fy*sgn*k, ny=fy-fx*sgn*k, nl=Math.hypot(nx,ny)||1; dx=nx/nl*L; dy=ny/nl*L; } }
     const step=Math.min(L,u.speed*spd*dt*(u.drunkT>0?0.75:1));
     u.x+=dx/L*step; u.y+=dy/L*step; u.walk+=dt*9*spd*Math.min(1.4,u.speed); u.moving=true;
     if((u.drunkT>0||u.c.tipsy)&&!u.flying){ const wb=Math.sin(G.t*3.2+u.uid*1.7)*u.speed*dt*(u.drunkT>0?1.1:0.6); u.x+=dy/L*wb; u.y-=dx/L*wb; }
@@ -737,7 +742,7 @@ function attack(u,t){
   } else if(a.k==='proj'){
     if(a.ramp){ const r0=u.rampTarget===t?Math.min(a.ramp,(u.ramp||1)+0.35):1; u.ramp=r0; u.rampTarget=t; mult*=r0; }
     let big=false; if(a.big){ u.shotN=(u.shotN||0)+1; big=u.shotN%a.big.n===0; if(big) callout(u,'SATURN V! 🚀','#ffb02e'); }
-    const h0=(u.flying?1.6:0)+(u.c.model.k==='h'?1.0:0.7)*u.scale*VS;
+    const h0=(u.flying?1.6:0)+(u.c.model.k==='h'?1.0:0.7)*u.scale*uvs(u);
     G.projs.push({key:a.proj,x:u.x,y:u.y,z:h0,sx:u.x,sy:u.y,target:t,tx:t.x,ty:t.y,speed:a.speed||(a.lob?7.5:12),lob:!!a.lob,total:dist(u,t),prog:0,
       splash:big?a.big.splash:a.splash,mult:(big?a.big.mult:1)*mult,src:u,team:u.team,big,sight:a.sight,bounce:a.bounce||0,heal:a.healSplash||0});
     { const d=dist(u,t)||1, mx=u.x+(t.x-u.x)/d*0.5, my=u.y+(t.y-u.y)/d*0.5; PSA.spawn(mx,h0,my,0,0,0,0.08,0.55,(PROJ[a.proj]||[])[3]||'#fff2c0',1,0); }
@@ -745,7 +750,7 @@ function attack(u,t){
     sfx('arrow');
   } else if(a.k==='beam'){
     let ramp=1; if(a.ramp){ ramp = u.rampTarget===t ? Math.min(a.ramp,(u.ramp||1)+0.35) : 1; u.ramp=ramp; u.rampTarget=t; }
-    const d=dist(u,t)||1, h=(u.flying?1.6:0)+0.95*u.scale*VS;
+    const d=dist(u,t)||1, h=(u.flying?1.6:0)+0.95*u.scale*uvs(u);
     let ex=t.x, ey=t.y;
     if(a.cone||a.pierce){ const L=a.pierce?Math.max(d+t.radius,u.range+1.5):Math.min(d+t.radius,u.range+u.radius+0.6); ex=u.x+(t.x-u.x)/d*L; ey=u.y+(t.y-u.y)/d*L;
       for(const e of lineEnemies(u,u.x,u.y,ex,ey,a.cone?0.85:0.4)){ hitOne(u,e,dmgOut(u,e)*ramp*mult); if(a.push) knock(e,u.x,u.y,a.push); } }
@@ -814,8 +819,11 @@ function updateRoll(r,dt){
   for(const t of G.towers){ if(t.team===r.team||t.dead||r.hit.has('t'+t.x+t.y)) continue; if(Math.abs(t.x-r.x)<t.radius+r.r&&Math.abs(t.y-r.y)<t.radius+r.r){ r.hit.add('t'+t.x+t.y); damage(t,r.dmg*(r.towerPct||0.3),r.team); if(r.towerPct){ G.shake=Math.max(G.shake,0.35); fxBurst(r.x,1,r.y,30,'#ffb02e',5,0.3,0.6,8,true); sfx('boom'); r.done=true; } } }
   if(r.traveled>=r.len||r.y<0.5||r.y>31.5){ r.done=true; fxPuff(r.x,0.3,r.y,10,'#d8cdb0',0.6,0.6); }
 }
-function separate(){
-  const us=G.units;
+// Troops are solid: overlapping pairs push apart. Pushes are summed per troop and applied softened and capped,
+// because in a crowd several full-strength pushes in one step overshoot and troops shake back and forth.
+function separate(dt=0.05){
+  const us=G.units, cap=Math.max(0.02,dt*4);
+  for(const a of us){ a._px=0; a._py=0; }
   for(let i=0;i<us.length;i++){
     const a=us[i]; if(a.dead) continue; const af=a.flying||!!a.leap;
     for(let j=i+1;j<us.length;j++){
@@ -824,10 +832,13 @@ function separate(){
       const dx=b.x-a.x, dy=b.y-a.y, min=(a.radius+b.radius)*(squeeze?0.45:0.9);
       if(Math.abs(dx)>min||Math.abs(dy)>min) continue;
       let d=Math.hypot(dx,dy); if(d>=min) continue;
-      let nx,ny; if(d<0.001){ const r=Math.random()*TAU; nx=Math.cos(r); ny=Math.sin(r); d=0; } else { nx=dx/d; ny=dy/d; }
+      let nx,ny; if(d<0.001){ const r=((a.uid*7+b.uid*13)%16)/16*TAU; nx=Math.cos(r); ny=Math.sin(r); d=0; } else { nx=dx/d; ny=dy/d; }   // exact overlap: same direction every step, not a random shake
       const ov=(min-d)*0.5, tm=a.mass+b.mass, wa=b.mass/tm, wb=a.mass/tm;
-      a.x-=nx*ov*wa; a.y-=ny*ov*wa; b.x+=nx*ov*wb; b.y+=ny*ov*wb;
+      a._px-=nx*ov*wa; a._py-=ny*ov*wa; b._px+=nx*ov*wb; b._py+=ny*ov*wb;
     }
+  }
+  for(const a of us){ if(a.dead) continue; const af=a.flying||!!a.leap;
+    if(a._px||a._py){ let px=a._px*0.6, py=a._py*0.6; const m=Math.hypot(px,py); if(m>cap){ px*=cap/m; py*=cap/m; } a.x+=px; a.y+=py; }
     if(!af) for(const t of G.towers){ if(t.dead) continue; const dx=a.x-t.x, dy=a.y-t.y, m=t.radius+a.radius*0.8, d=Math.hypot(dx,dy); if(d<m&&d>0.001){ a.x=t.x+dx/d*m; a.y=t.y+dy/d*m; } }
     if(!af&&!a.c.swim&&a.y>15&&a.y<17){ const bx=Math.abs(a.x-BRIDGES[0])<Math.abs(a.x-BRIDGES[1])?BRIDGES[0]:BRIDGES[1];
       if(Math.abs(a.x-bx)>1.0){ if(a.deploy>0||Math.abs(a.x-bx)>1.4) a.y=a.y<16?15:17; else a.x=bx+Math.sign(a.x-bx)*1.0; } }
@@ -1051,7 +1062,11 @@ function updateBoom(b,dt){
 }
 
 // ---------------------------------------------------------------- 3D sync & animation
-const VS=1.5; // visual scale of troops relative to their collision size
+const VS=1.5; // base visual scale of troops relative to their collision size (gameplay sizes never change)
+// Troops are drawn bigger than their hitbox so they read clearly on a phone: +20% for everyone, a bit more for the
+// big important units (tanks, tower-chasers, Champions), a touch less for swarms of 4+ so crowds don't become a blob.
+function visScale(c){ if(c.type==='building') return VS*1.1; let k=1.2; if(c.champ||['tank','wincon'].includes(c.role)) k=1.32; else if((c.count||1)>=4) k=1.1; return VS*k; }
+const uvs=u=>u.vs||VS;
 const lerpAng=(a,b,k)=>{ let d=((b-a+PI)%TAU+TAU)%TAU-PI; return a+d*k; };
 let iceMesh=null;
 // Animation curves: every attack has a wind-up (driven by the attack cooldown, so it
@@ -1080,7 +1095,9 @@ function syncUnits(dt){
     // hit recoil: knocked back along the direction of the blow
     let ox=0, oz=0; const hk=u.hitT>0?u.hitT/0.14:0;
     if(hk>0&&u.hdx!==undefined&&!u.building){ ox=u.hdx*0.12*hk; oz=u.hdy*0.12*hk; }
-    o.position.set(u.x+ox,y,u.y+oz);
+    // draw from a smoothed position so the last bit of crowd jostling never shows as shaking (big jumps snap)
+    if(u.sx===undefined||Math.abs(u.sx-u.x)+Math.abs(u.sy-u.y)>1.2){ u.sx=u.x; u.sy=u.y; } else { const k=Math.min(1,dt*16); u.sx+=(u.x-u.sx)*k; u.sy+=(u.y-u.sy)*k; }
+    o.position.set(u.sx+ox,y,u.sy+oz);
     // turning: smooth yaw and remember the turn rate for banking
     const prev=u.yawVis; u.yawVis=lerpAng(u.yawVis,u.yaw,Math.min(1,dt*9));
     const turn=dt>0?(((u.yawVis-prev+PI)%TAU+TAU)%TAU-PI)/dt:0; u.bank+=(clamp(-turn*0.12,-0.55,0.55)-u.bank)*Math.min(1,dt*6);
@@ -1096,9 +1113,9 @@ function syncUnits(dt){
     if(u.landT>0){ const k=u.landT/0.3; const b=Math.sin(k*PI); sy*=1-0.32*k+0.12*b*(1-k); sx*=1+0.22*k; }
     if(hk>0){ sy*=1-0.12*hk; sx*=1+0.09*hk; }
     if(u.c.model.shake){ o.position.x+=Math.sin(t*60)*0.015; }
-    o.scale.set(sx*VS,sy*VS,sx*VS);
-    u.shadow.position.set(u.x,0.03,u.y); const ss=u.baseR*1.25*VS*u.scale*(u.flying||u.leapH||u.deploy>0?0.75:1); u.shadow.scale.set(ss*2,ss*2,1);
-    u.ring.position.set(u.x,0.04,u.y); const rs=u.baseR*u.scale*0.95; u.ring.scale.set(rs,rs,1);
+    o.scale.set(sx*uvs(u),sy*uvs(u),sx*uvs(u));
+    u.shadow.position.set(u.sx,0.03,u.sy); const ss=u.baseR*1.25*uvs(u)*u.scale*(u.flying||u.leapH||u.deploy>0?0.75:1); u.shadow.scale.set(ss*2,ss*2,1);
+    u.ring.position.set(u.sx,0.04,u.sy); const rs=u.baseR*u.scale*0.95; u.ring.scale.set(rs,rs,1);
     const frozen=u.frozen>0||u.floatT>0;
     const mv=u.moving&&!frozen?1:0, ph=u.walk, A=atkPhase(u), p=A.p;
     const heavy=u.mass>=8&&!u.flying;
@@ -1217,17 +1234,17 @@ function syncUnits(dt){
       if(R.cap){ const pu=u.spT>(u.c.sp?u.c.sp.cd-0.4:0)&&u.c.sp?1.15:1; R.cap.scale.set(pu,2-pu,pu); }
       if(R.bell&&u.spT>(u.c.sp?u.c.sp.cd-0.6:9)) R.root.position.x=Math.sin(t*60)*0.04; else if(R.bell) R.root.position.x=0;
       if(R.pulse){ const pu=u.spT>(u.c.sp?u.c.sp.cd-0.3:9)?1.1:1+Math.sin(t*8)*0.015; R.root.scale.set(pu,pu,pu); }
-      if(R.jets&&u.spT>(u.c.sp?u.c.sp.cd-0.5:9)) for(const s2 of [-1,1]) for(let i=0;i<3;i++) PSA.spawn(u.x+s2*0.45*VS,1.2,u.y,rnd(-0.3,0.3),rnd(6,10),rnd(-0.3,0.3),0.35,0.6,Math.random()<0.5?'#ff7a1a':'#ffd34d',1,0);
+      if(R.jets&&u.spT>(u.c.sp?u.c.sp.cd-0.5:9)) for(const s2 of [-1,1]) for(let i=0;i<3;i++) PSA.spawn(u.x+s2*0.45*uvs(u),1.2,u.y,rnd(-0.3,0.3),rnd(6,10),rnd(-0.3,0.3),0.35,0.6,Math.random()<0.5?'#ff7a1a':'#ffd34d',1,0);
       if(R.drip&&Math.random()<dt*20) PSN.spawn(u.x+rnd(-0.5,0.5),2.4,u.y+rnd(-0.5,0.5),0,-4,0,0.5,0.15,'#9fe6ff',0.8,6);
       if(R.smoke&&Math.random()<dt*4) PSN.spawn(u.x,2.6,u.y-0.3,rnd(-0.2,0.2),1,rnd(-0.2,0.2),1.6,0.6,'#9a9a9a',0.5,0,1.6,0.5);
     }
     // status visuals
     const boxed=u.boxT>0&&u.stun>0;
-    if((frozen&&u.frozen>0)||boxed){ if(!u.ice){ u.ice=new THREE.Mesh(geo('rbox'),mat('#bfefff',{op:0.5,s:150})); dynRoot.add(u.ice); } u.ice.material=boxed?mat('#ffffff',{op:0.22,s:150}):u.stone?mat('#a8a29a',{op:0.88,s:10}):mat('#bfefff',{op:0.5,s:150}); const hh=(R.height||1.4)*u.scale*VS; u.ice.visible=true; u.ice.position.set(u.x,y+hh*0.5,u.y); u.ice.scale.set(u.baseR*2.4*u.scale*VS,hh*1.1,u.baseR*2.4*u.scale*VS); }
+    if((frozen&&u.frozen>0)||boxed){ if(!u.ice){ u.ice=new THREE.Mesh(geo('rbox'),mat('#bfefff',{op:0.5,s:150})); dynRoot.add(u.ice); } u.ice.material=boxed?mat('#ffffff',{op:0.22,s:150}):u.stone?mat('#a8a29a',{op:0.88,s:10}):mat('#bfefff',{op:0.5,s:150}); const hh=(R.height||1.4)*u.scale*uvs(u); u.ice.visible=true; u.ice.position.set(u.x,y+hh*0.5,u.y); u.ice.scale.set(u.baseR*2.4*u.scale*uvs(u),hh*1.1,u.baseR*2.4*u.scale*uvs(u)); }
     else if(u.ice) u.ice.visible=false;
-    if(u.shield>0){ if(!u.bub){ u.bub=new THREE.Mesh(geo('sph'),mat('#8ff0ff',{op:0.28,s:150})); dynRoot.add(u.bub); } const hh=(R.height||1.4)*u.scale*VS; u.bub.visible=true; u.bub.position.set(u.x,y+hh*0.5,u.y); const bs=Math.max(hh*0.65,u.baseR*1.4*u.scale)*(1+Math.sin(t*6)*0.03); u.bub.scale.set(bs,bs,bs); }
+    if(u.shield>0){ if(!u.bub){ u.bub=new THREE.Mesh(geo('sph'),mat('#8ff0ff',{op:0.28,s:150})); dynRoot.add(u.bub); } const hh=(R.height||1.4)*u.scale*uvs(u); u.bub.visible=true; u.bub.position.set(u.x,y+hh*0.5,u.y); const bs=Math.max(hh*0.65,u.baseR*1.4*u.scale)*(1+Math.sin(t*6)*0.03); u.bub.scale.set(bs,bs,bs); }
     else if(u.bub) u.bub.visible=false;
-    const hh=(R.height||1.4)*u.scale*VS;
+    const hh=(R.height||1.4)*u.scale*uvs(u);
     if(u.stun>0&&!frozen&&Math.random()<dt*8) PSA.spawn(u.x+Math.cos(t*8)*0.35,y+hh+0.15,u.y+Math.sin(t*8)*0.35,0,0.2,0,0.4,0.22,'#ffe14d',1,0);
     if(u.convT>0&&Math.random()<dt*5) PSA.spawn(u.x,y+hh+0.1,u.y,rnd(-0.3,0.3),1,0,0.8,0.3,u.convKind==='charm'?'#ff4f9a':'#ffe14d',1,0);
     if(u.rush>0&&u.rush<1e5&&Math.random()<dt*6) PSA.spawn(u.x+rnd(-0.4,0.4),y+rnd(0.2,hh),u.y+rnd(-0.4,0.4),0,1,0,0.4,0.2,'#ff6bff',1,0);
@@ -1243,10 +1260,10 @@ function syncUnits(dt){
     if(d.t===0){ const a=Math.atan2(u.hdx||rnd(-1,1),u.hdy||rnd(-1,1)), f=u.building?0:clamp(3.5*Math.min(1,6/u.mass),0.6,4);
       d.vx=Math.sin(a)*f; d.vz=Math.cos(a)*f; d.vy=u.building?0:(u.flying?1:3+f*0.6); d.y=u.obj.position.y; d.spin=(Math.random()<0.5?-1:1)*rnd(6,12); d.dur=u.building?0.6:(u.flying?0.75:0.65); }
     d.t+=dt; const k=Math.min(1,d.t/d.dur);
-    if(u.building){ u.obj.scale.set(VS*u.scale*(1+k*0.15),VS*u.scale*(1-k),VS*u.scale*(1+k*0.15)); if(Math.random()<0.6) PSN.spawn(u.x+rnd(-0.7,0.7),rnd(0,1),u.y+rnd(-0.7,0.7),rnd(-1,1),rnd(1,3),rnd(-1,1),0.8,0.5,'#b8b0a0',0.7,6,1,1); }
+    if(u.building){ u.obj.scale.set(uvs(u)*u.scale*(1+k*0.15),uvs(u)*u.scale*(1-k),uvs(u)*u.scale*(1+k*0.15)); if(Math.random()<0.6) PSN.spawn(u.x+rnd(-0.7,0.7),rnd(0,1),u.y+rnd(-0.7,0.7),rnd(-1,1),rnd(1,3),rnd(-1,1),0.8,0.5,'#b8b0a0',0.7,6,1,1); }
     else { d.vy-=(u.flying?9:20)*dt; d.y+=d.vy*dt; if(d.y<0){ d.y=0; d.vy*=-0.35; d.vx*=0.55; d.vz*=0.55; if(Math.abs(d.vy)>0.8) fxPuff(u.obj.position.x,0.1,u.obj.position.z,3,'#d8cdb0',0.3,0.3); }
       u.obj.position.x+=d.vx*dt; u.obj.position.z+=d.vz*dt; u.obj.position.y=d.y;
-      u.obj.rotation.x+=d.spin*dt*0.6; u.obj.rotation.z+=d.spin*dt*0.35; const sh=k>0.7?1-(k-0.7)/0.3:1; u.obj.scale.setScalar(VS*u.scale*Math.max(0.05,sh)); }
+      u.obj.rotation.x+=d.spin*dt*0.6; u.obj.rotation.z+=d.spin*dt*0.35; const sh=k>0.7?1-(k-0.7)/0.3:1; u.obj.scale.setScalar(uvs(u)*u.scale*Math.max(0.05,sh)); }
     u.shadow.position.set(u.obj.position.x,0.03,u.obj.position.z);
     if(k>=1){ d.done=true; dynRoot.remove(u.obj); dynRoot.remove(u.shadow); dynRoot.remove(u.ring); if(u.ice) dynRoot.remove(u.ice); if(u.bub) dynRoot.remove(u.bub);
       const px=u.obj.position.x, pz=u.obj.position.z, py=Math.max(0.4,u.obj.position.y);

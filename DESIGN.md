@@ -98,6 +98,18 @@ Spells that are thrown or fired (pans, tomatoes, fireballs, footballs, basketbal
 ### Mechanics added with the expansion
 Bouncing shots, red cards that send a troop back to its own king tower, swimmers that ignore the bridges, fear (runs home), shrink, stone and ice freezes, invisible-box traps, lassos and yanks, rewind, cloning, splitting slimes, mystery-box random spawns, elixir refunds on death, regeneration, lifesteal, taunting troops, cement trails, a child star that grows up mid-battle, and flaming kick-rolls.
 
+## Performance and movement rules (November 2026)
+- **No portrait builds during a battle.** Your deck's card portraits are built before the fight starts (`readyDeck`). The menu's portrait queue (arena kings, collection cards) waits until the battle is over. Each portrait is a full-detail model render, and building them mid-fight caused 0.1-2s freezes.
+- **Battle models are lighter.** Primitives use about 60% of the segments (`GEO_LO`, portraits switch it off) and surface-net bodies use a coarser cell. Tiny parts get no outline. Meshes on the same joint whose materials differ only in colour are merged, with the colour moved into vertex colours (`mergeRigid`). The arena dropped from about 100 draw calls to about 50.
+- **Cheaper shadows.** PCF at 1536, re-rendered every other frame. Phones with a 2x or sharper screen skip MSAA. Graphics switch to Smooth automatically if the average falls below about 40 fps over 90 frames.
+- **Troops are drawn bigger than their hitbox** (`visScale`): +20% for everyone, +32% for tanks, tower-chasers and Champions, +10% for swarms of 4 or more. Gameplay sizes are unchanged.
+- **No jitter.**
+  - A troop at a bridge mouth never steps back to line up with its lane.
+  - On the bridge it walks straight to a target on the same half.
+  - Collision pushes are summed, softened and capped per step.
+  - Drawn positions are smoothed.
+  - A troop that picks a side to go round a slow ally keeps that side for 0.6s.
+
 ## Career Ladder, Career Academy and tournaments (November 2026)
 The owner's rule: **the main game must never feel like a lesson.** The learning sits in its own section (the Academy), and even there it is collected as a reward, never set as homework.
 - **Career Ladder** (`src/career.js`). Every battle pays a Pay Packet: copies of cards from that arena (weighted towards your deck) plus 💰 Wages. Copies and Wages promote a card one rung: Intern, Trainee, Junior, Senior, Lead, Manager, Chief (levels 1-7, +8% health, damage, healing and shields per rung, `LV_STEP` in `src/sim.js`). Rarer cards need fewer copies. At match start each team's cards are cloned at their level (`cardFor`), so the engine and the balance tools are unchanged at level 1. The AI's level is half the trophy standard and half your deck's average, one rung down on Rookie and one up on Champion.

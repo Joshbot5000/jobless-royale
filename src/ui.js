@@ -156,6 +156,8 @@ function makePortrait(key){
   return out;
 }
 // returns the keys drawn this frame; menus repaint just those tiles instead of rebuilding every card
+// your deck's card portraits are built before a battle starts, never during it (each build is a full-detail model)
+function readyDeck(deck){ let n=0; for(const k of deck||[]){ if(!CARDS[k]||CARDS[k].type==='spell'||portraitCache[k]) continue; const i=portraitQueue.indexOf(k); if(i>=0) portraitQueue.splice(i,1); try{ makePortrait(k); n++; }catch(e){} } if(n) faceCache={}; }
 function pumpPortraits(n=2){ const done=[]; while(n-->0&&portraitQueue.length){ const k=portraitQueue.shift(); makePortrait(k); done.push(k); } if(done.length) faceCache={}; return done; }
 function repaintTiles(keys){ let kings=false; for(const k of keys){ if(k.startsWith('king:')){ kings=true; continue; }
     document.querySelectorAll('.cardtile[data-card="'+k+'"] canvas').forEach(c=>drawTileFace(c,k)); } return kings; }
@@ -252,7 +254,7 @@ function drawWorldOverlay(){
     if(t.hackT>0) txt('💻 OFFLINE',s.x,s.y-unitPx*0.55,unitPx*0.42,'#39ff6a'); else if(t.frozen>0) txt('❄️',s.x,s.y-unitPx*0.55,unitPx*0.55,'#fff','center',false); }
   for(const u of G.units){
     if(hidden(u)&&u.team===1) continue;
-    const R=u.rig; if(!R) continue; const hh=(R.height||1.3)*u.scale*VS + (u.flying?1.5:0) + (u.leapH||0) + (u.floatT>0?1.2:0);
+    const R=u.rig; if(!R) continue; const hh=(R.height||1.3)*u.scale*uvs(u) + (u.flying?1.5:0) + (u.leapH||0) + (u.floatT>0?1.2:0);
     if(u.deploy>0){ if(u.lead||(u.c.count||1)===1){ const s=toScreen(u.x,0.2,u.y,SP), r=unitPx*0.42; hx.fillStyle='rgba(0,0,0,.45)'; hx.beginPath(); hx.arc(s.x,s.y,r,0,TAU); hx.fill(); hx.fillStyle=TEAMC[u.team].light; hx.beginPath(); hx.moveTo(s.x,s.y); hx.arc(s.x,s.y,r*0.85,-PI/2,-PI/2+TAU*(1-u.deploy/u.deployMax)); hx.closePath(); hx.fill(); } continue; }
     const swarm=(u.c.count||1)>=5;
     const damaged=u.hp<u.maxHp-0.5||u.shield>0;
@@ -471,11 +473,12 @@ function startBattle(){
   if(!mix) arenaDeck=loadDeck(th);
   const deck=mix?mixDeck:arenaDeck;
   if(!deckValid(deck)&&!AUTOTEST){ $('#menu').hidden=false; renderMenu(); return; }
+  if(!AUTOTEST) readyDeck(deck);
   const aiDeck=mix?aiMixDeck():aiDeckFor(th);
   newGame(arenaIdx,diffIdx,modeKey,AUTOTEST?aiDeckFor(th):deck,aiDeck);
   if(!AUTOTEST){ G.lvl=[deckLevels(deck),aiLevels(aiDeck,deck)]; G.myDeck=deck.slice(); }
   ensureZone(); hideGhost(); emoteOpen=false; fitCamera(W,H,TOPH,PANH);
-  G.hands[0].concat(G.queues[0]).forEach(requestPortrait); G.hands[1].concat(G.queues[1]).forEach(requestPortrait);
+  G.hands[0].concat(G.queues[0]).forEach(requestPortrait);
   last=performance.now(); fpsAcc=0; fpsN=0; Music.stop(); Music.kick();
 }
 $('#playBtn').onclick=startBattle; $('#againBtn').onclick=()=>{ if(G&&G.mission){ acStart(G.mission.th,G.mission.i); return; } if(G&&G.online){ netRematch(); return; } startBattle(); };
@@ -691,11 +694,12 @@ function setQuality(q){ store.set('quality',q); QUALITY.outlines=QUALITY.shadows
 document.querySelectorAll('#qualSeg button').forEach(b=>b.onclick=()=>{ setQuality(b.dataset.q); renderMenu(); startPreview(); });
 
 // ---------------------------------------------------------------- loop
-let last=performance.now(), menuDirty=0, fpsAcc=0, fpsN=0;
+let last=performance.now(), menuDirty=0, fpsAcc=0, fpsN=0, SHADOW_N=0;
 function frame(now){
   let rawDt=(now-last)/1000, dt=Math.min(0.05,rawDt); last=now;
   try{
-    { const done=pumpPortraits(G?2:3); if(done.length&&!G&&repaintTiles(done)&&!$('#menu').hidden) menuDirty=0.25; }
+    { const done=pumpPortraits(G?(G.over?2:0):3); if(done.length&&!G&&repaintTiles(done)&&!$('#menu').hidden) menuDirty=0.25; }
+    // portraits: none are built during a battle (your deck's are made before it starts, the menu's wait until it ends)
     if(menuDirty>0){ menuDirty-=dt; if(menuDirty<=0) renderMenu(); }
     if(G&&G.needWarm){ G.needWarm=false; prewarmMatch(); }
     if(G&&G.warm&&G.warm.length){ const [k,t]=G.warm.shift(); try{ getModel(CARDS[k].model,t); }catch(e){} }
@@ -705,15 +709,15 @@ function frame(now){
         let ts=1; if(G.freezeT>0){ G.freezeT-=rawDt; ts=0.06; } else if(G.slowT>0){ G.slowT-=rawDt; ts=G.slowT>0.25?0.32:0.32+(1-G.slowT/0.25)*0.68; }
         const sdt=dt*ts; if(G.puppet) netGuestTick(sdt); else for(let i=0;i<steps;i++) update(sdt); NET.rec=false; syncUnits(sdt*steps); syncWorld(sdt*steps); updateGhost();
         if(G.fovKick>0){ G.fovKick=Math.max(0,G.fovKick-rawDt*1.6); camera.fov=36-Math.sin(G.fovKick*PI)*2.6; camera.updateProjectionMatrix(); } else if(camera.fov!==36){ camera.fov=36; camera.updateProjectionMatrix(); }
-        if(!AUTOTEST&&QUALITY.shadows&&!G.over){ fpsAcc+=rawDt; fpsN++; if(fpsN>=150){ if(fpsAcc/fpsN>1/30){ setQuality('smooth'); G.msg={s:'Switched to Smooth graphics for speed',t:2.5}; } fpsAcc=0; fpsN=0; } } }
+        if(!AUTOTEST&&QUALITY.shadows&&!G.over&&G.t>2){ fpsAcc+=Math.min(rawDt,0.25); fpsN++; if(fpsN>=90){ if(fpsAcc/fpsN>1/40){ setQuality('smooth'); G.msg={s:'Switched to Smooth graphics for speed',t:2.5}; } fpsAcc=0; fpsN=0; } } }
       animateArena(dt,G.t);
       const sh=G.shake; const ox=sh>0?(Math.random()-0.5)*sh*0.5:0, oy=sh>0?(Math.random()-0.5)*sh*0.5:0;
-      camera.position.x+=ox; camera.position.y+=oy; renderer.render(scene,camera); camera.position.x-=ox; camera.position.y-=oy;
+      camera.position.x+=ox; camera.position.y+=oy; SHADOW_N=(SHADOW_N+1)%2; if(SHADOW_N===0) renderer.shadowMap.needsUpdate=true; renderer.render(scene,camera); camera.position.x-=ox; camera.position.y-=oy;
       hx.setTransform(DPR,0,0,DPR,0,0); hx.clearRect(0,0,W,H); drawWorldOverlay(); drawHUD(); if(G&&G.online) netAfterFrame(rawDt);
     } else if(menuPreview){
       menuPreview.t+=dt; const a=menuPreview.t*0.12; camera.position.set(9+Math.sin(a)*24,18,16+Math.cos(a)*24); camera.lookAt(9,0,16);
       menuPreview.models.forEach((m,i)=>{ m.position.y=(m.userData.baseY??(m.userData.baseY=m.position.y))+Math.abs(Math.sin(menuPreview.t*4+i))*0.25; m.rotation.y+=dt*0.8; });
-      animateArena(dt,menuPreview.t); updateFx3(dt); renderer.render(scene,camera);
+      animateArena(dt,menuPreview.t); updateFx3(dt); renderer.shadowMap.needsUpdate=true; renderer.render(scene,camera);
       hx.setTransform(DPR,0,0,DPR,0,0); hx.clearRect(0,0,W,H);
     }
   }catch(err){ console.error(err); }

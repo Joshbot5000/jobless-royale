@@ -272,7 +272,7 @@ function netStartMatch(){
 }
 function netBegin(){
   $('#online').hidden=true; $('#menu').hidden=true; $('#end').hidden=true; menuPreview=null; infoCard=null; NET.guestWantsRematch=false; if(typeof tourHide==='function') tourHide();
-  newGame(NET.arena,1,NET.mode,NET.myDeck,NET.friendDeck); G.online=true; G.foe=NET.friend; G.aiTimer=1e9; G.myDeck=NET.myDeck.slice();
+  readyDeck(NET.myDeck); newGame(NET.arena,1,NET.mode,NET.myDeck,NET.friendDeck); G.online=true; G.foe=NET.friend; G.aiTimer=1e9; G.myDeck=NET.myDeck.slice();
   G.lvl=NET.eq?null:[deckLevels(NET.myDeck),NET.friendLv||{_:1}]; if(NET.tour) G.tour=NET.tour;
   ensureZone(); hideGhost(); emoteOpen=false; fitCamera(W,H,TOPH,PANH);
   G.hands[0].concat(G.queues[0]).forEach(requestPortrait);
@@ -327,7 +327,7 @@ function netGuestStart(m){
   NET.friend=(m.name||NET.friend).slice(0,14);
   $('#online').hidden=true; $('#menu').hidden=true; $('#end').hidden=true; $('#pause').hidden=true; menuPreview=null; infoCard=null;
   const deck=m.mode==='mix'?mixDeck:loadDeck(THEMES[ai]);
-  newGame(ai,1,m.mode,deck,deck); G.online=true; G.puppet=true; G.foe=NET.friend; G.aiTimer=1e9; G.banner=null; G.myDeck=deck.slice(); if(NET.tour) G.tour=NET.tour;
+  readyDeck(deck); newGame(ai,1,m.mode,deck,deck); G.online=true; G.puppet=true; G.foe=NET.friend; G.aiTimer=1e9; G.banner=null; G.myDeck=deck.slice(); if(NET.tour) G.tour=NET.tour;
   NET.units.clear(); NET.projs.clear(); NET.objs.forEach(o=>dynRoot.remove(o.obj)); NET.objs.clear(); NET.orbs.clear(); NET.clouds=[]; NET.last=null;
   // host tower i  ->  local tower with the mirrored position
   NET.towerMap=G.towers.map(()=>0); const hostOrder=[[1,3.5,6.5],[1,14.5,6.5],[1,9,3],[0,3.5,25.5],[0,14.5,25.5],[0,9,29]];
@@ -348,7 +348,7 @@ function netApplySnap(m){
   const seen=new Set();
   for(const o of m.u){ seen.add(o.i); let v=NET.units.get(o.i); const c=CARDS[o.c]; if(!c) continue;
     if(!v){ v={uid:o.i,card:o.c,c,flying:!!c.flying,radius:c.radius,baseR:c.radius,mass:c.mass,building:c.type==='building',speed:c.speed,targets:c.targets,walk:Math.random()*6,yawVis:MYAW(o.w),bank:0,scale:1,
-        x:MX(o.x),y:MY(o.y),hp:o.h,maxHp:o.m,atk:0,cd:0,dead:false,grow:0,lead:false}; NET.units.set(o.i,v); G.units.push(v); }
+        x:MX(o.x),y:MY(o.y),hp:o.h,maxHp:o.m,atk:0,cd:0,dead:false,grow:0,lead:false,vs:visScale(c)}; NET.units.set(o.i,v); G.units.push(v); }
     v.team=MT(o.t); v.tx=MX(o.x); v.ty=MY(o.y); v.hp=o.h; v.maxHp=o.m; v.shield=o.s||0; v.yaw=MYAW(o.w); if(o.a>0&&!(v.atk>0)) v.atk=o.a; if(!(o.a>0)) v.atk=0;
     v.moving=!!o.v; v.deploy=o.d||0; v.deployMax=o.D||v.deployMax||1; v.parachute=!!o.P; v.scale=o.k||1; v.radius=v.baseR*v.scale;
     v.invis=o.H?1:0; v.stealthOn=false; v.stone=!!o.S; v.charging=!!o.C; v.enraged=!!o.E; v.lead=!!o.L; v.inRange=!!o.R; v.convKind=o.ck; v.burnCol=o.bc||null;
