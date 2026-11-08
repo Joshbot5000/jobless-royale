@@ -163,8 +163,10 @@ Object.assign(CARDS,{
   B('spacedog',{cost:3}); B('bailiff',{hp:3000}); B('judge',{hp:1500});
   if(CARDS.elephant){ CARDS.elephant.dmg=Math.round(CARDS.elephant.dmg*1.35); CARDS.elephant.hs=1.4; }
   B('sumo',{rar:'champion',champ:true,role:'hero',tap:{k:'deflect',cost:1,cd:10,icon:'🛡️',name:'Belly Deflect'},
-    desc:'Anything that hits it up close bounces off, knocked back 3 tiles. TAP – Belly Deflect (1 benefit, every 10s): the next ranged attack that hits the belly is fired straight back at whoever sent it, for full damage.'});
-  // the money is "Broke Benefits" now: every card text says so
+    desc:'Anything that hits it up close bounces off, knocked back 3 tiles. TAP – Belly Deflect (1 Broke Buck, every 10s): the next ranged attack that hits the belly is fired straight back at whoever sent it, for full damage.'});
+  // the money is "Broke Bucks" now: every card text says so
   for(const k in CARDS){ const c=CARDS[k]; if(!c.desc) continue;
-    c.desc=c.desc.replace(/(\d+(?:\.\d+)?)\s+elixir/gi,(m,n)=>n==='1'?'1 benefit':n+' benefits').replace(/\belixir\b/gi,'benefits').replace(/💧/g,'💵'); }
+    c.desc=c.desc.replace(/(\d+(?:\.\d+)?)\s+(elixir|benefits?)/gi,(m,n)=>n==='1'?'1 Broke Buck':n+' Broke Bucks').replace(/\b(elixir|benefits)\b/gi,'Broke Bucks').replace(/💧/g,'💵'); }
 })();
+
+if(CARDS.sumo) CARDS.sumo.hp=4000;

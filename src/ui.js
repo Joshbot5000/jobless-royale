@@ -172,6 +172,17 @@ function cardFace(id,w,h){
 const EMOJI_FONT='"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Twemoji Mozilla",sans-serif', emojiCache={};
 function emojiImg(ch){ if(emojiCache[ch]) return emojiCache[ch]; const S=128, cv=document.createElement('canvas'); cv.width=cv.height=S; const x=cv.getContext('2d');
   x.font=`${Math.round(S*0.8)}px ${EMOJI_FONT}`; x.textAlign='center'; x.textBaseline='middle'; x.fillText(ch,S/2,S*0.54); return emojiCache[ch]=cv; }
+// a US-style banknote: pale green paper, darker printed border, an oval medallion with a $ (big=true: counter badge with no $)
+const billCache={};
+function billImg(w,h,big){ w=Math.max(4,w); h=Math.max(4,h); const k=w+'x'+h+(big?'b':''); if(billCache[k]) return billCache[k];
+  const c=document.createElement('canvas'); c.width=w; c.height=h; const x=c.getContext('2d');
+  const g=x.createLinearGradient(0,0,0,h); g.addColorStop(0,'#d6e6c3'); g.addColorStop(0.5,'#b5cf9b'); g.addColorStop(1,'#93b47a'); x.fillStyle=g; rrp(x,0,0,w,h,big?h*0.16:Math.min(3,h*0.15)); x.fill();
+  const m=Math.max(1,h*0.1); x.strokeStyle='#4a7a3c'; x.lineWidth=Math.max(1,h*0.07); rrp(x,m,m,w-2*m,h-2*m,Math.max(1,h*0.08)); x.stroke();
+  x.globalAlpha=0.35; x.strokeStyle='#5f8f4c'; x.lineWidth=Math.max(0.6,h*0.03); for(let i=1;i<6;i++){ const yy=m+(h-2*m)*i/6; x.beginPath(); x.moveTo(m*1.6,yy); x.lineTo(w-m*1.6,yy); x.stroke(); } x.globalAlpha=1;
+  if(!big){ const r=Math.min(w*0.3,h*0.34); x.fillStyle='#e3efd4'; x.beginPath(); x.ellipse(w/2,h/2,r*1.15,r,0,0,TAU); x.fill(); x.strokeStyle='#3f6b33'; x.lineWidth=Math.max(0.8,h*0.05); x.stroke();
+    x.fillStyle='#2f5a27'; x.font=`${Math.round(r*1.5)}px ${FONT}`; x.textAlign='center'; x.textBaseline='middle'; x.fillText('$',w/2,h/2+r*0.08); }
+  else { x.fillStyle='rgba(47,90,39,.55)'; x.beginPath(); x.ellipse(w/2,h/2,w*0.3,h*0.34,0,0,TAU); x.fill(); }
+  return billCache[k]=c; }
 function rrp(c,x,y,w,h,r){ r=Math.max(0,Math.min(r,w/2,h/2)); c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
 function drawCardFace(c,id,w,h,dpr){
   const d=CARDS[id]; c.save(); c.scale(dpr,dpr);
@@ -191,8 +202,7 @@ function drawCardFace(c,id,w,h,dpr){
   if(c.measureText(nm).width>w*0.94) nm=nm.split(' ').slice(-1)[0];
   c.lineWidth=fsz*0.22; c.strokeStyle='#14161c'; c.strokeText(nm,w/2,h*0.9); c.fillStyle='#fff'; c.fillText(nm,w/2,h*0.9);
   const r=w*0.17, ex=r*1.0, ey=r*1.05;
-  c.beginPath(); c.moveTo(ex,ey-r*1.35); c.quadraticCurveTo(ex+r*1.1,ey-r*0.2,ex+r*0.95,ey+r*0.15); c.arc(ex,ey+r*0.1,r*0.95,0.05,PI-0.05); c.quadraticCurveTo(ex-r*1.1,ey-r*0.2,ex,ey-r*1.35);
-  const eg=c.createLinearGradient(0,ey-r,0,ey+r); eg.addColorStop(0,'#8dff9a'); eg.addColorStop(1,'#16924a'); c.fillStyle=eg; c.fill(); c.lineWidth=Math.max(1.5,w*0.03); c.strokeStyle='#14161c'; c.stroke();
+  { const bw=r*2.3, bh=r*1.75; c.save(); c.translate(ex,ey); c.rotate(-0.14); c.drawImage(billImg(Math.round(bw*dpr),Math.round(bh*dpr),true),-bw/2,-bh/2,bw,bh); c.lineWidth=Math.max(1.5,w*0.03); c.strokeStyle='#14161c'; rrp(c,-bw/2,-bh/2,bw,bh,bh*0.16); c.stroke(); c.restore(); }
   c.font=`${r*1.25}px ${FONT}`; c.lineWidth=r*0.3; c.strokeText(d.cost,ex,ey+r*0.12); c.fillStyle='#fff'; c.fillText(d.cost,ex,ey+r*0.12);
   c.restore(); return ready;
 }
@@ -336,15 +346,21 @@ function drawHUD(){
     if(el<d.cost||blocked){ hx.fillStyle='rgba(15,20,40,.6)'; rrp(hx,r.x,r.y+lift,r.w,r.h,r.w*0.1); hx.fill(); if(!blocked){ const f=el/d.cost; hx.fillStyle='rgba(200,80,255,.35)'; hx.fillRect(r.x+2,r.y+lift+r.h*(1-f),r.w-4,r.h*f-2); } else txt('IN BATTLE',r.x+r.w/2,r.y+r.h*0.45,r.w*0.15,'#ffe14d'); }
     if(sel){ hx.strokeStyle='#ffe14d'; hx.lineWidth=3.5; rrp(hx,r.x-1,r.y+lift-1,r.w+2,r.h+2,r.w*0.1); hx.stroke(); }
     hx.globalAlpha=1; });
+  // Broke Bucks: the bar fills with real-looking banknotes, one per buck
   const e=elixRect, dr=e.h*0.85;
   hx.fillStyle='#14161c'; rrp(hx,e.x+dr*0.6,e.y,e.w-dr*0.6,e.h,e.h/2); hx.fill();
-  const inn={x:e.x+dr*1.4,y:e.y+3,w:e.w-dr*1.4-4,h:e.h-6}; hx.fillStyle='#1d3a28'; rrp(hx,inn.x,inn.y,inn.w,inn.h,inn.h/2); hx.fill();
-  const fw=inn.w*el/10; if(fw>1){ const eg=hx.createLinearGradient(0,inn.y,0,inn.y+inn.h); eg.addColorStop(0,'#9dffab'); eg.addColorStop(0.5,'#3ddc6a'); eg.addColorStop(1,'#169a48'); hx.fillStyle=eg; rrp(hx,inn.x,inn.y,fw,inn.h,inn.h/2); hx.fill(); hx.fillStyle='rgba(255,255,255,.35)'; hx.fillRect(inn.x+inn.h/2,inn.y+2,Math.max(0,fw-inn.h),inn.h*0.25); }
-  hx.strokeStyle='rgba(0,0,0,.45)'; hx.lineWidth=2; for(let i=1;i<10;i++){ const x=inn.x+inn.w*i/10; hx.beginPath(); hx.moveTo(x,inn.y); hx.lineTo(x,inn.y+inn.h); hx.stroke(); }
-  hx.font=`${Math.max(9,inn.h*0.52)}px ${FONT}`; hx.textAlign='center'; hx.textBaseline='middle'; hx.fillStyle='rgba(6,48,22,.62)'; hx.fillText('BROKE BENEFITS',inn.x+inn.w/2,inn.y+inn.h/2+1);
-  const dx=e.x+dr*0.75, dy=e.y+e.h/2; hx.beginPath(); hx.moveTo(dx,dy-dr*1.05); hx.quadraticCurveTo(dx+dr*0.85,dy-dr*0.1,dx+dr*0.72,dy+dr*0.2); hx.arc(dx,dy+dr*0.15,dr*0.74,0.05,PI-0.05); hx.quadraticCurveTo(dx-dr*0.85,dy-dr*0.1,dx,dy-dr*1.05);
-  const dg=hx.createLinearGradient(0,dy-dr,0,dy+dr); dg.addColorStop(0,'#8dff9a'); dg.addColorStop(1,'#16924a'); hx.fillStyle=dg; hx.fill(); hx.strokeStyle='#14161c'; hx.lineWidth=2.5; hx.stroke();
-  txt(String(Math.floor(el)),dx,dy+dr*0.12,dr*1.05,'#fff');
+  const inn={x:e.x+dr*1.4,y:e.y+3,w:e.w-dr*1.4-4,h:e.h-6}; hx.fillStyle='#1f2b1c'; rrp(hx,inn.x,inn.y,inn.w,inn.h,inn.h/2); hx.fill();
+  hx.save(); rrp(hx,inn.x,inn.y,inn.w,inn.h,inn.h/2); hx.clip();
+  const sw=inn.w/10, note=billImg(Math.round(sw*DPR),Math.round(inn.h*DPR));
+  for(let i=0;i<10;i++){ const f=Math.max(0,Math.min(1,el-i)); if(f<=0) break; const x=inn.x+i*sw; hx.save(); hx.beginPath(); hx.rect(x,inn.y,sw*f,inn.h); hx.clip(); hx.drawImage(note,x,inn.y,sw,inn.h); hx.restore(); }
+  hx.restore();
+  // the counter is a banknote too, and the currency's name sits beside the bar like a label
+  const dx=e.x+dr*0.75, dy=e.y+e.h/2, bw=dr*2.0, bh=dr*1.55;
+  hx.save(); hx.translate(dx,dy); hx.rotate(-0.12); hx.shadowColor='rgba(0,0,0,.35)'; hx.shadowBlur=4; hx.shadowOffsetY=2; hx.drawImage(billImg(Math.round(bw*DPR),Math.round(bh*DPR),true),-bw/2,-bh/2,bw,bh); hx.restore();
+  hx.lineWidth=2.5; hx.strokeStyle='#14161c'; hx.save(); hx.translate(dx,dy); hx.rotate(-0.12); rrp(hx,-bw/2,-bh/2,bw,bh,bh*0.16); hx.stroke(); hx.restore();
+  { const lx=(e.x-dr*0.25)/2+2, fs=Math.max(9,Math.min(13,dr*0.62)); hx.font=`${fs}px ${FONT}`; hx.textAlign='center'; hx.textBaseline='middle'; hx.lineWidth=3; hx.strokeStyle='#14161c';
+    for(const [t,yy] of [['BROKE',dy-fs*0.55],['BUCKS',dy+fs*0.55]]){ hx.strokeText(t,lx,yy); hx.fillStyle='#b9dc9a'; hx.fillText(t,lx,yy); } }
+  txt(String(Math.floor(el)),dx,dy+1,dr*1.05,'#fff');
   drawTapButton();
   if(emoteOpen){ const em=G.th.emotes; const bh=Math.max(34,PANH*0.24), by=PANY-bh-8; emoteRects=[];
     hx.font=`${Math.max(13,bh*0.4)}px ${FONT}`; let x=8; em.forEach((s,i)=>{ const w=hx.measureText(s).width+20; emoteRects.push({x,y:by,w,h:bh,i}); x+=w+6; });
@@ -394,7 +410,7 @@ const inArena=p=>p.y>TOPH&&p.y<PANY-2&&!(tapState(0)&&Math.hypot(p.x-(tapRect.x+
 let infoCard=null, holdTimer=null;
 function tryDeploy(i,p){
   const id=G.hands[0][i]; if(!id) return;
-  if(G.elixir[0]<CARDS[id].cost){ G.msg={s:'Not enough benefits!',t:1.1}; sfx('bad'); return; }
+  if(G.elixir[0]<CARDS[id].cost){ G.msg={s:'Not enough Broke Bucks!',t:1.1}; sfx('bad'); return; }
   const wp=screenToGround(p.x,p.y); if(!wp) return;
   if(G.puppet){ if(CARDS[id].champ&&champOf(0)){ G.msg={s:'Your Champion is already in battle!',t:1.4}; sfx('bad'); return; } netSend({t:'play',i,id,x:wp.x,y:wp.y}); G.sel=-1; buzz(15); sfx(CARDS[id].champ?'champ':'deploy'); return; }
   const r=playCard(0,i,wp.x,wp.y);
@@ -407,8 +423,8 @@ hud.addEventListener('pointerdown',e=>{
   if(emoteOpen){ const r=emoteRects.find(r=>hit(r,p)); emoteOpen=false; if(r){ sfx('emote'); if(G.puppet){ netSend({t:'emote',i:r.i}); return; } G.emotes=G.emotes.filter(x=>x.team!==0); G.emotes.push({team:0,text:G.th.emotes[r.i],t:0}); if(G.online) return; if(Math.random()<0.6) setTimeout(()=>{ if(G&&!G.over) aiEmote(Math.random()<0.5?'taunt':'gloat',true); },900+Math.random()*800); return; } }
   if(hit(emoteRect,p)){ emoteOpen=true; sfx('pop'); return; }
   if(tapState(0)&&Math.hypot(p.x-(tapRect.x+tapRect.r),p.y-(tapRect.y+tapRect.r))<tapRect.r+4){
-    if(G.puppet){ const st=tapState(0); if(st&&!st.ready){ G.msg={s:G.elixir[0]<st.tp.cost?'Not enough benefits!':'Ability recharging…',t:1.1}; sfx('bad'); return; } netSend({t:'tap'}); buzz(25); sfx('champ'); return; }
-    const r=useTap(0); const msg={elixir:'Not enough benefits!',cd:'Ability recharging…',notarget:'No target in range!',stunned:'Your Champion is stunned!'}[r];
+    if(G.puppet){ const st=tapState(0); if(st&&!st.ready){ G.msg={s:G.elixir[0]<st.tp.cost?'Not enough Broke Bucks!':'Ability recharging…',t:1.1}; sfx('bad'); return; } netSend({t:'tap'}); buzz(25); sfx('champ'); return; }
+    const r=useTap(0); const msg={elixir:'Not enough Broke Bucks!',cd:'Ability recharging…',notarget:'No target in range!',stunned:'Your Champion is stunned!'}[r];
     if(msg){ G.msg={s:msg,t:1.1}; sfx('bad'); } else if(r==='ok'){ buzz(25); sfx('champ'); } return; }
   const ci=cardRects.findIndex(r=>hit(r,p));
   if(ci>=0){ const was=G.sel===ci; G.sel=ci; G.drag={x:p.x,y:p.y,sx:p.x,sy:p.y,inArena:false,toggle:was}; try{ hud.setPointerCapture(e.pointerId); }catch(_){} sfx('pop');
@@ -522,16 +538,16 @@ function cardTraits(d){ const t=[], a=d.atk||{}, oh=d.onHit||{}, sp=d.sp||{};
   if(oh.stun||oh.chain||sp.stun||sp.frozen||sp.k==='zap') t.push(oh.chain?'Chains':'Stuns');
   if(sp.k==='charge') t.push('Charges'); if(sp.k==='leap') t.push('Leaps'); if(d.swim) t.push('Swims the river'); if(d.anywhere||d.deployAnywhere) t.push('Deploy anywhere');
   if(d.armor) t.push('Splash armour '+Math.round(d.armor*100)+'%'); if(d.shield0) t.push('Shield '+d.shield0); if(d.dodge) t.push('Dodges '+Math.round(d.dodge*100)+'%'); if(d.thorns) t.push('Thorns '+Math.round(d.thorns*100)+'%');
-  if(d.taunt) t.push('Draws enemies'); if(d.spawner) t.push('Spawns '+(CARDS[d.spawner.card]||{}).name); if(d.gen) t.push('Makes benefits'); if(d.life) t.push('Lasts '+d.life+'s');
+  if(d.taunt) t.push('Draws enemies'); if(d.spawner) t.push('Spawns '+(CARDS[d.spawner.card]||{}).name); if(d.gen) t.push('Makes Broke Bucks'); if(d.life) t.push('Lasts '+d.life+'s');
   if(d.regen) t.push('Heals itself'); if(d.aura&&(d.aura.heal||d.aura.repair)) t.push('Heals allies'); if(d.aura&&d.aura.rush) t.push('Speeds allies'); if(d.aura&&d.aura.slow) t.push('Slows enemies');
   if(d.death) t.push('Death effect');
   return t; }
 function cardInfo(id){ const d=CARDS[id]; const kind=d.type==='spell'?'Spell':d.type==='building'?'Building':d.champ?'Champion':'Troop';
   const lock=!unlocked(id)?`<br><span class="lockline">🔒 Unlocks at 🏆 ${d.unlock}</span>`:'';
-  $('#info').innerHTML=`<b>${d.name}</b> · ${d.cost} benefits · ${kind}<br>${d.desc}`+(d.hp?`<br><span class="dim">HP ${d.hp}${d.count>1?' ×'+d.count:''} · ${d.targets==='buildings'?'Targets buildings':d.targets==='all'?'Hits air & ground':'Hits ground'}${d.flying?' · Flying':''}${d.range>1.5?' · Range '+d.range:''}</span>`:'')+(cardTraits(d).length?`<br><span class="traits">${cardTraits(d).map(x=>`<i>${x}</i>`).join('')}</span>`:'')+lock; }
+  $('#info').innerHTML=`<b>${d.name}</b> · ${d.cost} Broke Bucks · ${kind}<br>${d.desc}`+(d.hp?`<br><span class="dim">HP ${d.hp}${d.count>1?' ×'+d.count:''} · ${d.targets==='buildings'?'Targets buildings':d.targets==='all'?'Hits air & ground':'Hits ground'}${d.flying?' · Flying':''}${d.range>1.5?' · Range '+d.range:''}</span>`:'')+(cardTraits(d).length?`<br><span class="traits">${cardTraits(d).map(x=>`<i>${x}</i>`).join('')}</span>`:'')+lock; }
 function cardTile(id,onTap,extra=''){
   const b=document.createElement('button'); b.type='button'; b.className='cardtile '+extra; b.id='card-'+id+(extra?'-'+extra.split(' ')[0]:''); const lk=!unlocked(id);
-  b.setAttribute('aria-label',CARDS[id].name+', '+CARDS[id].cost+' benefits'+(lk?', locked until '+CARDS[id].unlock+' trophies':''));
+  b.setAttribute('aria-label',CARDS[id].name+', '+CARDS[id].cost+' Broke Bucks'+(lk?', locked until '+CARDS[id].unlock+' trophies':''));
   b.dataset.card=id; const c=document.createElement('canvas'); drawTileFace(c,id);
   b.appendChild(c);
   if(swapPick===id) b.classList.add('pick');
@@ -551,11 +567,11 @@ function cardBack(id){ const d=CARDS[id], n=d.count||1, sp=d.sp||{};
   if(d.type==='spell'){ hl='Radius'; hp=sp.r?'r'+sp.r:'–';
     if(sp.k==='barrage') dmg=(sp.n||1)+'×'+sp.dmg; else if(sp.k==='cloud'&&sp.dps) dmg=sp.dps+'/s'; else if(sp.dmg) dmg=sp.dmg;
     else if(sp.k==='stun'||sp.k==='freeze'){ dl=sp.k==='freeze'?'Freeze':'Stun'; dmg=sp.t+'s'; } else if(sp.t){ dl='Lasts'; dmg=sp.t+'s'; } else if(sp.amt){ dl='Heal'; dmg=sp.amt; } }
-  else { hp=n>1?d.hp+'×'+n:d.hp; if(d.dmg) dmg=n>1?d.dmg+'×'+n:d.dmg; else if(sp.dmg) dmg=sp.dmg; else if(d.gen){ dl='Benefits'; dmg='+'+d.gen.amt+'/'+d.gen.every+'s'; } else if(d.spawner){ dl='Spawns'; dmg=(d.spawner.n||1)+'/'+d.spawner.every+'s'; } }
+  else { hp=n>1?d.hp+'×'+n:d.hp; if(d.dmg) dmg=n>1?d.dmg+'×'+n:d.dmg; else if(sp.dmg) dmg=sp.dmg; else if(d.gen){ dl='Bucks'; dmg='+'+d.gen.amt+'/'+d.gen.every+'s'; } else if(d.spawner){ dl='Spawns'; dmg=(d.spawner.n||1)+'/'+d.spawner.every+'s'; } }
   let line=(d.desc||'').replace(/^LEGENDARY\.\s*/,'').split(/(?<=[.!?])\s/)[0]; if(line.length>78) line=line.slice(0,75).replace(/\s\S*$/,'')+'…';
   const tap=d.tap?`<div class="cbtap">👆 ${d.tap.name}</div>`:'';
   const el=document.createElement('div'); el.className='cardback rar-'+(d.rar||'common');
-  el.innerHTML=`<div class="cbname">${d.short||d.name}</div><div class="cbstats"><div><i>💵</i><b>${d.cost}</b><span>Benefits</span></div><div><i>⚔️</i><b>${dmg}</b><span>${dl}</span></div><div><i>${d.type==='spell'?'🎯':'❤️'}</i><b>${hp}</b><span>${hl}</span></div></div><div class="cbline">${line}</div>${tap}`;
+  el.innerHTML=`<div class="cbname">${d.short||d.name}</div><div class="cbstats"><div><i>💵</i><b>${d.cost}</b><span>Bucks</span></div><div><i>⚔️</i><b>${dmg}</b><span>${dl}</span></div><div><i>${d.type==='spell'?'🎯':'❤️'}</i><b>${hp}</b><span>${hl}</span></div></div><div class="cbline">${line}</div>${tap}`;
   return el; }
 function drawTileFace(c,id){ const w=88,h=110, lk=!unlocked(id); c.width=w*2; c.height=h*2; const x=c.getContext('2d'); drawCardFace(x,id,w,h,2);
   if(lk){ x.save(); x.scale(2,2); x.fillStyle='rgba(12,16,34,.72)'; rrp(x,0,0,w,h,w*0.1); x.fill(); x.font=`${w*0.34}px ${FONT}`; x.textAlign='center'; x.textBaseline='middle'; x.fillText('🔒',w/2,h*0.36);

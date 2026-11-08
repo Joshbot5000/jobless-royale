@@ -2,7 +2,7 @@
 //  SIM — battle rules, abilities, AI, and 3D sync
 // =====================================================================
 const AW=18, AH=32, BRIDGES=[3.5,14.5];
-const ELIXIR_SECS=2.1;   // seconds per benefit (the game's elixir) at 1x (Clash Royale uses 2.8; faster keeps battles moving)
+const ELIXIR_SECS=2.1;   // seconds per Broke Buck (the game's elixir) at 1x (Clash Royale uses 2.8; faster keeps battles moving)
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const rnd=(a,b)=>a+Math.random()*(b-a);
@@ -14,14 +14,14 @@ const DIFF=[
 ];
 const MODES={
   classic:{name:'Classic',icon:'⚔️',time:180,desc:'3 minutes. Elixir doubles in the last minute. Overtime if crowns are tied.'},
-  rush:{name:'Rush Hour',icon:'⚡',time:150,elixir:3,desc:'Triple benefits from the first second. Pure chaos, constant pushes.'},
+  rush:{name:'Rush Hour',icon:'⚡',time:150,elixir:3,desc:'Triple Broke Bucks from the first second. Pure chaos, constant pushes.'},
   sudden:{name:'Sudden Death',icon:'💀',time:120,elixir:2,sudden:true,desc:'Double elixir. The first tower to fall ends the match.'},
-  rage:{name:'Rage',icon:'💢',time:180,elixir:2,speedMul:3,desc:'Everything moves three times as fast and your benefits pay out at double speed. Total carnage.'},
+  rage:{name:'Rage',icon:'💢',time:180,elixir:2,speedMul:3,desc:'Everything moves three times as fast and your Broke Bucks pay out at double speed. Total carnage.'},
   mix:{name:'Mix & Match',icon:'🃏',time:180,mix:true,desc:'Build a 6 + 2 deck from every card you have unlocked in any arena. The AI brings a random mix.'},
 };
 const CHAOS_EVENTS=[
   {name:'POWER STORM',icon:'🌩️',run(){ for(let i=0;i<4;i++) spawnOrb(rnd(2,16),i<2?rnd(18,27):rnd(5,14)); }},
-  {name:'ELIXIR RAIN',icon:'💧',run(){ G.elixir[0]=Math.min(10,G.elixir[0]+4); G.elixir[1]=Math.min(10,G.elixir[1]+4); for(let i=0;i<60;i++) PSA.spawn(rnd(0,18),rnd(6,10),rnd(0,32),0,-6,0,1.2,0.35,'#3ddc6a',1,2); }},
+  {name:'ELIXIR RAIN',icon:'💧',run(){ G.elixir[0]=Math.min(10,G.elixir[0]+4); G.elixir[1]=Math.min(10,G.elixir[1]+4); for(let i=0;i<60;i++) PSA.spawn(rnd(0,18),rnd(6,10),rnd(0,32),0,-6,0,1.2,0.35,'#85bb65',1,2); }},
   {name:'GIANT TIME',icon:'🍄',run(){ for(const u of G.units) if(!u.dead&&!u.building) makeGiant(u,8); }},
   {name:'METEOR SHOWER',icon:'☄️',run(){ for(let i=0;i<8;i++){ const x=rnd(1.5,16.5), y=rnd(3,29); if(y>14.5&&y<17.5) continue; const obj=buildFall('rock',TEAMC[0]); obj.scale.setScalar(0.5); dynRoot.add(obj); G.spells.push({id:'meteor',s:{k:'mini',r:1.4,dmg:160,fall:'rock'},team:-1,x,y,t:0.6+i*0.25,max:0.6+i*0.25,obj,mini:true}); } }},
   {name:'SUGAR RUSH',icon:'🍬',run(){ for(const u of G.units) if(!u.dead&&!u.building) u.rush=Math.max(u.rush,8); }},
@@ -174,7 +174,7 @@ function killUnit(u,killer){
     if(d.sprinkles){ G.clouds.push({team:owner,x:u.x,y:u.y,r:d.sprinkles[0],dps:0,t:d.sprinkles[1],max:d.sprinkles[1],slow:d.sprinkles[2],towerPct:0,col:'#ff8ad8',tick:0}); fxBurst(u.x,0.4,u.y,24,'#ffd34d',3,0.2,0.5,6,true); }
     if(d.rage){ G.clouds.push({team:owner,x:u.x,y:u.y,r:d.rage[0],dps:0,t:d.rage[1],max:d.rage[1],slow:0,towerPct:0,rage:true,col:'#ff3d3d',tick:0}); fxRing(u.x,u.y,0.3,d.rage[0],0.6,'#ff3d3d'); callout({x:u.x,y:u.y,h:1.6},d.rageCallout||'RAGE! 💢','#ff6b6b',true); }
     if(d.callout) callout({x:u.x,y:u.y,h:1.8},d.callout,'#ff6b6b',true);
-    if(d.elixir){ G.elixir[owner]=Math.min(10,G.elixir[owner]+d.elixir); callout({x:u.x,y:u.y,h:1.8},`+${d.elixir} 💵`,'#3ddc6a',true); for(let i=0;i<14;i++) PSA.spawn(u.x+rnd(-0.4,0.4),1,u.y+rnd(-0.4,0.4),rnd(-2,2),rnd(2,5),rnd(-2,2),0.8,0.3,'#3ddc6a',1,6); sfx('power'); }
+    if(d.elixir){ G.elixir[owner]=Math.min(10,G.elixir[owner]+d.elixir); callout({x:u.x,y:u.y,h:1.8},`+${d.elixir} 💵`,'#85bb65',true); for(let i=0;i<14;i++) PSA.spawn(u.x+rnd(-0.4,0.4),1,u.y+rnd(-0.4,0.4),rnd(-2,2),rnd(2,5),rnd(-2,2),0.8,0.3,'#85bb65',1,6); sfx('power'); }
     if(d.random){ const th=THEMES.find(t=>t.id===c.theme)||G.th; const opts=th.pool.filter(k=>{ const q=CARDS[k]; return q.type==='troop'&&!q.champ&&k!==u.card&&q.cost<=5; });
       for(let i=0;i<d.random&&opts.length;i++){ const k=opts[Math.random()*opts.length|0], a=i/d.random*TAU, n=Math.min(3,CARDS[k].count||1); for(let j=0;j<n;j++) spawnUnit(k,u.team,u.x+Math.cos(a)*0.7+rnd(-0.2,0.2),u.y+Math.sin(a)*0.7+rnd(-0.2,0.2),0.5); }
       callout({x:u.x,y:u.y,h:2},'SURPRISE! 🎁','#ffd34d',true); fxBurst(u.x,0.8,u.y,30,'#ffd34d',5,0.25,0.7,6,true); }
@@ -182,7 +182,7 @@ function killUnit(u,killer){
   if(killer && !killer.dead){
     const oh=killer.c.onHit||{};
     if(oh.infect && !u.building){ spawnUnit(oh.infect,killer.team,u.x,u.y,0.3); fxPuff(u.x,0.4,u.y,6,'#7dff4a',0.4); }
-    if(oh.bounty&&!u.building&&!c.hidden){ G.elixir[killer.team]=Math.min(10,G.elixir[killer.team]+oh.bounty); callout({x:u.x,y:u.y,h:1.6},'+'+oh.bounty+' 💵','#3ddc6a'); }
+    if(oh.bounty&&!u.building&&!c.hidden){ G.elixir[killer.team]=Math.min(10,G.elixir[killer.team]+oh.bounty); callout({x:u.x,y:u.y,h:1.6},'+'+oh.bounty+' 💵','#85bb65'); }
     if(oh.healOnKill){ killer.hp=Math.min(killer.maxHp,killer.hp+oh.healOnKill); fxBurst(killer.x,1,killer.y,8,'#7dff8a',2,0.18,0.6,0,true); }
     const ks=killer.c.sp;
     if(ks&&ks.k==='growOnKill'&&killer.grow<ks.max){ killer.grow++; killer.maxHp*=1+ks.f; killer.hp=Math.min(killer.maxHp,killer.hp+killer.maxHp*ks.f); callout(killer,ks.callout,'#7dff4a'); fxBurst(killer.x,1,killer.y,16,'#7dff4a',3,0.2,0.6,4,true); }
@@ -366,7 +366,7 @@ function resolveSpell(sp){
   }
   if(s.k==='drain'){
     const foe=1-team; const before=G.elixir[foe]; G.elixir[foe]=Math.max(0,G.elixir[foe]-s.drain);
-    const lost=Math.round(before-G.elixir[foe]); callout({x,y,h:2},lost>0?`-${lost} BENEFITS`:'ALREADY BROKE!','#3ddc6a',true);
+    const lost=Math.round(before-G.elixir[foe]); callout({x,y,h:2},lost>0?`-${lost} BROKE BUCKS`:'ALREADY BROKE!','#85bb65',true);
   }
   areaDamage(team,x,y,s.r,s.dmg,{towerPct:s.towerDmg?s.towerDmg/s.dmg:(s.towerPct??0.35),push:s.push,stun:s.stun,burn:s.burn,slow:s.slow});
   fxRing(x,y,0.3,s.r+0.4,0.5,col);
@@ -394,7 +394,7 @@ function update(dt){
   }
   const base=G.mode.elixir||1, dbl=G.overtime||G.time<=60;
   const rate=Math.max(base,dbl?2:1)*(G.overtime&&base<3?1.5:1);
-  if(dbl&&!G.dbl&&base<2){ G.dbl=true; if(!G.overtime) showBanner('2x BENEFITS!','',1.5,'#3ddc6a'); }
+  if(dbl&&!G.dbl&&base<2){ G.dbl=true; if(!G.overtime) showBanner('2x BROKE BUCKS!','',1.5,'#85bb65'); }
   G.rate=rate;
   for(let t=0;t<2;t++){ const mul=t===1?G.diff.elixirMul:(AUTOTEST?G.diff.elixirMul:1); G.elixir[t]=Math.min(10,G.elixir[t]+dt/ELIXIR_SECS*rate*mul); }
   if(G.mode.chaos){ G.chaosT-=dt; if(G.chaosT<=0){ G.chaosT=20; const ev=CHAOS_EVENTS[Math.random()*CHAOS_EVENTS.length|0]; ev.run(); showBanner(ev.icon+' '+ev.name,'Chaos event!',1.6,'#ffd34d'); feedLog(`${ev.icon} Chaos: ${ev.name}`,-1); sfx('power'); } }
@@ -501,7 +501,7 @@ function updateUnit(u,dt){
   if(u.c.regen&&u.hp<u.maxHp&&!u.dead){ u.hp=Math.min(u.maxHp,u.hp+u.c.regen*dt); if(Math.random()<dt*3) PSA.spawn(u.x+rnd(-0.3,0.3),1,u.y+rnd(-0.3,0.3),0,1.2,0,0.6,0.25,'#7dff8a',1,0); }
   if(u.building&&u.life){ u.hp-=u.maxHp/u.life*dt; if(u.hp<=0){ killUnit(u); return; } }
   if(u.c.gen){ u.genT=(u.genT||0)+dt; if(u.genT>=u.c.gen.every){ u.genT=0; const jp=u.c.gen.jackpot&&Math.random()<u.c.gen.jackpot[0]; const amt=jp?u.c.gen.jackpot[1]:u.c.gen.amt; G.elixir[u.team]=Math.min(10,G.elixir[u.team]+amt); u.atk=0.001; if(jp){ callout({x:u.x,y:u.y,h:2.8},'JACKPOT! 🎰','#ffd34d',true); fxBurst(u.x,1.5,u.y,30,'#ffd34d',5,0.25,0.7,6,true); }
-      for(let i=0;i<10;i++) PSA.spawn(u.x+rnd(-0.4,0.4),1.4,u.y+rnd(-0.4,0.4),rnd(-1,1),rnd(2,4),rnd(-1,1),0.8,0.28,'#ffd34d',1,5); if(!jp) callout({x:u.x,y:u.y,h:2.4},'+'+amt+' 💵','#3ddc6a'); sfx('pop'); } }
+      for(let i=0;i<10;i++) PSA.spawn(u.x+rnd(-0.4,0.4),1.4,u.y+rnd(-0.4,0.4),rnd(-1,1),rnd(2,4),rnd(-1,1),0.8,0.28,'#ffd34d',1,5); if(!jp) callout({x:u.x,y:u.y,h:2.4},'+'+amt+' 💵','#85bb65'); sfx('pop'); } }
   if(u.c.spawner){ u.spawnT=(u.spawnT||0)+dt; if(u.spawnT>=u.c.spawner.every){ u.spawnT=0; const sc=u.c.spawner; for(let i=0;i<sc.n;i++){ const a=i/sc.n*TAU; let sx=u.x+Math.cos(a)*0.6, sy=u.y+Math.sin(a)*0.6; if(sy>14.8&&sy<17.2) sy=u.team===0?17.4:14.6; const m=spawnUnit(sc.card,u.team,sx,sy,0.5); m.parachute=true; } } }
   if(Math.abs(u.kvx)+Math.abs(u.kvy)>0.01){ u.x+=u.kvx*dt; u.y+=u.kvy*dt; const f=Math.exp(-6*dt); u.kvx*=f; u.kvy*=f; } else u.kvx=u.kvy=0;
   // auras
