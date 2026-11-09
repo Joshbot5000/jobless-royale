@@ -76,7 +76,7 @@ Results from the November 2026 pass:
   - 4 elixir: about 520 damage (Fireball tier).
   - 6 elixir: about 1,150-1,230 in a small area (Rocket tier). Five arenas have one: IPO Rocket, Asteroid Strike, Drone Strike, Hollywood Explosion, Backdraft.
   - Barrages, clouds, pulls and rage durations follow the same tiers. Cheaper stuns are shorter.
-- **Tower troops** have an arena-specific shot: `towerFx` per theme, for example poison darts in Bio Lab, splash bricks on the Construction Site, sedative pills in the hospital, burning rockets on Bonfire Night. The FIGHT banner names it.
+- **Tower troops** have an arena-specific shot: `towerFx` per theme, for example poison darts in Bio Lab, splash bricks on the Construction Site, sedative pills in the hospital, burning rockets on Bonfire Night. The FIGHT banner names it. **Tower shots never stun** (owner's rule): the engine ignores a `stun` in `towerFx`.
 - **The owner's explicit card changes** live in `src/data_user.js`. It loads after the generated tuning, so the auto-tuner never overrides them.
 - **Card backs:** hold any card in the deck builder and it flips like a flashcard, showing elixir, damage, health (radius for spells), a one-line summary and the Champion ability.
 
@@ -103,6 +103,7 @@ Bouncing shots, red cards that send a troop back to its own king tower, swimmers
 - **Battle models are lighter.** Primitives use about 60% of the segments (`GEO_LO`, portraits switch it off) and surface-net bodies use a coarser cell. Tiny parts get no outline. Meshes on the same joint whose materials differ only in colour are merged, with the colour moved into vertex colours (`mergeRigid`). The arena dropped from about 100 draw calls to about 50.
 - **Cheaper shadows.** PCF at 1536, re-rendered every other frame. Phones with a 2x or sharper screen skip MSAA. Graphics switch to Smooth automatically if the average falls below about 40 fps over 90 frames.
 - **Troops are drawn bigger than their hitbox** (`visScale`): +20% for everyone, +32% for tanks, tower-chasers and Champions, +10% for swarms of 4 or more. Gameplay sizes are unchanged.
+- **Online smoothness on wifi.** Every snapshot carries the host's clock. The guest buffers snapshots and plays them back on its own clock, 0.1-0.35s behind the newest. The delay grows with the measured jitter, and playback speeds up or slows down slightly to hold it. Projectile speeds come from the host clock and the next buffered snapshot, and extrapolation stops after 0.25s without news. Test it with `?net=local&lag=60&jit=150&stall=0.08`, which simulates a patchy link in the two-tab test.
 - **No jitter.**
   - A troop at a bridge mouth never steps back to line up with its lane.
   - On the bridge it walks straight to a target on the same half.

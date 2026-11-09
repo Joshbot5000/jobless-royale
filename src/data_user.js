@@ -89,10 +89,10 @@ B('nurse',{desc:'Heals every friendly troop nearby by 90 a second and throws pil
 
 // ---------------------------------------------------------------- tower troops: every arena's tower shots do something on-theme
 const TFX={ law:[{mark:[2,1.15]},'Tower clerks throw writs: hit troops take 15% more damage.'], finance:[{slow:[0.8,0.8]},'Tower brokers throw coins that weigh troops down.'],
-  space:[{splash:0.8},'Tower lasers splash nearby troops.'], fbi:[{stun:0.12},'Tower agents fire stun rounds.'], bio:[{poison:[15,2]},'Tower darts poison troops.'],
+  space:[{splash:0.8},'Tower lasers splash nearby troops.'], fbi:[{mark:[2,1.15]},'Tower agents fire tracker rounds: hit troops take 15% more damage.'], bio:[{poison:[15,2]},'Tower darts poison troops.'],
   hospital:[{slow:[1,0.7]},'Tower pills are sedatives: hit troops slow down.'], kitchen:[{splash:0.8},'Tower eggs splat on nearby troops.'], fire:[{push:0.4},'Tower water balls push troops back.'],
   build:[{splash:0.9},'Tower bricks splash nearby troops.'], rock:[{push:0.5},'Tower bass shots knock troops back.'], dog:[{slow:[0.8,0.75]},'Tower treats distract troops (slow).'],
-  sports:[{push:0.3},'Tower balls knock troops back.'], art:[{mark:[2,1.15]},'Tower paint marks troops: 15% more damage.'], film:[{stun:0.12},'Tower directors yell CUT! (micro-stun).'],
+  sports:[{push:0.3},'Tower balls knock troops back.'], art:[{mark:[2,1.15]},'Tower paint marks troops: 15% more damage.'], film:[{slow:[0.8,0.8]},'Tower directors yell CUT!: hit troops slow down.'],
   influencer:[{mark:[2,1.15]},'Tower likes mark troops: 15% more damage.'], zoo:[{slow:[1,0.7]},'Tower bananas trip troops up (slow).'], palace:[{drunk:1},'Tower leaflets confuse troops.'],
   pub:[{drunk:1},'Tower pints make troops tipsy.'], politics:[{slow:[0.8,0.8]},'Tower leaflets bog troops down.'], ballpark:[{push:0.4},'Tower fastballs knock troops back.'],
   fright:[{slow:[1,0.7]},'Tower candy is sticky: hit troops slow down.'], bonfire:[{burn:[20,2]},'Tower rockets set troops alight.'] };

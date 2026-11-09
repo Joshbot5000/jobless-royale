@@ -792,7 +792,7 @@ function updateProj(p,dt){
     if(p.tower){ const tg=p.target; if(!tg||tg.dead) return; const f=p.fx; if(tg.deflect&&p.srcT){ doDeflect(tg,p.srcT,p.dmg); return; }
       if(f&&f.splash){ for(const e of enemiesIn(p.team,p.tx,p.ty,f.splash,{towers:false})) damage(e,e===tg?p.dmg:p.dmg*0.5,p.team,{splash:true}); fxRing(p.tx,p.ty,0.2,f.splash,0.3,'#ffffff'); } else damage(tg,p.dmg,p.team);
       if(f&&!tg.dead&&!tg.isTower){ if(f.slow){ tg.slowT=f.slow[0]; tg.slowF=f.slow[1]; } if(f.burn){ tg.burnT=f.burn[1]; tg.burnD=f.burn[0]; tg.burnCol=null; } if(f.poison){ tg.burnT=f.poison[1]; tg.burnD=f.poison[0]; tg.burnCol='#7dff4a'; }
-        if(f.mark){ tg.markT=f.mark[0]; tg.markM=f.mark[1]; } if(f.push) knock(tg,p.sx??p.x,p.sy??p.y,f.push); if(f.stun) tg.stun=Math.max(tg.stun,f.stun); if(f.drunk) tg.drunkT=Math.max(tg.drunkT||0,f.drunk); }
+        if(f.mark){ tg.markT=f.mark[0]; tg.markM=f.mark[1]; } if(f.push) knock(tg,p.sx??p.x,p.sy??p.y,f.push); if(f.drunk) tg.drunkT=Math.max(tg.drunkT||0,f.drunk); }
       return; }
     const u=p.src;
     if(p.splash){

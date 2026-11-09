@@ -12,6 +12,7 @@ const NET={rooms:[],peers:new Map(),role:null,peer:null,conn:null,code:null,rec:
   guestWantsRematch:false,last:null,towerMap:null,objs:new Map(),units:new Map(),projs:new Map(),orbs:new Map(),clouds:[],snapT:0,lastSnapAt:0,elixRate:1};
 const NET_VER=Object.keys(CARDS).length+'/'+THEMES.length;
 const NET_LOCAL=/[?&]net=local/.test(location.search);
+const NET_SIM=(()=>{ const q=new URLSearchParams(location.search), lag=+q.get('lag')||0, jit=+q.get('jit')||0, stall=+q.get('stall')||0; return NET_LOCAL&&(lag||jit||stall)?{lag,jit,stall}:null; })();
 const MX=x=>AW-x, MY=y=>AH-y, MT=t=>t===0?1:t===1?0:t;
 const r2=v=>Math.round(v*100)/100;
 
@@ -20,7 +21,10 @@ function netMakeCode(){ const C='BCDFGHJKLMNPRSTVZ', V='AEIOU'; let s=''; for(le
 function netStatus(html){ $('#netStatus').innerHTML=html; if(NET.tour&&typeof tourStatus==='function'&&!$('#tour').hidden) tourStatus(html.replace(/\n/g,'<br>')); }
 const netArena=()=>NET.tour?NET.tour.arena:arenaIdx, netMode=()=>NET.tour?NET.tour.mode:modeKey;
 function localConn(code,role){ // BroadcastChannel pair, same API subset as a PeerJS DataConnection
-  const bc=new BroadcastChannel('jroyale-'+code), h={}; const c={open:true,on(ev,f){ (h[ev]=h[ev]||[]).push(f); return c; },send(d){ bc.postMessage({from:role,d}); },close(){ bc.postMessage({from:role,bye:1}); bc.close(); c.open=false; }};
+  const bc=new BroadcastChannel('jroyale-'+code), h={}; let due=0;
+  // tests: ?lag=ms&jit=ms&stall=p simulates a patchy wifi link (reliable + in order, like WebRTC: a stall delays everything behind it)
+  const post=d=>{ const S=NET_SIM; if(!S){ bc.postMessage({from:role,d}); return; } const now=performance.now(); due=Math.max(due,now+S.lag+Math.random()*S.jit+(Math.random()<S.stall?150+Math.random()*350:0)); setTimeout(()=>{ try{ bc.postMessage({from:role,d}); }catch(e){} },due-now); };
+  const c={open:true,on(ev,f){ (h[ev]=h[ev]||[]).push(f); return c; },send(d){ post(d); },close(){ bc.postMessage({from:role,bye:1}); bc.close(); c.open=false; }};
   bc.onmessage=e=>{ const m=e.data; if(m.from===role) return; if(m.bye){ (h.close||[]).forEach(f=>f()); return; } (h.data||[]).forEach(f=>f(m.d)); };
   setTimeout(()=>(h.open||[]).forEach(f=>f()),30); return c;
 }
@@ -257,7 +261,7 @@ function netOnMessage(m){
         else { netStatus('Your friend is updating their game. Reconnecting…'); setTimeout(()=>{ if(!NET.role&&!$('#online').hidden) netJoin(); },5000); } }); }
     else if(m.t==='full') { netStatus('⚠️ That room already has two players.'); netResetButtons(); }
     else if(m.t==='start') netGuestStart(m);
-    else if(m.t==='s'&&G&&G.puppet) netApplySnap(m);
+    else if(m.t==='s'&&G&&G.puppet) netQueueSnap(m);
     else if(m.t==='msg'&&G){ G.msg={s:m.s,t:1.2}; sfx('bad'); }
     else if(m.t==='bye') netLost(`${NET.friend} left the match.`);
   }
@@ -318,7 +322,7 @@ function netAfterFrame(dt){
   const cl=G.clouds.map(c=>[r2(c.x),r2(c.y),r2(c.r),c.col,c.puddle?1:0]);
   const ob=G.orbs.map(o=>{ o.nid=o.nid||++NET.nid; return [o.nid,o.k,r2(o.x),r2(o.y),r2(o.t),r2(o.life)]; });
   const em=G.emotes.map(e=>[e.team,e.text,r2(e.t)]);
-  netSend({t:'s',T:r2(G.time),ov:G.overtime?1:0,sd:G.mode.sudden?1:0,r:G.rate||1,e:[r2(G.elixir[0]),r2(G.elixir[1])],h:G.hands[1],q:G.queues[1][0],tc:r2(G.tapCd[1]),cr:G.crowns,o:G.over?1:0,W:G.winner,sh:r2(G.shake),fk:r2(G.fovKick||0),u,tw,p,n:objs,cl,ob,em,ev});
+  netSend({t:'s',w:Math.round(performance.now())/1000,T:r2(G.time),ov:G.overtime?1:0,sd:G.mode.sudden?1:0,r:G.rate||1,e:[r2(G.elixir[0]),r2(G.elixir[1])],h:G.hands[1],q:G.queues[1][0],tc:r2(G.tapCd[1]),cr:G.crowns,o:G.over?1:0,W:G.winner,sh:r2(G.shake),fk:r2(G.fovKick||0),u,tw,p,n:objs,cl,ob,em,ev});
 }
 
 // ---------------------------------------------------------------- guest: mirror the host
@@ -329,6 +333,7 @@ function netGuestStart(m){
   const deck=m.mode==='mix'?mixDeck:loadDeck(THEMES[ai]);
   readyDeck(deck); newGame(ai,1,m.mode,deck,deck); G.online=true; G.puppet=true; G.foe=NET.friend; G.aiTimer=1e9; G.banner=null; G.myDeck=deck.slice(); if(NET.tour) G.tour=NET.tour;
   NET.units.clear(); NET.projs.clear(); NET.objs.forEach(o=>dynRoot.remove(o.obj)); NET.objs.clear(); NET.orbs.clear(); NET.clouds=[]; NET.last=null;
+  NET.sbuf=[]; NET.pc=null; NET.lastW=null; NET.jit=0.02; NET.arrPrev=null;
   // host tower i  ->  local tower with the mirrored position
   NET.towerMap=G.towers.map(()=>0); const hostOrder=[[1,3.5,6.5],[1,14.5,6.5],[1,9,3],[0,3.5,25.5],[0,14.5,25.5],[0,9,29]];
   hostOrder.forEach(([tm,x,y],i)=>{ NET.towerMap[i]=G.towers.findIndex(t=>t.team===MT(tm)&&Math.abs(t.x-MX(x))<0.1&&Math.abs(t.y-MY(y))<0.1); });
@@ -338,8 +343,23 @@ function netGuestStart(m){
 const SWAP_TXT={'+1 CROWN!':'TOWER LOST!','TOWER LOST!':'+1 CROWN!','KING DOWN!':'YOUR KING FELL','YOUR KING FELL':'KING DOWN!','YOU WIN!':'YOU LOSE','YOU LOSE':'YOU WIN!'};
 const swapWho=s=>typeof s!=='string'?s:(SWAP_TXT[s]||s.replace(/\b(Your|Enemy|You destroyed a tower!|You lost a tower)\b/g,w=>({Your:'Enemy',Enemy:'Your','You destroyed a tower!':'You lost a tower','You lost a tower':'You destroyed a tower!'}[w]||w)));
 const swapCol=c=>c==='#bfe0ff'?'#ffc2c0':c==='#ffc2c0'?'#bfe0ff':c;
-function netApplySnap(m){
-  const now=performance.now(), gap=NET.lastSnapAt?Math.min(0.3,(now-NET.lastSnapAt)/1000):1/12; NET.lastSnapAt=now;
+// ---- jitter buffer. Wifi delivers snapshots unevenly (a pause, then several at once). Applying them on arrival made
+// troops freeze then jump, and speeds worked out from arrival gaps sent projectiles flying off. Instead every snapshot
+// carries the host's clock (w); the guest plays them back on its own clock a little behind the newest one (the delay
+// grows with the measured jitter), speeding up or slowing down slightly to keep that distance.
+function netQueueSnap(m){ if(m.w==null){ netApplySnap(m); return; } if(NET.lastW!=null&&m.w<=NET.lastW) return;
+  const now=performance.now()/1000; if(NET.arrPrev){ const d=Math.abs((now-NET.arrPrev[0])-(m.w-NET.arrPrev[1])); NET.jit=NET.jit*0.95+Math.min(0.5,d)*0.05; } NET.arrPrev=[now,m.w];
+  const B=NET.sbuf||(NET.sbuf=[]); B.push(m); if(B.length>1&&B[B.length-2].w>m.w) B.sort((a,b)=>a.w-b.w); if(B.length>40) B.splice(0,B.length-40); }
+function netPlayout(dt){ const B=NET.sbuf; if(!B) return; const delay=clamp(0.1+NET.jit*2.5,0.1,0.35);
+  if(B.length){ const newest=B[B.length-1].w;
+    if(NET.pc==null) NET.pc=newest-delay;
+    const lead=newest-NET.pc; if(lead>delay+0.6) NET.pc=newest-delay;   // far behind (app was paused): catch up at once
+    else NET.pc+=dt*clamp(1+(lead-delay)*0.8,0.8,1.3);
+    while(B.length&&B[0].w<=NET.pc){ const m=B.shift(); netApplySnap(m,B[0]); } }
+  else if(NET.pc!=null&&NET.lastW!=null) NET.pc=Math.min(NET.pc+dt,NET.lastW+0.25);   // nothing new: don't run ahead of what we have
+}
+function netApplySnap(m,nxt){   // nxt: the following snapshot when it is already buffered (exact projectile velocities)
+  const gap=m.w!=null&&NET.lastW!=null?clamp(m.w-NET.lastW,0.03,0.3):1/12; if(m.w!=null) NET.lastW=m.w;
   G.time=m.T; G.overtime=!!m.ov; G.rate=m.r; NET.elixRate=m.r;
   G.elixir[0]=m.e[1]; G.elixir[1]=m.e[0]; G.hands[0]=m.h.slice(); G.queues[0][0]=m.q; G.tapCd[0]=m.tc; G.crowns=[m.cr[1],m.cr[0]];
   G.shake=Math.max(G.shake,m.sh); if(m.fk>0.9) G.fovKick=Math.max(G.fovKick||0,m.fk);
@@ -362,17 +382,18 @@ function netApplySnap(m){
     t.hp=a[0]; t.dead=!!a[1]; t.active=!!a[2]; t.yaw=MYAW(a[3]); t.atk=a[4]; t.frozen=a[5]; t.hackT=a[6]; t.hitT=a[7]; t.stone=!!a[8];
     if(t.dead&&!wasDead) netTowerDebris(t); });
   // projectiles: keep objects, estimate velocity for smooth motion between snapshots
-  const pseen=new Set();
+  const pseen=new Set(); const ahead=nxt&&nxt.w>m.w?new Map(nxt.p.map(a=>[a[0],a])):null, dtn=ahead?nxt.w-m.w:0;
   for(const a of m.p){ const [id,key,team,x,y,z,dir,big]=a; pseen.add(id); let q=NET.projs.get(id); const nx=MX(x), ny=MY(y);
-    if(!q){ q={key,team:MT(team),x:nx,y:ny,z,dir:dir+PI,big:!!big,vx:0,vy:0,vz:0}; NET.projs.set(id,q); G.projs.push(q); }
-    else { q.vx=(nx-q.x)/gap; q.vy=(ny-q.y)/gap; q.vz=(z-q.z)/gap; q.x=nx; q.y=ny; q.z=z; q.dir=dir+PI; } }
+    if(!q){ q={key,team:MT(team),x:nx,y:ny,z,dir:dir+PI,big:!!big,vx:0,vy:0,vz:0,l:[nx,ny,z]}; NET.projs.set(id,q); G.projs.push(q); }
+    else { q.vx=(nx-q.l[0])/gap; q.vy=(ny-q.l[1])/gap; q.vz=(z-q.l[2])/gap; q.l=[nx,ny,z]; q.x=nx; q.y=ny; q.z=z; q.dir=dir+PI; q.ext=0; }
+    const f=ahead&&ahead.get(id); if(f){ q.vx=(MX(f[3])-nx)/dtn; q.vy=(MY(f[4])-ny)/dtn; q.vz=(f[5]-z)/dtn; } }
   for(const [id,q] of NET.projs) if(!pseen.has(id)){ NET.projs.delete(id); if(q.obj) dynRoot.remove(q.obj); q.done=true; }
   G.projs=G.projs.filter(q=>!q.done);
   // spell objects, rolling logs, boomerangs
   const oseen=new Set();
   for(const a of m.n){ const [id,kind,key,team,x,y,z,rx,ry,rz,sc]=a; oseen.add(id); let o=NET.objs.get(id);
-    if(!o){ const tc=TEAMC[MT(team)]||TEAMC[0]; const obj=kind==='p'?buildProj(key,tc):buildFall(key,tc); obj.scale.setScalar(sc||1); dynRoot.add(obj); o={obj,vx:0,vy:0,vz:0}; NET.objs.set(id,o); o.obj.position.set(MX(x),y,MY(z)); }
-    else { const P=o.obj.position; o.vx=(MX(x)-P.x)/gap; o.vy=(y-P.y)/gap; o.vz=(MY(z)-P.z)/gap; P.set(MX(x),y,MY(z)); }
+    if(!o){ const tc=TEAMC[MT(team)]||TEAMC[0]; const obj=kind==='p'?buildProj(key,tc):buildFall(key,tc); obj.scale.setScalar(sc||1); dynRoot.add(obj); o={obj,vx:0,vy:0,vz:0,l:[MX(x),y,MY(z)]}; NET.objs.set(id,o); o.obj.position.set(MX(x),y,MY(z)); }
+    else { const P=o.obj.position; o.vx=(MX(x)-o.l[0])/gap; o.vy=(y-o.l[1])/gap; o.vz=(MY(z)-o.l[2])/gap; o.l=[MX(x),y,MY(z)]; P.set(MX(x),y,MY(z)); o.ext=0; }
     o.obj.rotation.set(rx,ry+PI,rz); }
   for(const [id,o] of NET.objs) if(!oseen.has(id)){ dynRoot.remove(o.obj); NET.objs.delete(id); }
   NET.clouds=m.cl.map(a=>({x:MX(a[0]),y:MY(a[1]),r:a[2],col:a[3],puddle:!!a[4]}));
@@ -411,6 +432,7 @@ function netTowerDebris(t){
 }
 // Runs every frame on the guest instead of update(): cosmetic timers, smoothing, local particles.
 function netGuestTick(dt){
+  netPlayout(dt);
   updateFx3(dt);
   for(const c of G.callouts) c.t+=dt; G.callouts=G.callouts.filter(c=>c.t<c.max);
   for(const b of G.beams) b.life-=dt; G.beams=G.beams.filter(b=>b.life>0);
@@ -427,8 +449,8 @@ function netGuestTick(dt){
   for(const v of G.units){ if(v.tx!==undefined){ const dx=v.tx-v.x, dy=v.ty-v.y; if(dx*dx+dy*dy>9){ v.x=v.tx; v.y=v.ty; } else { v.x+=dx*k; v.y+=dy*k; } }
     if(v.moving) v.walk+=dt*9*Math.min(1.4,v.speed||1); if(v.atk>0){ v.atk+=dt/0.38; if(v.atk>=1) v.atk=0; } if(v.hitT>0) v.hitT-=dt; if(v.landT>0) v.landT-=dt; if(v.deploy>0) v.deploy=Math.max(0,v.deploy-dt);
     if(v.leap&&v.leap.flung) v.leap.t=Math.min(1,v.leap.t+dt/1.15); }
-  for(const q of G.projs){ q.x+=q.vx*dt; q.y+=q.vy*dt; q.z+=q.vz*dt; }
-  for(const o of NET.objs.values()){ const P=o.obj.position; P.x+=o.vx*dt; P.y=Math.max(0.1,P.y+o.vy*dt); P.z+=o.vz*dt; }
+  for(const q of G.projs){ q.ext=(q.ext||0)+dt; if(q.ext>0.25) continue; q.x+=q.vx*dt; q.y+=q.vy*dt; q.z+=q.vz*dt; }
+  for(const o of NET.objs.values()){ o.ext=(o.ext||0)+dt; if(o.ext>0.25) continue; const P=o.obj.position; P.x+=o.vx*dt; P.y=Math.max(0.1,P.y+o.vy*dt); P.z+=o.vz*dt; }
   for(const c of NET.clouds){ if(c.puddle){ if(Math.random()<dt*6){ const a=Math.random()*TAU, rr=Math.random()*c.r; PSA.spawn(c.x+Math.cos(a)*rr,0.08,c.y+Math.sin(a)*rr,0,0.3,0,0.4,0.18,'#fff4c0',0.8,0); } }
     else if(Math.random()<dt*14){ const a=Math.random()*TAU, rr=Math.random()*c.r; PSN.spawn(c.x+Math.cos(a)*rr,0.2,c.y+Math.sin(a)*rr,0,rnd(0.3,0.8),0,rnd(0.8,1.4),rnd(0.5,0.9),c.col,0.45,0,0.8,1); } }
 }
