@@ -98,6 +98,31 @@ Spells that are thrown or fired (pans, tomatoes, fireballs, footballs, basketbal
 ### Mechanics added with the expansion
 Bouncing shots, red cards that send a troop back to its own king tower, swimmers that ignore the bridges, fear (runs home), shrink, stone and ice freezes, invisible-box traps, lassos and yanks, rewind, cloning, splitting slimes, mystery-box random spawns, elixir refunds on death, regeneration, lifesteal, taunting troops, cement trails, a child star that grows up mid-battle, and flaming kick-rolls.
 
+## November 12 changes (owner's list)
+- **Bonfire Night retired.** `src/data_user.js` removes it from `THEMES` and hides its cards. The Hot Dog Seller (range 6, hit speed 1.7) moved to Hell's Kitchen.
+- **Card changes:**
+  - Squirrel spell costs 2.
+  - Referee: 1000 HP, red card every 10s.
+  - Slam Dunk: -25% damage.
+  - Great Dane: 4000 HP.
+  - Space Dog: 900 HP.
+  - Foul Ball: radius 3.
+  - Security Camera: hit speed 1.5.
+  - Drone Strike: radius 2.5.
+  - Legal Eagle: hit speed 1.5.
+  - Tower Crane: hit speed 2.
+  - Rolling Pin: 275 damage.
+  - Dachshund: range 2.5.
+  - Pub Quiz: 140 damage.
+  - Black Cat: hit speed 1.
+  - Parade Tank: 3400 HP, 150 damage per second.
+  - Billionaire Blimp: hit speed 2.1.
+- **Whale Investor rework:** 7 Broke Bucks, hit speed 2. On death it steals 1 Broke Buck from the opponent (`death.steal`).
+- **Sumo Champion's Belly Deflect** also bounces a damage, stun or freeze spell back at the caster's King Tower (`o.spell` in `areaDamage`). The AI taps it when an enemy spell is about to land on the Sumo.
+- **Mini Doughnuts** no longer drag their prisoner around: a trapping doughnut is skipped by collision pushes.
+- **AI tournaments** (`src/aitour.js`): you against 7 AI opponents in a knockout (quarter-final, semi-final, final). The AI plays at Knight, then Knight with extra elixir, then Champion. It uses the menu's arena, mode and your deck, and there are no trophies.
+- **A different soundtrack per arena:** `MUSIC_STYLES` in `src/ui.js` sets each arena's chords, tempo, instruments, groove, bass, swing and arpeggio, and the melody is generated from the arena id. New news arenas get a style picked from their id.
+
 ## Performance and movement rules (November 2026)
 - **No portrait builds during a battle.** Your deck's card portraits are built before the fight starts (`readyDeck`). The menu's portrait queue (arena kings, collection cards) waits until the battle is over. Each portrait is a full-detail model render, and building them mid-fight caused 0.1-2s freezes.
 - **Battle models are lighter.** Primitives use about 60% of the segments (`GEO_LO`, portraits switch it off) and surface-net bodies use a coarser cell. Tiny parts get no outline. Meshes on the same joint whose materials differ only in colour are merged, with the colour moved into vertex colours (`mergeRigid`). The arena dropped from about 100 draw calls to about 50.

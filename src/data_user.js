@@ -170,3 +170,32 @@ Object.assign(CARDS,{
 })();
 
 if(CARDS.sumo) CARDS.sumo.hp=4000;
+
+// ---- owner's list, 12 Nov 2026 -------------------------------------------------------------------------------
+(function(){ const B=(k,o)=>{ if(CARDS[k]) Object.assign(CARDS[k],o); }, S=(k,o)=>{ if(CARDS[k]&&CARDS[k].sp) Object.assign(CARDS[k].sp,o); };
+  B('squirrel',{cost:2});
+  // Referee: 1000 health and a slower red card (it was a bit too strong)
+  B('referee',{hp:1000}); S('referee',{cd:10});
+  if(CARDS.sumo&&CARDS.sumo.tap) CARDS.sumo.desc='Anything that hits it up close bounces off, knocked back 3 tiles. TAP – Belly Deflect (1 Broke Buck, every 10s): the next ranged attack OR spell that hits the belly bounces straight back – shots return to whoever fired them, spells fly back at the caster\'s King Tower.';
+  if(CARDS.slamdunk) S('slamdunk',{dmg:Math.round(CARDS.slamdunk.sp.dmg*0.75)});
+  B('greatdane',{hp:4000});
+  B('spacedog',{hp:900});
+  S('foulball',{r:3});
+  B('seccam',{hs:1.5});
+  S('dronestrike',{r:2.5});
+  B('eagle',{hs:1.5});
+  // Whale Investor rework: 7 Broke Bucks, slow heavy hits, and when it goes down it steals a Broke Buck from you
+  if(CARDS.whale){ B('whale',{cost:7,hs:2.0,death:{steal:1}}); CARDS.whale.desc='The biggest wallet on Wall Street. Hits like a market crash every 2 seconds, and even when it finally goes down it steals 1 Broke Buck from the opponent on the way out.'; }
+  B('towercrane',{hs:2.0});
+  S('rollingpin',{dmg:275});
+  B('dachshund',{range:2.5});
+  S('pubquiz',{dmg:140});
+  B('blackcat',{hs:1.0});
+  B('paradetank',{hp:3400,dmg:Math.round(150*(CARDS.paradetank?CARDS.paradetank.hs:1.5))});   // 150 damage per second
+  B('blimp',{hs:2.1});
+  B('hotdogseller',{range:6,hs:1.7,theme:'kitchen'});
+})();
+// Bonfire Night is retired. Its Hot Dog Seller moves to Hell's Kitchen; the rest leave every pool (Mix & Match included).
+{ const bi=THEMES.findIndex(t=>t.id==='bonfire');
+  if(bi>=0){ const bon=THEMES[bi]; for(const k of bon.pool) if(k!=='hotdogseller'&&CARDS[k]&&!THEMES.some(t=>t!==bon&&t.pool.includes(k))) CARDS[k].hidden=true; THEMES.splice(bi,1); }
+  const kt=THEMES.find(t=>t.id==='kitchen'); if(kt&&CARDS.hotdogseller&&!kt.pool.includes('hotdogseller')){ kt.pool.push('hotdogseller'); kt.pool.sort((a,b)=>(CARDS[a].unlock||0)-(CARDS[b].unlock||0)); } }

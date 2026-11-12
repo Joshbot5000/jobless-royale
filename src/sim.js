@@ -169,6 +169,10 @@ function knock(t,fx,fy,k){
 function areaDamage(team,x,y,r,dmg,o={},src=null){
   for(const e of enemiesIn(team,x,y,r,o)){
     const isT=e.isTower;
+    if(o.spell&&!isT&&e.deflect&&!e.dead){ e.deflect=false; const back=G.towers.find(t=>t.team===team&&t.kind==='king'&&!t.dead)||G.towers.find(t=>t.team===team&&!t.dead);
+      callout(e,'SPELL DEFLECTED! 🛡️','#ffffff',true); sfx('power');
+      if(back){ damage(back,dmg*(o.towerPct??0.35),e); G.bolts.push({x1:e.x,h1:1.2,y1:e.y,x2:back.x,h2:2.5,y2:back.y,life:0.4,max:0.4,col:'#ffffff'}); }
+      continue; }
     damage(e,dmg*(isT?(o.towerPct??1):1),src||team,{splash:true});
     if(!isT){ if(o.stun) e.stun=Math.max(e.stun,o.stun); if(o.frozen){ e.frozen=Math.max(e.frozen,o.frozen); e.stone=!!o.stone; } if(o.fear) e.fearT=Math.max(e.fearT||0,o.fear); if(o.push) knock(e,x,y,o.push); if(o.burn){ e.burnT=o.burn[1]; e.burnD=o.burn[0]; } if(o.slow){ e.slowT=o.slow[0]; e.slowF=o.slow[1]; } }
     if(isT && o.freezeTowers){ e.frozen=Math.max(e.frozen,o.freezeTowers); e.stone=!!o.stone; }
@@ -203,6 +207,8 @@ function killUnit(u,killer){
     if(d.cloud) spawnCloud(u.team,u.x,u.y,d.cloud[0],d.cloud[1],d.cloud[2],0.7,0.35,'#7dff4a');
     if(d.sprinkles){ G.clouds.push({team:owner,x:u.x,y:u.y,r:d.sprinkles[0],dps:0,t:d.sprinkles[1],max:d.sprinkles[1],slow:d.sprinkles[2],towerPct:0,col:'#ff8ad8',tick:0}); fxBurst(u.x,0.4,u.y,24,'#ffd34d',3,0.2,0.5,6,true); }
     if(d.rage){ G.clouds.push({team:owner,x:u.x,y:u.y,r:d.rage[0],dps:0,t:d.rage[1],max:d.rage[1],slow:0,towerPct:0,rage:true,col:'#ff3d3d',tick:0}); fxRing(u.x,u.y,0.3,d.rage[0],0.6,'#ff3d3d'); callout({x:u.x,y:u.y,h:1.6},d.rageCallout||'RAGE! 💢','#ff6b6b',true); }
+    if(d.steal){ const foe=1-owner, took=Math.min(d.steal,G.elixir[foe]); G.elixir[foe]-=took; G.elixir[owner]=Math.min(10,G.elixir[owner]+took);
+      callout({x:u.x,y:u.y,h:2},took>0?`STOLE ${Math.round(took*10)/10} 💵`:'NOTHING TO STEAL','#85bb65',true); fxBurst(u.x,1,u.y,16,'#85bb65',4,0.2,0.6,6,true); }
     if(d.callout) callout({x:u.x,y:u.y,h:1.8},d.callout,'#ff6b6b',true);
     if(d.elixir){ G.elixir[owner]=Math.min(10,G.elixir[owner]+d.elixir); callout({x:u.x,y:u.y,h:1.8},`+${d.elixir} 💵`,'#85bb65',true); for(let i=0;i<14;i++) PSA.spawn(u.x+rnd(-0.4,0.4),1,u.y+rnd(-0.4,0.4),rnd(-2,2),rnd(2,5),rnd(-2,2),0.8,0.3,'#85bb65',1,6); sfx('power'); }
     if(d.random){ const th=THEMES.find(t=>t.id===c.theme)||G.th; const opts=th.pool.filter(k=>{ const q=CARDS[k]; return q.type==='troop'&&!q.champ&&k!==u.card&&q.cost<=5; });
@@ -385,12 +391,12 @@ function resolveSpell(sp){
   if(s.fall==='quiz'){ for(const e of enemiesIn(team,x,y,s.r,{towers:false})) callout(e,['🤔','❓','Er…','Pass!'][(e.uid||0)%4],'#ffffff'); for(let i=0;i<16;i++){ const a=Math.random()*TAU, rr=Math.random()*s.r; PSA.spawn(x+Math.cos(a)*rr,0.4,y+Math.sin(a)*rr,0,rnd(1.5,3),0,1,0.35,'#ffd34d',1,0); } }
   const col = s.fall==='paintcan'?'#ff3dce' : s.fall==='footballBig'?'#c8a46a' : s.fall==='basketBig'?'#ff8a3a' : s.fall==='water'?'#7fd0ff' : s.fall==='bolt'?'#bff4ff' : s.fall==='gavel'?'#ffd34d' : s.fall==='arrowDown'?'#ff3b3b' : s.fall==='tomato'?'#ff4a3a' : '#ffb02e';
   if(s.k==='freeze'){
-    areaDamage(team,x,y,s.r,s.dmg,{frozen:s.t,freezeTowers:s.t,stone:!!s.stone,towerPct:0.4});
+    areaDamage(team,x,y,s.r,s.dmg,{frozen:s.t,freezeTowers:s.t,stone:!!s.stone,towerPct:0.4,spell:true});
     const fc=s.stone?'#c8c0b4':'#bfefff'; fxRing(x,y,0.3,s.r+0.3,0.6,fc); fxBurst(x,0.5,y,40,fc,5,0.25,0.8,8,true); fxPuff(x,0.4,y,12,s.stone?'#a8a29a':'#e8faff',0.8,1); sfx('freeze');
     return;
   }
   if(s.k==='stun'){
-    areaDamage(team,x,y,s.r,s.dmg,{stun:s.t,freezeTowers:s.t,towerPct:0.4});
+    areaDamage(team,x,y,s.r,s.dmg,{stun:s.t,freezeTowers:s.t,towerPct:0.4,spell:true});
     fxRing(x,y,0.3,s.r+0.3,0.5,col); fxBurst(x,0.5,y,30,'#c9a46a',5,0.25,0.7,10); sfx('boom');
     return;
   }
@@ -398,7 +404,7 @@ function resolveSpell(sp){
     const foe=1-team; const before=G.elixir[foe]; G.elixir[foe]=Math.max(0,G.elixir[foe]-s.drain);
     const lost=Math.round(before-G.elixir[foe]); callout({x,y,h:2},lost>0?`-${lost} BROKE BUCKS`:'ALREADY BROKE!','#85bb65',true);
   }
-  areaDamage(team,x,y,s.r,s.dmg,{towerPct:s.towerDmg?s.towerDmg/s.dmg:(s.towerPct??0.35),push:s.push,stun:s.stun,burn:s.burn,slow:s.slow});
+  areaDamage(team,x,y,s.r,s.dmg,{towerPct:s.towerDmg?s.towerDmg/s.dmg:(s.towerPct??0.35),push:s.push,stun:s.stun,burn:s.burn,slow:s.slow,spell:true});
   fxRing(x,y,0.3,s.r+0.4,0.5,col);
   if(s.fall==='water'){ fxBurst(x,0.4,y,50,'#7fd0ff',6,0.25,0.8,10); fxPuff(x,0.3,y,10,'#e0f6ff',0.8,0.8); }
   else if(s.fall==='bolt'){ for(let i=0;i<6;i++){ const a=i/6*TAU; G.bolts.push({x1:x,h1:7,y1:y,x2:x+Math.cos(a)*s.r*0.7,h2:0,y2:y+Math.sin(a)*s.r*0.7,life:0.3,max:0.3,col:'#bff4ff'}); } fxBurst(x,0.4,y,30,'#bff4ff',5,0.2,0.5,4,true); }
@@ -825,9 +831,9 @@ function separate(dt=0.05){
   const us=G.units, cap=Math.max(0.02,dt*4);
   for(const a of us){ a._px=0; a._py=0; }
   for(let i=0;i<us.length;i++){
-    const a=us[i]; if(a.dead) continue; const af=a.flying||!!a.leap;
+    const a=us[i]; if(a.dead||a.trapping) continue; const af=a.flying||!!a.leap;
     for(let j=i+1;j<us.length;j++){
-      const b=us[j]; if(b.dead||af!==(b.flying||!!b.leap)) continue;
+      const b=us[j]; if(b.dead||b.trapping||af!==(b.flying||!!b.leap)) continue;
       const onBr=a.y>14.6&&a.y<17.4&&b.y>14.6&&b.y<17.4, squeeze=onBr&&a.team!==b.team&&a.target!==b&&b.target!==a;
       const dx=b.x-a.x, dy=b.y-a.y, min=(a.radius+b.radius)*(squeeze?0.45:0.9);
       if(Math.abs(dx)>min||Math.abs(dy)>min) continue;
@@ -852,7 +858,7 @@ function decideWinner(){
 }
 function endGame(w){
   if(G.over) return;
-  if(w===-1&&G.tour){ const hp=tm=>G.towers.filter(t=>t.team===tm&&!t.dead).reduce((a,t)=>a+t.hp,0); const a=hp(0), b=hp(1); w=Math.abs(a-b)>=1?(a>b?0:1):(Math.random()<0.5?0:1); }  // knockouts need a winner
+  if(w===-1&&(G.tour||G.aitour)){ const hp=tm=>G.towers.filter(t=>t.team===tm&&!t.dead).reduce((a,t)=>a+t.hp,0); const a=hp(0), b=hp(1); w=Math.abs(a-b)>=1?(a>b?0:1):(Math.random()<0.5?0:1); }  // knockouts need a winner
   G.over=true; G.winner=w; G.sel=-1; G.drag=null; hideGhost();
   if(w===-1) showBanner('DRAW','',2.2,'#ffe14d'); else if(G.time<=0) showBanner(w===0?'YOU WIN!':'YOU LOSE','',2.2,w===0?'#ffe14d':'#ff8080');
   aiEmote(w===1?'gloat':'sad',true);
@@ -1026,7 +1032,7 @@ function aiTap(team){
   const near=r=>G.units.filter(e=>e.team===foe&&!e.dead&&!e.building&&!hidden(e)&&dist(e,u)<=r);
   let want=false;
   switch(tp.k){
-    case 'deflect': want=!u.deflect&&(G.units.some(e=>e.team===foe&&!e.dead&&e.target===u&&e.c.atk&&['proj','beam'].includes(e.c.atk.k))||G.towers.some(t=>t.team===foe&&!t.dead&&t.target===u)); break;
+    case 'deflect': want=!u.deflect&&(G.spells.some(sp=>sp.team===foe&&!sp.done&&Math.hypot(sp.x-u.x,sp.y-u.y)<=(sp.s.r||1)+0.6)||G.units.some(e=>e.team===foe&&!e.dead&&e.target===u&&e.c.atk&&['proj','beam'].includes(e.c.atk.k))||G.towers.some(t=>t.team===foe&&!t.dead&&t.target===u)); break;
     case 'execute': { const t=strongestEnemy(u,tp.range); want=!!t&&t.c.cost>=3; break; }
     case 'takeover': { const t=strongestEnemy(u,tp.range,e=>!e.c.champ); want=!!t&&t.c.cost>=4; break; }
     case 'saturn': want=G.elixir[team]>=4; break;

@@ -23,10 +23,10 @@ const tourName=()=>(($('#tourName').value||'').trim().slice(0,14))||'Player';
 function tourStatus(h){ $('#tourStatus').innerHTML=h; }
 function tourHide(){ $('#tour').hidden=true; }
 function openTour(){ $('#menu').hidden=true; $('#online').hidden=true; $('#end').hidden=true; $('#tour').hidden=false; if(!$('#tourName').value) $('#tourName').value=store.get('netName','');
-  if(!TOUR.role){ $('#tourStart').hidden=false; $('#tourSetup').hidden=true; $('#tourBoard').hidden=true; $('#tourDeck').hidden=true; tourStatus(''); if(!G) netCheckUpdate(); }
+  if(!TOUR.role){ $('#tourStart').hidden=false; $('#tourSetup').hidden=true; $('#tourBoard').hidden=true; $('#tourDeck').hidden=true; $('#tourGo').hidden=true; tourStatus(''); aitButtons(); if(!G) netCheckUpdate(); }
   else tourRender(); }
 $('#tourBtn').onclick=()=>{ initAudio(); openTour(); };
-$('#tourBack').onclick=()=>{ if(TOUR.role==='org'&&TOUR.st&&TOUR.st.phase==='play'&&!confirm('Close the tournament? Everyone\'s bracket stops.')) return; tourStop(); $('#tour').hidden=true; showMenu(); };
+$('#tourBack').onclick=()=>{ if(!TOUR.role&&!$('#tourBoard').hidden&&AITOUR){ $('#tourBoard').hidden=true; $('#tourGo').hidden=true; tourStatus(''); $('#tourStart').hidden=false; aitButtons(); return; } if(TOUR.role==='org'&&TOUR.st&&TOUR.st.phase==='play'&&!confirm('Close the tournament? Everyone\'s bracket stops.')) return; tourStop(); $('#tour').hidden=true; showMenu(); };
 function tourStop(){ if(TOUR.bus) TOUR.bus.close(); clearInterval(TOUR.hbT); clearInterval(TOUR.tickT); try{ TOUR.lock&&TOUR.lock.release(); }catch(e){}
   Object.assign(TOUR,{role:null,code:null,bus:null,st:null,editor:null,key:null,reported:{},lock:null,champPaid:0}); NET.tour=null; $('#tourDeck').hidden=true; $('#tourDeck').innerHTML=''; $('#tourPrize').hidden=true; $('#tourGo').hidden=true; $('#tourBoard').innerHTML=''; }
 const tourLink=code=>{ const base=/^https?:/.test(location.protocol)&&!netBlocked()?location.origin+location.pathname:APP_URL; return base+'?tour='+code; };
@@ -74,7 +74,7 @@ function tourRound(){ const S=TOUR.st; const alive=Object.keys(S.players).filter
   sfx('crown'); tourBroadcast(); tourRender(); tourMaybeNext(); }
 function tourMaybeNext(){ const S=TOUR.st; if(S.phase!=='play') return; const cur=S.matches.filter(m=>m.r===S.round);
   if(cur.every(m=>m.w)&&!S.next){ const left=Object.keys(S.players).filter(k=>!S.players[k].out); if(left.length<=1){ S.phase='done'; S.champ=left[0]; sfx('crown'); tourBroadcast(); tourRender(); return; } S.next=Date.now()+12000; tourBroadcast(); tourRender(); } }
-$('#tourGo').onclick=()=>{ const S=TOUR.st; if(!S) return; if(S.phase==='lobby'){ const n=Object.keys(S.players).filter(tourOnline).length; if(n<2){ tourStatus('⚠️ Need at least 2 players.'); return; } tourRound(); } else if(S.next){ S.next=0; tourRound(); } };
+$('#tourGo').onclick=()=>{ if(!TOUR.role&&AITOUR){ if(aitMine()) aitPlay(); else { aitNew(); aitShow(); } return; } const S=TOUR.st; if(!S) return; if(S.phase==='lobby'){ const n=Object.keys(S.players).filter(tourOnline).length; if(n<2){ tourStatus('⚠️ Need at least 2 players.'); return; } tourRound(); } else if(S.next){ S.next=0; tourRound(); } };
 // organiser overrides: kick a player in the lobby, or award a match (someone's phone died, a match got stuck)
 $('#tourBoard').addEventListener('click',e=>{ const S=TOUR.st; if(TOUR.role!=='org'||!S) return; const k=e.target.closest('[data-kick]'), a=e.target.closest('[data-award]');
   if(k&&S.phase==='lobby'){ delete S.players[k.dataset.kick]; tourBroadcast(); tourRender(); }
@@ -152,3 +152,8 @@ function tourRender(){ const S=TOUR.role==='org'?null:TOUR.st, O=TOUR.role==='or
 (function(){ const q=new URLSearchParams(location.search), c=(q.get('tour')||'').toUpperCase().replace(/[^A-Z0-9]/g,''); if(!c||AUTOTEST) return;
   q.delete('tour'); const rest=q.toString(); history.replaceState(null,'',location.pathname+(rest?'?'+rest:''));
   setTimeout(()=>{ openTour(); $('#tourCode').value=c; if(store.get('netName','')) tourJoin(c); else tourStatus('Type your name, then tap JOIN.'); },400); })();
+
+// AI tournament buttons on the tournament start screen
+function aitButtons(){ const live=AITOUR&&!AITOUR.done&&aitMine(); $('#aitCont').hidden=!live; const th=THEMES[arenaIdx]; $('#aitNew').textContent=`🤖 NEW AI TOURNAMENT (${th.emoji} ${th.name})`; }
+$('#aitNew').onclick=()=>{ initAudio(); aitNew(); aitShow(); };
+$('#aitCont').onclick=()=>{ initAudio(); aitShow(); };

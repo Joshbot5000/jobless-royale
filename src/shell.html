@@ -333,9 +333,12 @@ h2{margin:6px 0 -4px;font-size:18px;letter-spacing:1px;align-self:flex-start;tex
 
   <div id="tour" class="screen" hidden>
     <div class="col">
-      <h1>CLASS<br>TOURNAMENT</h1>
+      <h1>TOURNAMENT</h1>
       <div id="tourStart" class="col" style="width:100%">
-        <div class="tag small">Everyone types the same code. Players are paired at random, winners go through, until one champion is left.</div>
+        <div class="tag small">🤖 Play solo: you against 7 AI opponents, knockout to the final, in the arena and mode you picked on the menu.</div>
+        <button class="btn blue" id="aitCont" hidden>▶ CONTINUE AI TOURNAMENT</button>
+        <button class="btn blue" id="aitNew">🤖 NEW AI TOURNAMENT</button>
+        <div class="tag small" style="margin-top:14px">👥 Play with friends or a class: everyone types the same code. Players are paired at random, winners go through, until one champion is left.</div>
         <input id="tourName" class="netin" maxlength="14" placeholder="Your name" autocomplete="off">
         <div class="netjoin"><input id="tourCode" class="netin code" maxlength="6" placeholder="CODE" autocomplete="off" autocapitalize="characters"><button class="btn blue sm" id="tourJoin">JOIN</button></div>
         <div class="tag small" style="margin-top:14px">Running it for a class or a group? Use one device (a laptop or the class screen) as the organiser. It shows the code and the bracket and doesn't play.</div>
