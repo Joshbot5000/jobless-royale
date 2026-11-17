@@ -95,7 +95,8 @@ const TFX={ law:[{mark:[2,1.15]},'Tower clerks throw writs: hit troops take 15% 
   sports:[{push:0.3},'Tower balls knock troops back.'], art:[{mark:[2,1.15]},'Tower paint marks troops: 15% more damage.'], film:[{slow:[0.8,0.8]},'Tower directors yell CUT!: hit troops slow down.'],
   influencer:[{mark:[2,1.15]},'Tower likes mark troops: 15% more damage.'], zoo:[{slow:[1,0.7]},'Tower bananas trip troops up (slow).'], palace:[{drunk:1},'Tower leaflets confuse troops.'],
   pub:[{drunk:1},'Tower pints make troops tipsy.'], politics:[{slow:[0.8,0.8]},'Tower leaflets bog troops down.'], ballpark:[{push:0.4},'Tower fastballs knock troops back.'],
-  fright:[{slow:[1,0.7]},'Tower candy is sticky: hit troops slow down.'], bonfire:[{burn:[20,2]},'Tower rockets set troops alight.'] };
+  fright:[{slow:[1,0.7]},'Tower candy is sticky: hit troops slow down.'], bonfire:[{burn:[20,2]},'Tower rockets set troops alight.'],
+  itdesk:[{slow:[0.8,0.8]},'Tower emails flood troops’ inboxes: hit troops slow down.'] };
 for(const th of THEMES){ const f=TFX[th.id]; if(f){ th.towerFx=f[0]; th.towerTxt=f[1]; } }
 
 // ---------------------------------------------------------------- spells costed like Clash Royale (scaled to this game's 1500-HP towers)

@@ -395,6 +395,9 @@ function vehicleMore(p,R,root,x){
     case 'lasertank': for(const s2 of [-1,1]){ P(root,'rboxS',tire,0.3,0.36,1.6,s2*0.6,0.2,0); for(let i=0;i<4;i++) R.wheels.push(P(root,'cyl',mat('#555',{s:60}),0.13,0.32,0.13,s2*0.6,0.2,-0.55+i*0.37,0,0,PI/2)); }
       P(root,'rboxS',body,1.05,0.4,1.5,0,0.55,0); P(root,'rbox2',stripe,1.07,0.08,1.52,0,0.5,0);
       { const tu=G0(); tu.position.set(0,0.9,0); root.add(tu); R.turret=tu; P(tu,'sph',body,0.45,0.28,0.45); P(tu,'cyl',chrome,0.08,0.9,0.08,0,0.05,0.55,PI/2); P(tu,'sph',mat('#ff3dce',{e:1}),0.1,0.1,0.1,0,0.05,1.0); P(tu,'rbox2',mat('#2a3a55',{s:150}),0.3,0.1,0.05,0,0.12,0.4); } R.height=1.3; break;
+    case 'officechair': P(root,'cyl',chrome,0.05,0.5,0.05,0,0.45,0); for(let i=0;i<5;i++){ const a=i/5*TAU; P(root,'rbox2',chrome,0.08,0.05,0.5,Math.cos(a)*0.22,0.2,Math.sin(a)*0.22,0,-a+PI/2); P(root,'sph',mat('#151515'),0.08,0.08,0.08,Math.cos(a)*0.45,0.08,Math.sin(a)*0.45); }
+      P(root,'rboxS',body,0.8,0.15,0.75,0,0.75,0); P(root,'rboxS',body,0.75,0.85,0.14,0,1.25,-0.38,-0.12); for(const s2 of [-1,1]) P(root,'rbox2',mat('#151515'),0.08,0.06,0.5,s2*0.4,1.0,0.0);
+      { const rd=buildHuman({skin:'#e8b48a',hair:['messy','#3a2414'],outfit:['shirtTie','#dfe8f5','#2f5fd0'],face:['glassesRound'],prop:'laptop'},x.tc); rd.scale.setScalar(0.85); rd.position.set(0,0.55,0.05); root.add(rd); } R.height=1.9; break;
     case 'scooter': P(root,'rboxS',body,0.4,0.35,1.0,0,0.45,0); P(root,'rbox2',mat('#151515'),0.36,0.08,0.4,0,0.7,-0.15); P(root,'cyl',chrome,0.03,0.5,0.03,0,0.85,0.4,-0.3); P(root,'rbox2',chrome,0.5,0.03,0.03,0,1.08,0.48);
       P(root,'rboxS',mat('#ffffff',{s:30}),0.45,0.35,0.45,0,0.85,-0.45); P(root,'box',mat('#ffffff',{map:labelTex('PIZZA','#e5302a','#ffffff'),basic:1}),0.46,0.2,0.46,0,0.85,-0.45);
       { const rd=buildHuman({skin:'#e8b48a',hair:['short','#3a2414'],hat:['cap','#e5302a'],outfit:['tshirt','#e5302a','#ffffff']},x.tc); rd.scale.setScalar(0.85); rd.position.set(0,0.35,0.0); root.add(rd); }
@@ -482,6 +485,16 @@ function buildingMore(p,R,root,T,tc){
       for(const s2 of [-1,1]) P(root,'cyl',mat('#5a3a1a'),0.04,1.1,0.04,s2*0.5,0.45,-0.35,-0.3); P(root,'rbox2',T,1.42,0.1,0.2,0,0.38,0); R.height=2.3; break; }
     case 'hypehouse': P(root,'rboxS',mat(p.color,{s:40}),1.6,1.2,1.3,0,0.6,0); P(root,'cone4',mat('#ffffff',{s:30}),1.3,0.6,1.1,0,1.5,0,0,PI/4); P(root,'rbox2',mat('#2a2a44'),0.4,0.65,0.05,0,0.33,0.66); for(const s2 of [-1,1]) P(root,'rbox2',mat('#bff4ff',{e:0.4}),0.35,0.3,0.05,s2*0.5,0.85,0.66);
       P(root,'tor',mat('#ffffff',{e:1}),0.35,0.35,0.3,0.55,1.5,0.4); P(root,'plane',mat('#ffffff',{map:labelTex('● LIVE','#e5302a','#ffffff'),basic:1}),0.6,0.16,1,-0.3,1.12,0.67); P(root,'rbox2',T,1.62,0.1,1.32,0,0.08,0); R.height=1.9; break;
+    // it help desk
+    case 'serverrack': P(root,'rboxS',mat('#1c1f26',{s:80}),1.0,2.0,0.9,0,1.0,0); P(root,'rbox2',T,1.02,0.08,0.92,0,2.02,0); P(root,'rbox2',T,1.02,0.08,0.92,0,0.04,0);
+      for(let i=0;i<7;i++){ P(root,'rbox2',mat('#2c313b',{s:90}),0.86,0.18,0.02,0,0.3+i*0.24,0.46); for(let j=0;j<4;j++) P(root,'box',mat(['#39ff6a','#39ff6a','#ffd34d','#3dd6ff'][(i+j)%4],{e:1}),0.03,0.03,0.02,-0.3+j*0.08,0.3+i*0.24,0.48); P(root,'rbox2',mat('#0d0f13'),0.3,0.04,0.02,0.22,0.3+i*0.24,0.48); }
+      for(let i=0;i<5;i++) P(root,'cyl',mat(['#2f80ed','#ffd21f','#e5302a','#39d353','#ff8a1f'][i]),0.015,1.6,0.015,0.52,1.0,0.3-i*0.12,0.1*(i-2)); R.height=2.2; R.pulse=true; break;
+    case 'printer': P(root,'rboxS',mat('#d8dce2',{s:50}),1.1,0.75,0.85,0,0.38,0); P(root,'rbox2',mat('#b8bec8',{s:50}),1.0,0.15,0.75,0,0.83,-0.03); P(root,'rbox2',T,1.12,0.07,0.87,0,0.04,0);
+      P(root,'rbox2',mat('#ffffff',{s:10}),0.6,0.02,0.45,0,0.95,0.15,-0.3); P(root,'rbox2',mat('#3a3f48'),0.7,0.06,0.1,0,0.55,0.43); P(root,'rbox2',mat('#ffffff',{map:labelTex('PAPER JAM','#151515','#ff5a4a'),basic:1}),0.36,0.12,0.02,0.25,0.68,0.43);
+      for(let i=0;i<3;i++) P(root,'rbox2',mat('#ffffff',{s:10}),0.4,0.02,0.3,-0.05+i*0.05,0.6+i*0.05,0.6+i*0.06,0.4+i*0.3,i*0.4); P(root,'box',mat('#ff3b3b',{e:1}),0.05,0.05,0.02,-0.4,0.7,0.43); R.height=1.1; R.bell=true; break;
+    case 'firewall': for(let r=0;r<4;r++) for(let i=0;i<4;i++) P(root,'rbox2',mat(r%2?'#a8442a':'#b8502e',{s:20}),0.42,0.24,0.4,-0.66+i*0.44+(r%2)*0.2,0.14+r*0.26,0); P(root,'rbox2',T,1.9,0.08,0.5,0,0.02,0);
+      for(let i=0;i<6;i++){ P(root,'cone',mat('#ff8a1f',{e:1}),0.18,0.6,0.18,-0.75+i*0.3,1.35,0); P(root,'cone',mat('#ffd34d',{e:1}),0.1,0.36,0.1,-0.75+i*0.3,1.28,0.05); }
+      P(root,'rbox2',mat('#ffffff',{map:labelTex('FIREWALL','#151515','#ffd34d'),basic:1}),0.9,0.2,0.02,0,0.55,0.22); R.height=1.8; R.pulse=true; break;
     default: P(root,'rboxS',mat(p.color||'#888',{s:40}),1,1,1,0,0.5,0); R.height=1.1;
   }
 }
