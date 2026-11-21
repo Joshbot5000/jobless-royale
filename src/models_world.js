@@ -235,6 +235,7 @@ function buildDeco(key,theme,rnd){
     case 'voteSign': P(g,'cyl',c('#8a5a2b'),0.05,1.4,0.05,0,0.7,0); P(g,'rbox2',mat('#ffffff',{map:labelTex('VOTE!','#e5302a','#ffffff'),basic:1}),1.4,0.5,0.06,0,1.5,0); break;
     case 'serverD': P(g,'rboxS',c('#1c1f26'),1.0,2.4,0.9,0,1.2,0); for(let i=0;i<8;i++) for(let j=0;j<3;j++) P(g,'box',mat(['#39ff6a','#3dd6ff','#ffd34d'][(i+j)%3],{e:1}),0.05,0.04,0.02,-0.25+j*0.1,0.3+i*0.27,0.46); break;
     case 'deskD': P(g,'rbox2',c('#c8a070'),1.5,0.08,0.8,0,0.75,0); for(const s2 of [-1,1]) P(g,'rbox2',c('#8a8f98'),0.06,0.75,0.7,s2*0.7,0.37,0); P(g,'rbox2',c('#151515'),0.7,0.45,0.05,0,1.1,-0.2); P(g,'rbox2',mat('#3a6aff',{e:0.6}),0.62,0.37,0.02,0,1.1,-0.17); P(g,'cyl',c('#ffffff'),0.06,0.12,0.06,0.5,0.85,0.15); break;
+    case 'tikiD': P(g,'cyl',c('#8a5a2b'),0.07,1.8,0.08,0,0.9,0); P(g,'cyl',c('#5a3a1a'),0.13,0.25,0.11,0,1.85,0); P(g,'cone',mat('#ff8a1f',{e:1}),0.13,0.4,0.13,0,2.15,0); P(g,'cone',mat('#ffd34d',{e:1}),0.07,0.25,0.07,0,2.1,0.02); break;
     case 'kennel': P(g,'rbox2',c('#c0392b'),1.4,1.0,1.4,0,0.5,0); P(g,'cone4',c('#7a5128'),1.2,0.7,1.2,0,1.35,0,0,PI/4); P(g,'rbox2',c('#222'),0.5,0.6,0.05,0,0.35,0.71); break;
   }
   return g;

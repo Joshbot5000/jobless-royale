@@ -6,6 +6,8 @@
 function propMore(name,g,tc){
   const c=x=>mat(colr(x,tc),{s:40}), wood=mat('#8a5a2b',{s:20}), dark=mat('#25272c',{s:60}), steel=metal(), wh=mat('#ffffff',{s:40});
   switch(name){
+    // jungle camp
+    case 'gooblender': P(g,'cyl',mat('#e8f6ff',{op:0.35,s:160}),0.07,0.2,0.07,0,0.1,0.1).userData.noOutline=true; P(g,'cyl',mat('#7a8a2a',{s:60}),0.062,0.15,0.062,0,0.07,0.1); P(g,'sph',mat('#ffffff',{s:120}),0.025,0.025,0.025,0.02,0.15,0.13); P(g,'sph',mat('#151515'),0.012,0.012,0.012,0.02,0.15,0.155); P(g,'cyl',mat('#3a3a44'),0.075,0.05,0.075,0,-0.02,0.1); break;
     // halloween
     case 'jackolantern': { const pm=mat('#ff8a1f',{s:40}); P(g,'sph',pm,0.13,0.11,0.13,0,0.02,0.12); for(let i=0;i<4;i++){ const a=i/4*TAU; P(g,'sph',mat('#f07a10',{s:40}),0.06,0.11,0.06,Math.cos(a)*0.08,0.02,0.12+Math.sin(a)*0.08); } P(g,'cyl',mat('#4a6a2a'),0.015,0.05,0.015,0,0.14,0.12);
       for(const s2 of [-1,1]) P(g,'cone4',mat('#ffd34d',{e:1}),0.025,0.03,0.01,s2*0.04,0.05,0.25,PI); P(g,'rbox2',mat('#ffd34d',{e:1}),0.08,0.02,0.01,0,-0.02,0.25); break; }
@@ -495,6 +497,9 @@ function buildingMore(p,R,root,T,tc){
     case 'firewall': for(let r=0;r<4;r++) for(let i=0;i<4;i++) P(root,'rbox2',mat(r%2?'#a8442a':'#b8502e',{s:20}),0.42,0.24,0.4,-0.66+i*0.44+(r%2)*0.2,0.14+r*0.26,0); P(root,'rbox2',T,1.9,0.08,0.5,0,0.02,0);
       for(let i=0;i<6;i++){ P(root,'cone',mat('#ff8a1f',{e:1}),0.18,0.6,0.18,-0.75+i*0.3,1.35,0); P(root,'cone',mat('#ffd34d',{e:1}),0.1,0.36,0.1,-0.75+i*0.3,1.28,0.05); }
       P(root,'rbox2',mat('#ffffff',{map:labelTex('FIREWALL','#151515','#ffd34d'),basic:1}),0.9,0.2,0.02,0,0.55,0.22); R.height=1.8; R.pulse=true; break;
+    // jungle camp
+    case 'hut': P(root,'rboxS',mat('#b8904a',{s:15}),1.3,1.1,1.1,0,0.55,0); for(let i=0;i<7;i++) P(root,'cyl',mat('#8a6a2a',{s:15}),0.06,1.1,0.06,-0.6+i*0.2,0.55,0.56); P(root,'cone4',mat('#c8a860',{s:8}),1.25,0.8,1.15,0,1.45,0,0,PI/4);
+      P(root,'rbox2',mat('#2a1a10'),0.45,0.62,0.04,0,0.34,0.64); P(root,'rbox2',mat('#ffffff',{map:labelTex('TELL ALL','#ffd34d','#151515'),basic:1}),0.8,0.2,0.02,0,0.82,0.66); P(root,'sph',mat('#e5302a',{e:1}),0.05,0.05,0.05,0.5,0.82,0.67); P(root,'rbox2',T,1.32,0.08,1.12,0,0.04,0); R.height=1.9; R.bell=true; break;
     default: P(root,'rboxS',mat(p.color||'#888',{s:40}),1,1,1,0,0.5,0); R.height=1.1;
   }
 }
